@@ -69,4 +69,37 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
    });
 
 
+
+ // === 最新交易区 ===
+ const recentBody = document.querySelector('#recentTable tbody');
+ if(recentBody){
+   recentBody.innerHTML='';
+   const recent=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,100);
+   recent.forEach((t,idx)=>{
+     const tr=document.createElement('tr');
+     const amt=(t.price*t.quantity).toFixed(2);
+     tr.innerHTML = `
+       <td>${t.date}</td>
+       <td>${t.ticker}</td>
+       <td>${t.type}</td>
+       <td>${t.price}</td>
+       <td>${t.quantity}</td>
+       <td style="color:${['sell','cover','short'].includes(t.type)?'#ff4444':''}">${amt}</td>
+       <td><a href="stock.html?ticker=${t.ticker}">详情</a></td>
+       <td><button data-idx="${idx}">删除</button></td>`;
+     recentBody.appendChild(tr);
+   });
+   // 删除逻辑
+   recentBody.querySelectorAll('button').forEach(btn=>{
+     btn.onclick=()=>{
+       const idx=parseInt(btn.dataset.idx);
+       const sorted=[...loadTrades()].sort((a,b)=>b.date.localeCompare(a.date));
+       const trade=sorted[idx];
+       const all=loadTrades();
+       const realIndex=all.findIndex(x=>x===trade);
+       if(realIndex>-1){deleteTrade(realIndex);location.reload();}
+     };
+   });
+ }
+
 })();
