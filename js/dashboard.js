@@ -14,8 +14,8 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
 (async function render(){
  const trades=loadTrades();
  // summary metrics
- const today=new Date().toISOString().slice(0,10);
- let dayTrades=trades.filter(t=>t.date===today);
+ const todayStr=new Date().toISOString().slice(0,10);
+ let dayTrades=trades.filter(t=>t.date===todayStr);
  const stocks=Object.values(trades.reduce((m,t)=>(m[t.ticker]=m[t.ticker]||[],m[t.ticker].push(t),m),{}));
  let accountCost=0,currentValue=0,unreal=0;
  const posRows=[];
@@ -29,7 +29,7 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
  
  const sum=document.getElementById('summary');sum.innerHTML='';
  const addBox=(t,v)=>{const d=document.createElement('div');d.className='box';d.innerHTML=`<h4>${t}</h4><p>${fmt(v)}</p>`;sum.appendChild(d);};
- const todayResult=todayRealized(trades,today);
+ const todayResult=todayRealized(trades,todayStr);
  addBox('账户总成本',accountCost);
  addBox('现有市值',currentValue);
  addBox('当前浮盈亏',unreal);
