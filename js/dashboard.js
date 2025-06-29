@@ -46,4 +46,18 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
   tr.innerHTML=`<td>${r.ticker}</td><td>${r.netQty}</td><td>${r.avgCost.toFixed(2)}</td><td>${r.pl.toFixed(2)}</td><td>${r.breakeven.toFixed(2)}</td><td>${r.histPL.toFixed(2)}</td><td>${r.histTrades}</td><td><a href="stock.html?ticker=${r.ticker}">详情</a></td>`;
   tbody.appendChild(tr);
  });
+
+ // recent trades table
+ const rtbody=document.getElementById('recentTable')?.querySelector('tbody');
+ if(rtbody){
+   rtbody.innerHTML='';
+   const sorted=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,15);
+   sorted.forEach(t=>{
+     const tr=document.createElement('tr');
+     const amt=t.price*t.quantity;
+     tr.innerHTML=`<td>${t.date}</td><td>${t.ticker}</td><td>${t.type}</td><td>${t.price}</td><td>${t.quantity}</td><td style="color:${(t.type==='sell'||t.type==='cover'||t.type==='short')?'#ff4444':''}">${amt.toFixed(2)}</td>`;
+     rtbody.appendChild(tr);
+   });
+ }
+
 })();
