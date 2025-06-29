@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Trading777 – Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h2>Trading777 – Dashboard</h2>
+  <div id="status"></div>
+</header>
+
+<section class="controls">
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+  <button id="importBtn">Import JSON</button>
+  <button id="exportBtn">Export JSON</button>
+  <button id="addBtn">Add Trade</button>
+</section>
+
+<section id="summary">
+  <!-- summary metrics will be injected -->
+</section>
+
+<section>
+  <h3>Positions</h3>
+  <table id="posTable">
+    <thead>
+      <tr><th>Ticker</th><th>Net Qty</th><th>Avg Cost</th><th>Market Price</th><th>Unreal P/L</th><th>Detail</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<script src="js/data.js"></script>
+<script src="js/calculate.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

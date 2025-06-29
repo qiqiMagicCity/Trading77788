@@ -1,0 +1,28 @@
+{
+  "trades": [
+    {
+      "date": "2025-06-01",
+      "ticker": "AAPL",
+      "type": "buy",
+      "price": 180,
+      "quantity": 10,
+      "fee": 1
+    },
+    {
+      "date": "2025-06-10",
+      "ticker": "AAPL",
+      "type": "sell",
+      "price": 195,
+      "quantity": 5,
+      "fee": 1
+    },
+    {
+      "date": "2025-06-12",
+      "ticker": "TSLA",
+      "type": "buy",
+      "price": 250,
+      "quantity": 8,
+      "fee": 1
+    }
+  ]
+}
