@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trading777 Dashboard v1.1</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="logo">Trading777</div>
+    <div class="right-btns">
+      <button id="refresh">Refresh</button>
+      <button id="logout">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Statistics Grid -->
+    <section id="stats" class="stats-grid">
+      <div id="stat-1" class="card"></div>
+      <div id="stat-2" class="card"></div>
+      <div id="stat-3" class="card"></div>
+      <div id="stat-4" class="card"></div>
+      <div id="stat-5" class="card"></div>
+      <div id="stat-6" class="card"></div>
+      <div id="stat-7" class="card"></div>
+      <div id="stat-8" class="card"></div>
+    </section>
+
+    <h2 class="section-title">
+      最新交易 删除（100）
+      <a href="details.html" class="details">详情</a>
+    </h2>
+    <section id="trades" class="trades"></section>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
