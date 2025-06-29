@@ -1,8 +1,65 @@
+const STORAGE_KEY = 'trading777_trades_v03';
 
-const STORAGE_KEY='trading777_v05';
-function loadTrades(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch(e){return [];}}
-function saveTrades(arr){localStorage.setItem(STORAGE_KEY,JSON.stringify(arr));}
-function addTrade(t){const a=loadTrades();a.push(t);saveTrades(a);}
-function deleteTrade(index){const a=loadTrades();a.splice(index,1);saveTrades(a);}
-function importJSON(file,cb){const r=new FileReader();r.onload=e=>{try{const obj=JSON.parse(e.target.result);if(Array.isArray(obj.trades)){saveTrades(obj.trades);cb&&cb();}else alert('格式错误');}catch(err){alert('解析失败');}};r.readAsText(file);}
-function exportJSON(){const blob=new Blob([JSON.stringify({trades:loadTrades()},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='trades_'+Date.now()+'.json';a.click();}
+function loadTrades() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('数据解析失败', e);
+    return [];
+  }
+}
+
+function saveTrades(trades) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+  const status = document.getElementById('status');
+  if (status) status.textContent = '已自动保存 ' + new Date().toLocaleTimeString();
+}
+
+// 导入 JSON 文件
+function importJSON(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const obj = JSON.parse(e.target.result);
+      if (Array.isArray(obj.trades)) {
+        saveTrades(obj.trades);
+        cb && cb(obj.trades);
+      } else alert('JSON 结构错误，应包含 trades 数组');
+    } catch (err) {
+      alert('无法解析 JSON');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// 导出当前 trades
+function exportJSON() {
+  const trades = loadTrades();
+  const blob = new Blob([JSON.stringify({ trades }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'trades_' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// CRUD
+function addTrade(trade) {
+  const trades = loadTrades();
+  trades.push(trade);
+  saveTrades(trades);
+}
+
+function updateTrade(index, newTrade) {
+  const trades = loadTrades();
+  trades[index] = newTrade;
+  saveTrades(trades);
+}
+
+function deleteTrade(index) {
+  const trades = loadTrades();
+  trades.splice(index, 1);
+  saveTrades(trades);
+}
