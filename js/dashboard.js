@@ -156,3 +156,50 @@ document.getElementById('saveTrade').onclick=()=>{
   });
 
 })();
+
+// === v1.0 Summary Override ===
+(function(){
+  try{
+    const summary = document.getElementById('summary');
+    if(!summary) return;
+    // clear old
+    summary.innerHTML='';
+    const money = n => {
+      const cls = n>0?'green':(n<0?'red':'white');
+      return `<span class="${cls}">$ ${Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+    };
+    const count = n => `<span class="white">${n}</span>`;
+    const winloss = (w,l) => `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
+    // compute wins / losses for today
+    let wins=0,losses=0;
+    Object.values(byTicker).forEach(arr=>{
+      const todayArr = arr.filter(t=>t.date===todayStr);
+      if(todayArr.length){
+        const rows = fifoRows(todayArr);
+        rows.forEach(r=>{
+          if(r.showPNL>0) wins++;
+          else if(r.showPNL<0) losses++;
+        });
+      }
+    });
+    const data=[
+      ['账户总成本',accountCost,money],
+      ['现有市值',currentValue,money],
+      ['当前浮动盈亏',unreal,money],
+      ['当日已实现盈亏',dayRealized,money],
+      ['当日盈亏笔数',[wins,losses],winloss],
+      ['当日交易次数',todayTrades.length,count],
+      ['累计交易次数',trades.length,count],
+      ['历史已实现盈亏',histRealized,money]
+    ];
+    data.forEach(([title,val,fmt])=>{
+      const d=document.createElement('div');
+      d.className='box';
+      const htmlVal = Array.isArray(val)?fmt(...val):fmt(val);
+      d.innerHTML=`<h4>${title}</h4><p>${htmlVal}</p>`;
+      summary.appendChild(d);
+    });
+  }catch(e){
+    console.error('summary override error',e);
+  }
+})();
