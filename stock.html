@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Trading777 – 个股详情</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <a href="dashboard.html" style="color:var(--accent);font-weight:bold">← 返回</a>
+  <h2 id="stockTitle" style="margin-left:16px;"></h2>
+</header>
+
+<div class="container">
+  <section class="summary-grid" id="stockSummary"></section>
+
+  <h3>交易历史</h3>
+  <table id="tradeTable">
+    <thead>
+      <tr>
+        <th>日期</th><th>统计</th><th>方向</th><th>单价</th><th>数量</th>
+        <th>订单金额</th><th>盈亏平衡点</th><th>历史盈亏</th><th>目前持仓</th><th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/stock.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Trading777 – 账户总览</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="time-area" id="clocks"></div>
+  <div class="right-btns">
+    <button id="importBtn">导入</button>
+    <button id="exportBtn">导出</button>
+  </div>
+</header>
+
+<div class="container">
+  <section class="summary-grid" id="summary"></section>
+
+  <h3>持仓明细</h3>
+  <table id="posTable">
+    <thead>
+      <tr>
+        <th>代码</th><th>目前持仓</th><th>持仓单价</th><th>持仓盈亏</th><th>盈亏平衡点</th>
+        <th>历史盈亏</th><th>历史交易次数</th><th>详情</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>最新交易 删除（100）</h3>
+  <table id="recentTable">
+    <thead>
+      <tr>
+        <th>日期</th><th>代码</th><th>方向</th><th>单价</th><th>数量</th><th>订单金额</th><th>详情</th><th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- FAB -->
+<div class="fab" id="addBtn">＋</div>
+
+<!-- Modal -->
+<div id="modal">
+  <div class="modal-card">
+    <h3 id="modalTitle">添加交易</h3>
+    <label>日期
+      <input type="date" id="tDate">
+    </label>
+    <label>代码
+      <input type="text" id="tTicker" placeholder="如 AAPL">
+    </label>
+    <label>方向
+      <select id="tType">
+        <option value="buy">买入</option>
+        <option value="sell">卖出</option>
+        <option value="short">做空</option>
+        <option value="cover">回补</option>
+      </select>
+    </label>
+    <label>价格
+      <input type="number" id="tPrice" step="0.01">
+    </label>
+    <label>数量
+      <input type="number" id="tQty" step="1">
+    </label>
+    <div style="margin-top:10px;text-align:right">
+      <button id="saveTrade">保存</button>
+      <button id="cancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
