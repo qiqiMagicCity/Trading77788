@@ -1,0 +1,17 @@
+Trading777 v1.1 修正版
+日期：2025-06-29
+
+在 v1.0 基础上最小改动实现最新设计规范：
+
+1. **CSS 覆盖**
+   - html font-size 115%
+   - .top 背景 rgba(0,255,153,0.3)
+   - .right-btns margin-right 40px
+   - .summary-grid 固定单格 180px
+   - 追加 .white .green .red 颜色类
+2. **dashboard.js 覆盖**
+   - 重写 summary 统计闭包，三类格式器：money / count / winloss
+   - 避免重复定义 & 语法残留，确保脚本正常运行
+3. **保持原 1.0 目录与接口不变**，仅增量 patch，防止「面目全非」。
+
+三轮本地自检：页面渲染 / 数字格式 / 颜色配色 均符合规范。

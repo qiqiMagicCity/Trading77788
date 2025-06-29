@@ -162,50 +162,77 @@ document.getElementById('saveTrade').onclick=()=>{
   try{
     const summary = document.getElementById('summary');
     if(!summary) return;
-    // clear old
     summary.innerHTML='';
-    
-const money = n => {
-  const cls = n>0 ? 'green' : n<0 ? 'red' : 'white';
-  const val = `$ ${Number(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  return `<span class="${cls}">${n<0?'-':''}${val}</span>`;
-};
-const count = n => `<span class="white">${n}</span>`;
-const winloss = (w,l) => `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
-">$ ${Number(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+
+    const money = n=>{
+      const cls = n>0?'green':n<0?'red':'white';
+      const abs = Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+      const formatted = `$ ${abs}`;
+      return `<span class="${cls}">${n<0?'-':''}${formatted}</span>`;
     };
-    const count = n => `<span class="white">${n}</span>`;
-    const winloss = (w,l) => `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
-    // compute wins / losses for today
-    let wins=0,losses=0;
-    Object.values(byTicker).forEach(arr=>{
-      const todayArr = arr.filter(t=>t.date===todayStr);
-      if(todayArr.length){
-        const rows = fifoRows(todayArr);
-        rows.forEach(r=>{
-          if(r.showPNL>0) wins++;
-          else if(r.showPNL<0) losses++;
-        });
+    const count = n=>`<span class="white">${n}</span>`;
+    const winloss = (w,l)=>`<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
+
+    // collect data from existing variables in original dashboard.js scope
+    const todayStr = new Date().toISOString().slice(0,10);
+    const allTrades = loadTrades();                         // existing function
+    const todayTrades = allTrades.filter(t=>t.date===todayStr);
+
+    // group trades by ticker
+    const byTicker = {};
+    allTrades.forEach(t=>{
+      if(!byTicker[t.ticker]) byTicker[t.ticker]=[];
+      byTicker[t.ticker].push(t);
+    });
+
+    // Calculate statistics
+    let accountCost=0,currentValue=0,unreal=0,histRealized=0,dayRealized=0,wins=0,losses=0;
+
+    // positions come from loadPositions()
+    const positions = loadPositions();
+    positions.forEach(p=>{
+      accountCost += p.qty * p.avg;
+      currentValue += p.qty * p.last;
+    });
+    unreal = currentValue - accountCost;
+
+    // realized P/L
+    allTrades.forEach(t=>{
+      if(t.realized!==undefined) histRealized += t.realized;
+      if(t.date===todayStr && t.realized!==undefined){
+        dayRealized += t.realized;
       }
     });
-    const data=[
-      ['账户总成本',accountCost,money],
-      ['现有市值',currentValue,money],
-      ['当前浮动盈亏',unreal,money],
-      ['当日已实现盈亏',dayRealized,money],
-      ['当日盈亏笔数',[wins,losses],winloss],
-      ['当日交易次数',todayTrades.length,count],
-      ['累计交易次数',trades.length,count],
-      ['历史已实现盈亏',histRealized,money]
+
+    // win/loss count (today)
+    byTicker && Object.values(byTicker).forEach(arr=>{
+      const todayArr = arr.filter(t=>t.date===todayStr && t.showPNL!==undefined);
+      todayArr.forEach(r=>{
+        if(r.showPNL>0) wins++;
+        else if(r.showPNL<0) losses++;
+      });
+    });
+
+    const data = [
+      ['账户总成本', accountCost, money],
+      ['现有市值', currentValue, money],
+      ['当前浮动盈亏', unreal, money],
+      ['当日已实现盈亏', dayRealized, money],
+      ['当日盈亏笔数', [wins, losses], winloss],
+      ['当日交易次数', todayTrades.length, count],
+      ['累计交易次数', allTrades.length, count],
+      ['历史已实现盈亏', histRealized, money]
     ];
+
     data.forEach(([title,val,fmt])=>{
-      const d=document.createElement('div');
-      d.className='box';
-      const htmlVal = Array.isArray(val)?fmt(...val):fmt(val);
-      d.innerHTML=`<h4>${title}</h4><p>${htmlVal}</p>`;
+      const d = document.createElement('div');
+      d.className = 'box';
+      const htmlVal = Array.isArray(val) ? fmt(...val) : fmt(val);
+      d.innerHTML = `<h4>${title}</h4><p>${htmlVal}</p>`;
       summary.appendChild(d);
     });
+
   }catch(e){
-    console.error('summary override error',e);
+    console.error('summary override error', e);
   }
 })();

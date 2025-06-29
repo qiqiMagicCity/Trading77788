@@ -4,7 +4,7 @@
   --fg:#f0fff8;
 }
 
-html{font-size:115%;}
+html{font-size:160%;}
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif;
@@ -33,7 +33,7 @@ header.top{
   justify-content:space-between;
   align-items:center;
   padding:8px 24px;
-  background:rgba(0,255,153,0.3);
+  background:rgba(0,0,0,0.6);
   backdrop-filter:blur(4px);
   z-index:100;
 }
@@ -152,4 +152,14 @@ html{font-size:115%;}
 .green{color:#00ff99;}
 .red{color:#ff4d4f;}
 .white{color:#ffffff;}
+.detail-link, table a[href*="stock.html"]{color:#1e90ff;}
+
+/* === v1.1 overrides === */
+html{font-size:115%;}
+.top{background:rgba(0,255,153,0.3);}
+.right-btns{margin-right:40px;}
+.summary-grid{grid-template-columns:repeat(auto-fill,180px);}
+.white{color:#ffffff;}
+.green{color:#00e676;}
+.red{color:#ff4d4d;}
 .detail-link, table a[href*="stock.html"]{color:#1e90ff;}
