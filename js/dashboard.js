@@ -164,9 +164,15 @@ document.getElementById('saveTrade').onclick=()=>{
     if(!summary) return;
     // clear old
     summary.innerHTML='';
-    const money = n => {
-      const cls = n>0?'green':(n<0?'red':'white');
-      return `<span class="${cls}">$ ${Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+    
+const money = n => {
+  const cls = n>0 ? 'green' : n<0 ? 'red' : 'white';
+  const val = `$ ${Number(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  return `<span class="${cls}">${n<0?'-':''}${val}</span>`;
+};
+const count = n => `<span class="white">${n}</span>`;
+const winloss = (w,l) => `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
+">$ ${Number(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
     };
     const count = n => `<span class="white">${n}</span>`;
     const winloss = (w,l) => `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
