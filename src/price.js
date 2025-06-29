@@ -1,23 +1,18 @@
 /**
- * Fetch latest price via Finnhub. Falls back to localStorage cache on failure.
+ * getPrice: query Finnhub, fallback cache
  */
 export async function getPrice(symbol) {
-  const key = import.meta.env.VITE_FINNHUB_KEY;
-  const cacheKey = `price_\${symbol}`;
+  const cacheKey = `price_${symbol}`;
+  const token = import.meta.env.VITE_FINNHUB_KEY;
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=\${symbol}&token=\${key}`);
-    if (!res.ok) throw new Error('Network fail');
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${token}`);
     const data = await res.json();
     if (data.c) {
-      localStorage.setItem(cacheKey, JSON.stringify({ price: data.c, ts: Date.now() }));
+      localStorage.setItem(cacheKey, JSON.stringify({p:data.c, t:Date.now()}));
       return data.c;
     }
-  } catch(e) {
-    // ignore
-  }
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    return JSON.parse(cached).price;
-  }
+  } catch(e) { /* ignore */ }
+  const cache = localStorage.getItem(cacheKey);
+  if (cache) return JSON.parse(cache).p;
   return 0;
 }
