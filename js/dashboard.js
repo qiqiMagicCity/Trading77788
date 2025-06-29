@@ -26,24 +26,26 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
    unreal+=pl;currentValue+=p*m.netQty;accountCost+=m.avgCost*m.netQty;
    posRows.push({...m,ticker:arr[0].ticker,price:p,pl});
  }
- const sum=document.getElementById('summary');
- const box=(title,val)=>{const d=document.createElement('div');d.className='box';d.innerHTML=`<h4>${title}</h4><p>${val}</p>`;sum.appendChild(d);};
- box('账户总成本',accountCost.toFixed(2));
- box('现有市值',currentValue.toFixed(2));
- box('当前浮盈亏',unreal.toFixed(2));
- // day realized simplified sum of todays sell/cover
- const dayRealized=dayTrades.filter(t=>t.type==='sell'||t.type==='cover').reduce((s,t)=>s+t.price*t.quantity,0);
- box('当日已实现盈亏',dayRealized.toFixed(2));
- box('当日盈亏笔数',dayTrades.length);
- box('当日交易次数',dayTrades.length);
- box('累计交易次数',trades.length);
- const histRealized=trades.filter(t=>t.type==='sell'||t.type==='cover').reduce((s,t)=>s+t.price*t.quantity,0);
+ 
+ const sum=document.getElementById('summary');sum.innerHTML='';
+ const addBox=(t,v)=>{const d=document.createElement('div');d.className='box';d.innerHTML=`<h4>${t}</h4><p>${fmt(v)}</p>`;sum.appendChild(d);};
+ const todayResult=todayRealized(trades,today);
+ addBox('账户总成本',accountCost);
+ addBox('现有市值',currentValue);
+ addBox('当前浮盈亏',unreal);
+ addBox('今日已实现盈亏',todayResult.realized);
+ addBox('今日盈亏笔数',todayResult.pairs);
+ addBox('今日交易次数',dayTrades.length);
+ addBox('累计交易次数',trades.length);
+ const histRealized=trades.filter(t=>['sell','cover'].includes(t.type)).reduce((s,t)=>s+t.price*t.quantity,0);
+ addBox('历史已实现盈亏',histRealized);
+
  box('历史已实现盈亏',histRealized.toFixed(2));
 
  const tbody=document.querySelector('#posTable tbody');tbody.innerHTML='';
  posRows.forEach(r=>{
   const tr=document.createElement('tr');
-  tr.innerHTML=`<td>${r.ticker}</td><td>${r.netQty}</td><td>${r.avgCost.toFixed(2)}</td><td>${r.pl.toFixed(2)}</td><td>${r.breakeven.toFixed(2)}</td><td>${r.histPL.toFixed(2)}</td><td>${r.histTrades}</td><td><a href="stock.html?ticker=${r.ticker}">详情</a></td>`;
+  tr.innerHTML=`<td>${r.ticker}</td><td>${fmt(r.netQty)}</td><td>${fmt(r.avgCost)}</td><td>${fmt(r.pl)}</td><td>${fmt(r.breakeven)}</td><td>${fmt(r.histPL)}</td><td>${r.histTrades}</td><td><a href="stock.html?ticker=${r.ticker}">详情</a></td>`;
   tbody.appendChild(tr);
  });
 
@@ -52,7 +54,7 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
    const sorted=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,100);
    sorted.forEach((t,idx)=>{
      const tr=document.createElement('tr');
-     const amt=(t.price*t.quantity).toFixed(2);
+     const amt=fmt(t.price*t.quantity);
      tr.innerHTML=`
        <td>${t.date}</td>
        <td>${t.ticker}</td>
@@ -77,7 +79,7 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
    const recent=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,100);
    recent.forEach((t,idx)=>{
      const tr=document.createElement('tr');
-     const amt=(t.price*t.quantity).toFixed(2);
+     const amt=fmt(t.price*t.quantity);
      tr.innerHTML = `
        <td>${t.date}</td>
        <td>${t.ticker}</td>
