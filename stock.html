@@ -1,23 +1,17 @@
 
-<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>标的详情</title>
-<link rel="stylesheet" href="css/style.css"></head><body>
-<header class="topbar">
-  <div><a href="dashboard.html" style="color:var(--accent)">← 返回</a></div>
-  <div id="title"></div>
-  <div></div>
-</header>
-
-<div id="summary" style="margin-top:70px"></div>
-
-<section>
- <h3>历史记录</h3>
- <table id="tradeTable">
-   <thead><tr><th>日期</th><th>交易方向</th><th>单价</th><th>数量</th><th>订单金额</th><th>盈亏平衡点</th><th>历史盈亏</th><th>目前持仓</th></tr></thead>
-   <tbody></tbody>
- </table>
-</section>
-
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="UTF-8"><title>Stock</title><link rel="stylesheet" href="../css/style.css"></head>
+<body>
+<a href="dashboard.html">← 返回</a>
+<h2 id="title"></h2>
+<div id="stockSummary"></div>
+<table id="history">
+<thead><tr><th>日期</th><th>方向</th><th>价格</th><th>数量</th></tr></thead>
+<tbody></tbody>
+</table>
 <script src="js/data.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/stock.js"></script>
-</body></html>
+</body>
+</html>
