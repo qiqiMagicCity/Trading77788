@@ -1,54 +1,17 @@
 
 (async function(){
-  const url=new URLSearchParams(location.search);
-  const ticker=url.get('ticker');
-  document.getElementById('title').textContent=ticker;
-
-  const tradesAll=loadTrades();
-  const trades=tradesAll.filter(t=>t.ticker===ticker);
-  await render(trades);
-
-  async function render(trades){
-    const pos=computePosition(trades);
-    const price=await fetchPrice(ticker);
-    const unreal=(price-pos.avgCost)*pos.netQty;
-
-    // summary
-    const box=document.getElementById('stockSummary');
-    box.innerHTML='';
-    const make=(t,v)=>{const d=document.createElement('div');d.className='summary-box';d.innerHTML=`<h4>${t}</h4><p>${v}</p>`;box.appendChild(d);};
-    make('净持仓',pos.netQty);
-    make('均价',pos.avgCost.toFixed(2));
-    make('现价',price.toFixed(2));
-    make('浮盈亏',unreal.toFixed(2));
-
-    // table
-    const tbody=document.querySelector('#tradeTable tbody');
-    tbody.innerHTML='';
-    trades.forEach((t,idx)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`
-        <td>${t.date}</td>
-        <td>${mapType(t.type)}</td>
-        <td>${t.quantity}</td>
-        <td>${t.price}</td>
-        <td>
-          <button data-i="${idx}" class="delBtn">删除</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-    document.querySelectorAll('.delBtn').forEach(btn=>{
-      btn.onclick=()=>{
-        const i=parseInt(btn.getAttribute('data-i'));
-        const globalIdx = tradesAll.findIndex(x=>x===trades[i]);
-        deleteTrade(globalIdx);
-        location.reload();
-      };
-    });
-  }
-
-  function mapType(t){
-    return ({buy:'买入',sell:'卖出',short:'做空',cover:'回补'})[t]||t;
-  }
+ const params=new URLSearchParams(location.search);const tk=params.get('ticker');document.getElementById('title').textContent=tk;
+ const all=loadTrades();const trades=all.filter(t=>t.ticker===tk);
+ const metrics=fifoCalc(trades);const cur=await price(tk);const unreal=(cur-metrics.costPer)*metrics.net;
+ const sum=document.getElementById('summary');const box=(t,v)=>{const d=document.createElement('div');d.className='summary-box';d.innerHTML=`<h4>${t}</h4><p>${v}</p>`;sum.appendChild(d);};
+ box('净持仓',metrics.net);box('均价',metrics.costPer.toFixed(2));box('现价',cur.toFixed(2));box('浮盈亏',unreal.toFixed(2));
+ const tbody=document.querySelector('#tradeTable tbody');
+ trades.sort((a,b)=>a.date.localeCompare(b.date));
+ trades.forEach(r=>{
+  const amt=r.price*r.quantity;
+  const tr=document.createElement('tr');
+  const weekday=new Date(r.date).toLocaleDateString('zh-CN',{weekday:'short'});
+  tr.innerHTML=`<td>${r.date} ${weekday}</td><td>${r.type}</td><td>${r.price}</td><td>${r.quantity}</td><td style="color:${r.type==='sell' || r.type==='cover'?'#ff4e4e':'#fff'}">${amt.toFixed(2)}</td><td>${metrics.breakeven.toFixed(2)}</td><td>${metrics.histPL.toFixed(2)}</td><td>${metrics.net}</td>`;
+  tbody.appendChild(tr);
+ });
 })();
