@@ -61,14 +61,14 @@ document.getElementById('saveTrade').onclick=()=>{
     const price = await getPrice(ticker);
     const pl = (price-metrics.avgCost)*metrics.netQty;
     unreal += pl;
-    accountCost += metrics.avgCost*metrics.netQty;
-    currentValue += price*metrics.netQty;
+    accountCost += metrics.avgCost*Math.abs(metrics.netQty);
+    currentValue += price*Math.abs(metrics.netQty);
     posRows.push({
       ticker,
       netQty:metrics.netQty,
       avgCost:metrics.avgCost,
       pl,
-      breakeven: metrics.avgCost,
+      breakeven: metrics.breakeven,
       histRealized: metrics.realized,
       tradeCount: arr.length,
       price
@@ -77,25 +77,34 @@ document.getElementById('saveTrade').onclick=()=>{
 
   // today stats
   const todayTrades = trades.filter(t=>t.date===todayStr);
-  const dayPairs = todayTrades.filter(t=>t.type==='sell'||t.type==='cover');
-  const dayRealized = dayPairs.reduce((s,t)=>s + t.price*t.quantity*(t.type==='sell'||t.type==='cover'?1:-1),0);
+  // calculate realized by pairing across stock groups using fifoRows
+  let dayRealized=0,dayPairs=0;
+  Object.values(byTicker).forEach(arr=>{
+    const todayArr = arr.filter(t=>t.date===todayStr);
+    if(todayArr.length){
+      const rows = fifoRows(todayArr);
+      const realized = rows[rows.length-1].accRealized;
+      dayRealized += realized;
+      dayPairs += rows.filter(r=>r.showPNL!==0).length;
+    }
+  });
 
   // summary grid
   const summary = document.getElementById('summary');
-  const box=(title,html)=>{
+  const box=(title,val)=>{
     const d=document.createElement('div');
     d.className='box';
-    d.innerHTML=`<h4>${title}</h4><p>${html}</p>`;
+    d.innerHTML=`<h4>${title}</h4><p>${typeof val==='string'?val:fmt(val)}</p>`;
     summary.appendChild(d);
   };
-  box('账户总成本',fmt(accountCost));
-  box('现有市值',fmt(currentValue));
-  box('当前浮动盈亏',fmt(unreal));
-  box('当日已实现盈亏',fmt(dayRealized));
-  box('当日盈亏笔数',dayPairs.length);
+  box('账户总成本',accountCost);
+  box('现有市值',currentValue);
+  box('当前浮动盈亏',unreal);
+  box('当日已实现盈亏',dayRealized);
+  box('当日盈亏笔数',dayPairs);
   box('当日交易次数',todayTrades.length);
   box('累计交易次数',trades.length);
-  box('历史已实现盈亏',fmt(histRealized));
+  box('历史已实现盈亏',histRealized);
 
   // positions table
   const posBody=document.querySelector('#posTable tbody');
@@ -131,17 +140,17 @@ document.getElementById('saveTrade').onclick=()=>{
       <td>${t.quantity}</td>
       <td>${amtHtml}</td>
       <td><a href="stock.html?ticker=${t.ticker}">详情</a></td>
-      <td><button data-i="${idx}" class="delBtn">删除</button></td>
+      <td><button data-id="${idx}" class="delBtn">删除</button></td>
     `;
     recentBody.appendChild(tr);
   });
   recentBody.querySelectorAll('.delBtn').forEach(btn=>{
     btn.onclick=()=>{
-      const idx=parseInt(btn.dataset.i);
+      const idx=parseInt(btn.dataset.id);
       const sorted=[...loadTrades()].sort((a,b)=>b.date.localeCompare(a.date));
       const trade=sorted[idx];
       const all=loadTrades();
-      const realIndex=all.findIndex(x=>x===trade);
+      const realIndex=all.indexOf(trade);
       if(realIndex>-1){deleteTrade(realIndex);location.reload();}
     };
   });
