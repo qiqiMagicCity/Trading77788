@@ -47,17 +47,26 @@ document.getElementById('saveTrade').onclick=()=>{const t={date:document.getElem
   tbody.appendChild(tr);
  });
 
- // recent trades table
- const rtbody=document.getElementById('recentTable')?.querySelector('tbody');
- if(rtbody){
+ 
    rtbody.innerHTML='';
-   const sorted=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,15);
-   sorted.forEach(t=>{
+   const sorted=[...trades].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,100);
+   sorted.forEach((t,idx)=>{
      const tr=document.createElement('tr');
-     const amt=t.price*t.quantity;
-     tr.innerHTML=`<td>${t.date}</td><td>${t.ticker}</td><td>${t.type}</td><td>${t.price}</td><td>${t.quantity}</td><td style="color:${(t.type==='sell'||t.type==='cover'||t.type==='short')?'#ff4444':''}">${amt.toFixed(2)}</td>`;
+     const amt=(t.price*t.quantity).toFixed(2);
+     tr.innerHTML=`
+       <td>${t.date}</td>
+       <td>${t.ticker}</td>
+       <td>${t.type}</td>
+       <td>${t.price}</td>
+       <td>${t.quantity}</td>
+       <td style="color:${(t.type==='sell'||t.type==='cover'||t.type==='short')?'#ff4444':''}">${amt}</td>
+       <td><a href="stock.html?ticker=${t.ticker}">详情</a></td>
+       <td><button data-i="${idx}" class="delBtn">删除</button></td>`;
      rtbody.appendChild(tr);
    });
- }
+   document.querySelectorAll('.delBtn').forEach(btn=>{
+      btn.onclick=()=>{const id=parseInt(btn.dataset.i);const sorted=[...loadTrades()].sort((a,b)=>b.date.localeCompare(a.date));const trade=sorted[id];const all=loadTrades();const index=all.findIndex(x=>x===trade);if(index>-1){deleteTrade(index);location.reload();}};
+   });
+
 
 })();
