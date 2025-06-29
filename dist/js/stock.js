@@ -1,61 +1,54 @@
 
-(function(){
-    const urlParams = new URLSearchParams(location.search);
-    const ticker = urlParams.get('ticker');
-    document.getElementById('title').textContent = ticker;
+(async function(){
+  const url=new URLSearchParams(location.search);
+  const ticker=url.get('ticker');
+  document.getElementById('title').textContent=ticker;
 
-    const trades = loadTrades().filter(t=>t.ticker===ticker);
-    render(trades);
+  const tradesAll=loadTrades();
+  const trades=tradesAll.filter(t=>t.ticker===ticker);
+  await render(trades);
 
-    function render(trades){
-        const pos = computePosition(trades);
-        const price = getMockMarketPrice(ticker);
-        const unreal = (price - pos.avgCost)*pos.netQty;
+  async function render(trades){
+    const pos=computePosition(trades);
+    const price=await fetchPrice(ticker);
+    const unreal=(price-pos.avgCost)*pos.netQty;
 
-        document.getElementById('stockSummary').innerHTML = `
-          <p>Net Qty: <strong>${pos.netQty}</strong> | Avg Cost: <strong>${pos.avgCost.toFixed(2)}</strong> | Market Price: <strong>${price.toFixed(2)}</strong> | Unrealised: <strong>${unreal.toFixed(2)}</strong></p>
-        `;
+    // summary
+    const box=document.getElementById('stockSummary');
+    box.innerHTML='';
+    const make=(t,v)=>{const d=document.createElement('div');d.className='summary-box';d.innerHTML=`<h4>${t}</h4><p>${v}</p>`;box.appendChild(d);};
+    make('净持仓',pos.netQty);
+    make('均价',pos.avgCost.toFixed(2));
+    make('现价',price.toFixed(2));
+    make('浮盈亏',unreal.toFixed(2));
 
-        const tbody = document.querySelector('#tradeTable tbody');
-        tbody.innerHTML = '';
-        trades.forEach((t,idx)=>{
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${t.date}</td>
-              <td>${t.type}</td>
-              <td>${t.quantity}</td>
-              <td>${t.price}</td>
-              <td>${t.fee||0}</td>
-              <td>
-                 <button onclick="editTrade(${idx})">Edit</button>
-                 <button onclick="removeTrade(${idx})">Del</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    window.editTrade = function(index){
-        const tradesAll = loadTrades();
-        const filtered = tradesAll.filter(t=>t.ticker===ticker);
-        const t = filtered[index];
-        const date = prompt('Date',t.date);
-        const type = prompt('Type',t.type);
-        const price = parseFloat(prompt('Price',t.price));
-        const qty = parseFloat(prompt('Qty',t.quantity));
-        const fee = parseFloat(prompt('Fee',t.fee||0))||0;
-        // find actual index in global array
-        const globalIndex = tradesAll.findIndex(tr=>tr===t);
-        updateTrade(globalIndex,{date,ticker, type, price, quantity:qty, fee});
+    // table
+    const tbody=document.querySelector('#tradeTable tbody');
+    tbody.innerHTML='';
+    trades.forEach((t,idx)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td>${t.date}</td>
+        <td>${mapType(t.type)}</td>
+        <td>${t.quantity}</td>
+        <td>${t.price}</td>
+        <td>
+          <button data-i="${idx}" class="delBtn">删除</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    document.querySelectorAll('.delBtn').forEach(btn=>{
+      btn.onclick=()=>{
+        const i=parseInt(btn.getAttribute('data-i'));
+        const globalIdx = tradesAll.findIndex(x=>x===trades[i]);
+        deleteTrade(globalIdx);
         location.reload();
-    }
+      };
+    });
+  }
 
-    window.removeTrade = function(index){
-        const tradesAll = loadTrades();
-        const filtered = tradesAll.filter(t=>t.ticker===ticker);
-        const t = filtered[index];
-        const globalIndex = tradesAll.findIndex(tr=>tr===t);
-        deleteTrade(globalIndex);
-        location.reload();
-    }
+  function mapType(t){
+    return ({buy:'买入',sell:'卖出',short:'做空',cover:'回补'})[t]||t;
+  }
 })();

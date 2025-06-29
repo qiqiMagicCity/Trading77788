@@ -1,28 +1,32 @@
 {
   "trades": [
     {
-      "date": "2025-06-01",
+      "date": "2025-06-29",
       "ticker": "AAPL",
       "type": "buy",
-      "price": 180,
-      "quantity": 10,
-      "fee": 1
+      "price": 210,
+      "quantity": 1000
     },
     {
-      "date": "2025-06-10",
+      "date": "2025-06-29",
       "ticker": "AAPL",
       "type": "sell",
-      "price": 195,
-      "quantity": 5,
-      "fee": 1
+      "price": 220,
+      "quantity": 300
     },
     {
-      "date": "2025-06-12",
+      "date": "2025-06-28",
       "ticker": "TSLA",
-      "type": "buy",
+      "type": "short",
       "price": 250,
-      "quantity": 8,
-      "fee": 1
+      "quantity": 50
+    },
+    {
+      "date": "2025-06-29",
+      "ticker": "TSLA",
+      "type": "cover",
+      "price": 240,
+      "quantity": 20
     }
   ]
 }
