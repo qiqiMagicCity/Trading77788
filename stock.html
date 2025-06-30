@@ -12,9 +12,19 @@
     <a href="index.html" class="details" style="margin-left:20px;">← 返回</a>
   </header>
   <h2 class="section-title" id="title"></h2>
+  <section class="stats-grid" id="stock-stats">
+    <div class="box" id="stock-stat-1"></div>
+    <div class="box" id="stock-stat-2"></div>
+    <div class="box" id="stock-stat-3"></div>
+    <div class="box" id="stock-stat-4"></div>
+    <div class="box" id="stock-stat-5"></div>
+  </section>
   <table id="detail-table" class="table"></table>
+  <div id="watermark" class="watermark"></div>
 
   <script src="js/fifo.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/symbols.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get('symbol') || '';
@@ -22,6 +32,29 @@
 
     let trades = JSON.parse(localStorage.getItem('trades')||'[]').filter(t=>t.symbol===symbol);
     trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
+    // 计算个股统计数据
+    const longCnt = trades.filter(t=>t.side==='BUY'||t.side==='SELL').length;
+    const shortCnt = trades.filter(t=>t.side==='SHORT'||t.side==='COVER').length;
+    const totalCnt = trades.length;
+    const wins = trades.filter(t=>t.pl>0).length;
+    const losses = trades.filter(t=>t.pl<0).length;
+    const realized = trades.reduce((s,t)=>s+(t.pl||0),0);
+    const statsArr = [
+      ['做多次数', Utils.fmtInt(longCnt)],
+      ['做空次数', Utils.fmtInt(shortCnt)],
+      ['个股交易次数', Utils.fmtInt(totalCnt)],
+      ['盈亏笔数', Utils.fmtWL(wins,losses)],
+      ['个股已实现盈亏', Utils.fmtDollar(realized)],
+    ];
+    statsArr.forEach((it,i)=>{
+      const box=document.getElementById('stock-stat-'+(i+1));
+      if(box){ box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;}
+    });
+    // 设置水印文本大字
+    const cnName = window.SymbolCN[symbol]||'';
+    document.getElementById('watermark').textContent = symbol + (cnName?(' '+cnName):'');
+    // 更新标题包含中文名
+    if(cnName){ document.getElementById('title').textContent = symbol + ' ('+cnName+') 交易详情'; }
 
     const tbl=document.getElementById('detail-table');
     if(trades.length){

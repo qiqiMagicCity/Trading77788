@@ -5,7 +5,7 @@ function render(){
   let trades = JSON.parse(localStorage.getItem('trades')||'[]');
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
-  const head=['#','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本','编辑','删除'];
+  const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本','编辑','删除'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
@@ -18,6 +18,8 @@ function render(){
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
         <td>${i+1}</td>
+        <td>${t.symbol}</td>
+        <td>${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
         <td>${t.weekday}</td>
         <td>${t.count}</td>

@@ -31,3 +31,15 @@ body{margin:0;}
 .modal-content button{padding:6px 14px;margin-left:6px;border:none;border-radius:4px;cursor:pointer;}
 .modal-content button#t-save{background:#00e676;color:#002020;font-weight:600;}
 .modal-content button#t-cancel{background:#ccc;color:#002020;}
+
+
+/* v3.3.5 新增 - 个股页面大字水印 */
+.watermark{
+  font-size:4rem;
+  font-weight:700;
+  text-align:center;
+  opacity:0.06;
+  letter-spacing:4px;
+  margin-top:60px;
+  user-select:none;
+}

@@ -171,7 +171,7 @@ function renderStats(){
 function renderPositions(){
   const tbl=document.getElementById('positions');
   if(!tbl) return;
-  const head=['代码','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
+  const head=['代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   positions.forEach(p=>{
     const amt=Math.abs(p.qty*p.avgPrice);
@@ -184,6 +184,7 @@ const totalPNL=pl+realized;
 tbl.insertAdjacentHTML('beforeend',`
   <tr>
     <td>${p.symbol}</td>
+    <td>${window.SymbolCN[p.symbol]||''}</td>
     <td id="rt-${p.symbol}">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
