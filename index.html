@@ -2,9 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v3.1</title>
+  <title>Trading777</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
+  <script src="js/config.js"></script>
+  <script>document.addEventListener("DOMContentLoaded",()=>{document.title=document.title.replace(/v?\d+(\.\d+)?/, "").trim()+" "+(window.APP_CONFIG?window.APP_CONFIG.VERSION:"");});</script>
 </head>
 <body>
   <header class="top">
@@ -34,7 +36,6 @@
 
   <button id="fab">+</button>
 
-  <script src="js/config.js"></script>
   <script src="js/calc.js"></script>
   <script src="js/dashboard.js"></script>
 </body>

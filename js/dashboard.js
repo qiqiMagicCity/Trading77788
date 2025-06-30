@@ -2,8 +2,6 @@
 /* Trading777 v3.0 dashboard – implements import / export, dynamic positions, add‑trade */
 
 (function(){
-const VERSION='3.1';
-document.title=`Trading777 v${VERSION}`;
 
 /* ---------- 1. Data bootstrap ---------- */
 const defaultPositions = [{symbol:'AAPL',qty:900,avgPrice:100,last:188.95},{symbol:'TSLA',qty:50,avgPrice:200,last:178.45}];
@@ -16,11 +14,6 @@ const defaultTrades = [
 let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
 let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
 recalcPositions();
-renderStats();
-renderPositions();
-renderTrades();
-updatePrices();
-
 
 
 /* Save helper */
@@ -43,9 +36,169 @@ const Utils={fmtDollar,fmtInt,fmtWL};
 /* ---------- 3. Derived data ---------- */
 
 /* Re‑calc positions by applying trades on top of existing positions */
+
+
 function recalcPositions(){
-  /* Build positions purely from trades list – no carry‑over. */
+  /* Build positions using FIFO logic that supports both long and short exposure */
+  const EPS = 1e-6;
   const map = {};
+  trades.forEach(t=>{
+    const sym = t.symbol;
+    const entry = map[sym] || (map[sym]={symbol:sym, lots:[], direction:'NONE', accRealized:0});
+    const price = t.price;
+    const qty   = t.qty;
+    const side  = t.side.toUpperCase();
+
+    /* Normalize side to BUY/LONG vs SELL/SHORT */
+    const isBuy  = side==='BUY' || side==='回补';
+    const isSell = side==='SELL' || side==='做空';
+
+    let showPNL = 0;
+    if(isBuy){
+      if(entry.direction==='NONE' || entry.direction==='LONG'){
+        entry.lots.push({price, qty});
+        entry.direction='LONG';
+      }else{ /* cover short */
+        let rem=qty;
+        while(rem>EPS && entry.lots.length){
+          const lot=entry.lots[0];
+          const c=Math.min(rem, lot.qty);
+          showPNL += (lot.price - price)*c;
+          lot.qty -= c;
+          rem -= c;
+          if(lot.qty<=EPS) entry.lots.shift();
+        }
+        entry.accRealized += showPNL;
+        if(rem>EPS){
+          entry.lots=[{price,qty:rem}];
+          entry.direction='LONG';
+        }else if(!entry.lots.length){
+          entry.direction='NONE';
+        }
+      }
+    }else if(isSell){
+      if(entry.direction==='NONE' || entry.direction==='SHORT'){
+        entry.lots.push({price, qty});
+        entry.direction='SHORT';
+      }else{ /* sell long / go short */
+        let rem=qty;
+        while(rem>EPS && entry.lots.length){
+          const lot=entry.lots[0];
+          const c=Math.min(rem, lot.qty);
+          showPNL += (price - lot.price)*c;
+          lot.qty -= c;
+          rem -= c;
+          if(lot.qty<=EPS) entry.lots.shift();
+        }
+        entry.accRealized += showPNL;
+        if(rem>EPS){
+          entry.lots=[{price,qty:rem}];
+          entry.direction='SHORT';
+        }else if(!entry.lots.length){
+          entry.direction='NONE';
+        }
+      }
+    }
+
+    entry.last = price;
+  });
+
+  /* Convert map to positions list with qty sign indicating direction */
+  positions = Object.values(map).map(p=>{
+    const totalQty = p.lots.reduce((s,l)=>s+l.qty,0);
+    const netQty   = p.direction==='SHORT'? -totalQty : totalQty;
+    const sumCost  = p.lots.reduce((s,l)=>s+l.price*l.qty,0);
+    const breakEven = totalQty>EPS ? (sumCost - p.accRealized)/totalQty : 0;
+    return {
+      symbol: p.symbol,
+      qty: netQty,
+      avgPrice: totalQty>EPS? sumCost/totalQty : 0,
+      breakEven,
+      realized: p.accRealized,
+      last: p.last||0
+    };
+  });
+}
+;
+  trades.forEach(t=>{
+    const sym = t.symbol;
+    const entry = map[sym] || (map[sym]={symbol:sym, lots:[], direction:'NONE', accRealized:0});
+    const price = t.price;
+    const qty   = t.qty;
+    const side  = t.side.toUpperCase();
+
+    const EPS = 1e-6;
+    /* Normalize side to BUY/LONG vs SELL/SHORT */
+    const isBuy  = side==='BUY' || side==='回补';
+    const isSell = side==='SELL' || side==='做空';
+
+    let showPNL = 0;
+    if(isBuy){
+      if(entry.direction==='NONE' || entry.direction==='LONG'){
+        entry.lots.push({price, qty});
+        entry.direction='LONG';
+      }else{ /* cover short */
+        let rem=qty;
+        while(rem>EPS && entry.lots.length){
+          const lot=entry.lots[0];
+          const c=Math.min(rem, lot.qty);
+          showPNL += (lot.price - price)*c;
+          lot.qty -= c;
+          rem -= c;
+          if(lot.qty<=EPS) entry.lots.shift();
+        }
+        entry.accRealized += showPNL;
+        if(rem>EPS){
+          entry.lots=[{price,qty:rem}];
+          entry.direction='LONG';
+        }else if(!entry.lots.length){
+          entry.direction='NONE';
+        }
+      }
+    }else if(isSell){
+      if(entry.direction==='NONE' || entry.direction==='SHORT'){
+        entry.lots.push({price, qty});
+        entry.direction='SHORT';
+      }else{ /* sell long / short more than long? produce net short */
+        let rem=qty;
+        while(rem>EPS && entry.lots.length){
+          const lot=entry.lots[0];
+          const c=Math.min(rem, lot.qty);
+          showPNL += (price - lot.price)*c;
+          lot.qty -= c;
+          rem -= c;
+          if(lot.qty<=EPS) entry.lots.shift();
+        }
+        entry.accRealized += showPNL;
+        if(rem>EPS){
+          entry.lots=[{price,qty:rem}];
+          entry.direction='SHORT';
+        }else if(!entry.lots.length){
+          entry.direction='NONE';
+        }
+      }
+    }
+
+    entry.last = price;
+  });
+
+  /* Convert map to positions list with qty sign indicating direction */
+  positions = Object.values(map).map(p=>{
+    const totalQty = p.lots.reduce((s,l)=>s+l.qty,0);
+    const netQty   = p.direction==='SHORT'? -totalQty : totalQty;
+    const sumCost  = p.lots.reduce((s,l)=>s+l.price*l.qty,0);
+    const breakEven = totalQty>EPS ? (sumCost - p.accRealized)/totalQty : 0;
+    return {
+      symbol: p.symbol,
+      qty: netQty,
+      avgPrice: totalQty>EPS? sumCost/totalQty : 0,
+      breakEven,
+      realized: p.accRealized,
+      last: p.last||0
+    };
+  });
+}
+;
   trades.forEach(t=>{
     const m = map[t.symbol] || (map[t.symbol] = {symbol:t.symbol, qty:0, cost:0, last:t.price});
     const qty = t.qty;
@@ -63,33 +216,30 @@ function recalcPositions(){
     m.last = price;
   });
   positions = Object.values(map)
-     .filter(p=>p.qty!==0)                        /* keep only open long positions */
+     .filter(p=>p.qty>0)                        /* keep only open long positions */
      .map(p=>{
         return {
           symbol: p.symbol,
           qty: p.qty,
-          avgPrice: p.qty ? Math.abs(p.cost) / Math.abs(p.qty) : 0,
+          avgPrice: p.qty ? p.cost / p.qty : 0,
           last: p.last
         };
      });
 }
 
 /* ---------- 4. Statistics ---------- */
-
 function stats(){
-  const cost = positions.reduce((s,p)=> s + Math.abs(p.qty) * p.avgPrice, 0);
-  const floating = positions.reduce((s,p)=> s + (p.last - p.avgPrice) * p.qty, 0);
-  const value = positions.reduce((s,p)=> s + p.qty * p.last, 0);
-  const todayStr = new Date().toISOString().slice(0,10);
-  const todayTradesArr = trades.filter(t=> t.date === todayStr);
-  const todayReal = todayTradesArr.filter(t=> t.closed).reduce((s,t)=> s + t.pl, 0);
-  const wins = todayTradesArr.filter(t=> t.pl > 0).length;
-  const losses = todayTradesArr.filter(t=> t.pl < 0).length;
-  const todayTrades = todayTradesArr.length;
-  const histReal = trades.filter(t=> t.closed).reduce((s,t)=> s + t.pl, 0);
+  const cost=positions.reduce((s,p)=>s+p.qty*p.avgPrice,0);
+  const value=positions.reduce((s,p)=>s+p.qty*p.last,0);
+  const floating=value-cost;
+  const today=trades.filter(t=>t.date===new Date().toISOString().slice(0,10));
+  const todayReal=today.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
+  const wins=today.filter(t=>t.pl>0).length;
+  const losses=today.filter(t=>t.pl<0).length;
+  const todayTrades=today.length;
+  const histReal=trades.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
   return {cost,value,floating,todayReal,wins,losses,todayTrades,totalTrades:trades.length,histReal};
 }
-
 
 /* ---------- 5. Render helpers ---------- */
 
@@ -128,30 +278,51 @@ function renderPositions(){
   if(!tbl) return;
   const head=['代码','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+
+  /* Fetch latest quotes then render rows */
+  const symbols = positions.map(p=>p.symbol);
+  fetchQuotes(symbols).then(quotes=>{
+    positions.forEach(p=>{
+      const last = quotes[p.symbol] || p.last || 0;
+      const amt  = p.qty * p.avgPrice;
+      const floatPL = (last - p.avgPrice) * p.qty;
+      const totalPL = p.realized + floatPL;
+      const clsFloat = floatPL>0?'green':floatPL<0?'red':'white';
+      const clsTot   = totalPL>0?'green':totalPL<0?'red':'white';
+      const times=trades.filter(t=>t.symbol===p.symbol).length;
+      tbl.insertAdjacentHTML('beforeend',`
+        <tr>
+          <td>${p.symbol}</td>
+          <td>${last.toFixed(2)}</td>
+          <td>${p.qty}</td>
+          <td>${p.avgPrice.toFixed(2)}</td>
+          <td>${amt.toFixed(2)}</td>
+          <td>${p.breakEven.toFixed(2)}</td>
+          <td class="${clsFloat}">${floatPL.toFixed(2)}</td>
+          <td class="${clsTot}">${totalPL.toFixed(2)}</td>
+          <td>${times}</td>
+          <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
+        </tr>`);
+    });
+  });
+}
+</th>`).join('')+'</tr>';
   positions.forEach(p=>{
-    const amt = Math.abs(p.qty) * p.avgPrice;
-    const breakeven = p.avgPrice;
-    const floating = (p.last - breakeven) * p.qty; // long positive, short negative
-    const underlying = floating; // 同交易模型，标的盈亏=浮盈亏
-    const cls = underlying>0?'green':underlying<0?'red':'white';
-    const times = trades.filter(t=>t.symbol===p.symbol).length;
+    const amt=p.qty*p.avgPrice;
+    const pl=(p.last-p.avgPrice)*p.qty;
+    const cls=pl>0?'green':pl<0?'red':'white';
+    const times=trades.filter(t=>t.symbol===p.symbol).length;
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
-        <td>${p.symbol}</td>
-        <td>${p.last.toFixed(2)}</td>
-        <td>${p.qty}</td>
-        <td>${p.avgPrice.toFixed(2)}</td>
-        <td>${amt.toFixed(2)}</td>
-        <td>${breakeven.toFixed(2)}</td>
-        <td class="${cls}">${floating.toFixed(2)}</td>
-        <td class="${cls}">${underlying.toFixed(2)}</td>
+        <td>${p.symbol}</td><td>${p.qty}</td><td>${p.avgPrice.toFixed(2)}</td><td>${amt.toFixed(2)}</td>
+        <td>${(p.avgPrice).toFixed(2)}</td><td class="${cls}">${pl.toFixed(2)}</td>
         <td>${times}</td>
         <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
       </tr>`);
   });
 }
 
-
+/* Trades table */
 function renderTrades(){
   const tbl=document.getElementById('trades');
   if(!tbl) return;
@@ -281,6 +452,23 @@ function openTradeForm(editIndex){
 }
 
 
+
+async function fetchQuotes(symbols){
+  const quotes = {};
+  const key = (window.APP_CONFIG && window.APP_CONFIG.FINNHUB_KEY) || 'demo';
+  await Promise.all(symbols.map(async sym=>{
+    try{
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${key}`);
+      if(res.ok){
+        const j = await res.json();
+        quotes[sym] = j.c || 0; /* current price */
+      }
+    }catch(e){console.warn('quote error',sym,e);}
+  }));
+  return quotes;
+}
+
+
 /* ---------- 7. Wire up ---------- */
 window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
@@ -301,24 +489,5 @@ window.addEventListener('load',()=>{
   }
   document.getElementById('import')?.addEventListener('click',importData);
 });
-
-
-/* ---------- Price updater (Finnhub) ---------- */
-const FINNHUB_TOKEN = window.FINNHUB_TOKEN || ''; // in js/config.js or set globally
-async function updatePrices(){
-  if(!FINNHUB_TOKEN){ console.warn('Finnhub token missing. Skipping price update.'); renderStats(); renderPositions(); return; }
-  const uniqueSymbols = [...new Set(positions.map(p=>p.symbol))];
-  await Promise.all(uniqueSymbols.map(async sym=>{
-    try{
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`);
-      const jsn = await res.json();
-      if(jsn && jsn.c){
-         positions.filter(p=>p.symbol===sym).forEach(p=> p.last = jsn.c);
-      }
-    }catch(e){ console.error('Price fetch error',sym,e); }
-  }));
-  renderStats();
-  renderPositions();
-}
 
 })();
