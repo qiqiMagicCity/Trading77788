@@ -22,6 +22,7 @@ function render(){
       const arr=JSON.parse(localStorage.getItem('trades')||'[]');
       arr.splice(idx,1);
       localStorage.setItem('trades',JSON.stringify(arr));
+      localStorage.removeItem('positions');
       location.reload();
     };
   });

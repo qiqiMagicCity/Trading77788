@@ -1,5 +1,5 @@
 
-/* Trading777 v2.0 dashboard – implements import / export, dynamic positions, add‑trade */
+/* Trading777 v3.0 dashboard – implements import / export, dynamic positions, add‑trade */
 
 (function(){
 
@@ -13,6 +13,8 @@ const defaultTrades = [
 
 let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
 let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
+recalcPositions();
+
 
 /* Save helper */
 function saveData(){
@@ -35,29 +37,34 @@ const Utils={fmtDollar,fmtInt,fmtWL};
 
 /* Re‑calc positions by applying trades on top of existing positions */
 function recalcPositions(){
-  const map={};
-  // start from current positions snapshot
-  positions.forEach(p=>{
-    map[p.symbol]={symbol:p.symbol,qty:p.qty,cost:p.avgPrice*p.qty,last:p.last};
-  });
-  // apply trades chronologically
-  trades.slice().reverse().forEach(t=>{
-    const m=map[t.symbol]||(map[t.symbol]={symbol:t.symbol,qty:0,cost:0,last:t.price});
-    const qty=t.qty;
-    const price=t.price;
+  /* Build positions purely from trades list – no carry‑over. */
+  const map = {};
+  trades.forEach(t=>{
+    const m = map[t.symbol] || (map[t.symbol] = {symbol:t.symbol, qty:0, cost:0, last:t.price});
+    const qty = t.qty;
+    const price = t.price;
     if(t.side==='BUY' || t.side==='回补'){
-      m.cost += price*qty;
+      /* Buy or cover short – add to position */
+      m.cost += price * qty;
       m.qty  += qty;
     }else if(t.side==='SELL' || t.side==='做空'){
-      const avg = m.qty ? m.cost/m.qty : price;
-      m.qty -= qty;
-      m.cost -= avg*qty;
+      /* Sell or short – reduce position (could go negative if short, but we treat as reducing) */
+      const avg = m.qty ? m.cost / m.qty : price;
+      m.qty  -= qty;
+      m.cost -= avg * qty;
     }
     m.last = price;
   });
-  positions = Object.values(map).filter(p=>p.qty>0).map(p=>{
-    return {symbol:p.symbol,qty:p.qty,avgPrice:p.qty? p.cost/p.qty:0,last:p.last};
-  });
+  positions = Object.values(map)
+     .filter(p=>p.qty>0)                        /* keep only open long positions */
+     .map(p=>{
+        return {
+          symbol: p.symbol,
+          qty: p.qty,
+          avgPrice: p.qty ? p.cost / p.qty : 0,
+          last: p.last
+        };
+     });
 }
 
 /* ---------- 4. Statistics ---------- */
