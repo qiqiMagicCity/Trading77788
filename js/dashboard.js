@@ -36,51 +36,85 @@ const Utils={fmtDollar,fmtInt,fmtWL};
 /* ---------- 3. Derived data ---------- */
 
 /* Re‑calc positions by applying trades on top of existing positions */
+
 function recalcPositions(){
-  /* Build positions purely from trades list – no carry‑over. */
-  const map = {};
+  /* 以 FIFO 原则重构持仓与平仓盈亏 */
+  const symbolLots = {};   // {SYM: [{qty, price}] }
+  const dayStr = new Date().toISOString().slice(0,10);
+
+  trades.sort((a,b)=> new Date(a.date) - new Date(b.date));   // 确保按时间先后
+
   trades.forEach(t=>{
-    const m = map[t.symbol] || (map[t.symbol] = {symbol:t.symbol, qty:0, cost:0, last:t.price});
-    const qty = t.qty;
-    const price = t.price;
-    if(t.side==='BUY' || t.side==='回补'){
-      /* Buy or cover short – add to position */
-      m.cost += price * qty;
-      m.qty  += qty;
-    }else if(t.side==='SELL' || t.side==='做空'){
-      /* Sell or short – reduce position (could go negative if short, but we treat as reducing) */
-      const avg = m.qty ? m.cost / m.qty : price;
-      m.qty  -= qty;
-      m.cost -= avg * qty;
+    const lots = symbolLots[t.symbol] || (symbolLots[t.symbol] = []);
+    let remaining = t.qty;
+    let realized = 0;
+
+    if(t.side==='BUY' || t.side==='回补'){      // 买入 / 回补 -> 先覆盖空头
+       // 先匹配负值 lot
+       for(let i=0; i<lots.length && remaining>0; ){
+         const lot = lots[0];
+         if(lot.qty < 0){
+           const closeQty = Math.min(remaining, -lot.qty);
+           realized += (lot.price - t.price) * closeQty;   // 空头盈利 = 建仓价 - 回补价
+           lot.qty += closeQty;
+           remaining -= closeQty;
+           if(lot.qty === 0) lots.shift();
+         }else break;
+       }
+       // 剩余部分开多仓
+       if(remaining>0){
+         lots.push({qty: remaining, price: t.price});
+       }
+    }else if(t.side==='SELL' || t.side==='做空'){   // 卖出 / 做空
+       // 先匹配正值 lot
+       for(let i=0; i<lots.length && remaining>0; ){
+         const lot = lots[0];
+         if(lot.qty > 0){
+           const closeQty = Math.min(remaining, lot.qty);
+           realized += (t.price - lot.price) * closeQty;   // 多头盈利 = 卖价 - 成本价
+           lot.qty -= closeQty;
+           remaining -= closeQty;
+           if(lot.qty === 0) lots.shift();
+         }else break;
+       }
+       // 剩余部分作为新空头仓位
+       if(remaining>0){
+         lots.push({qty: -remaining, price: t.price});
+       }
     }
-    m.last = price;
+
+    // 写回盈亏与是否已平仓标识
+    t.pl = realized;
+    t.closed = realized !== 0;
   });
-  positions = Object.values(map)
-     .filter(p=>p.qty!==0)                        /* keep only open long positions */
-     .map(p=>{
-        return {
-          symbol: p.symbol,
-          qty: p.qty,
-          avgPrice: p.qty ? p.cost / p.qty : 0,
-          last: p.last
-        };
-     });
+
+  /* 汇总成持仓数组 */
+  positions = Object.entries(symbolLots).map(([sym, lots])=>{
+      const qty = lots.reduce((s,l)=> s + l.qty, 0);
+      const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
+      return {symbol: sym,
+              qty: qty,
+              avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
+              last: lots.length ? lots[lots.length-1].price : 0,
+              priceOk: false};
+  }).filter(p=> p.qty !== 0);
 }
+
 
 /* ---------- 4. Statistics ---------- */
 
 function stats(){
   // 重新计算账户统计数据，兼容多空仓位显示
   const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
-  const value = positions.reduce((sum, p)=> sum + Math.abs(p.qty) * p.last, 0);
+  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
   // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
-  const floating = positions.reduce((sum, p)=>{
-    if(p.qty === 0) return sum;
-    const pl = p.qty > 0
-        ? (p.last - p.avgPrice) * p.qty          // 多头
-        : (p.avgPrice - p.last) * Math.abs(p.qty); // 空头
-    return sum + pl;
-  }, 0);
+  
+const floating = positions.reduce((sum,p)=>{
+  if(p.qty===0||p.priceOk===false) return sum;
+  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
+  return sum + pl;
+},0);
+
 
   const todayStr = new Date().toISOString().slice(0,10);
   const todayTrades = trades.filter(t=> t.date === todayStr);
@@ -150,13 +184,13 @@ const totalPNL=pl+realized;
 tbl.insertAdjacentHTML('beforeend',`
   <tr>
     <td>${p.symbol}</td>
-    <td id="rt-${p.symbol}">${p.last.toFixed(2)}</td>
+    <td id="rt-${p.symbol}">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
     <td>${(p.avgPrice).toFixed(2)}</td>
-    <td class="${cls}">${pl.toFixed(2)}</td>
-    <td class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${totalPNL.toFixed(2)}</td>
+    <td class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
+    <td class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
     <td>${times}</td>
     <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
   </tr>`);
@@ -350,7 +384,7 @@ function updatePrices(){
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
-                   if(q && q.c){ p.last = q.c; }
+                   if(q && q.c){ p.last = q.c; p.priceOk = true; } else { p.priceOk = false; }
                 })
                 .catch(()=>{/* 网络错误忽略 */});
        });
