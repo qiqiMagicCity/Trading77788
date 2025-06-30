@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v2.0</title>
+  <title>Trading777 v3.3.4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -47,10 +47,6 @@
       ['个股已实现盈亏', Utils.fmtDollar(realized)],
     ];
     statsArr.forEach((it,i)=>{
-
-// Center the stats grid based on box count
-document.getElementById('stock-stats').style.gridTemplateColumns = 'repeat(' + statsArr.length + ',180px)';
-
       const box=document.getElementById('stock-stat-'+(i+1));
       if(box){ box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;}
     });
@@ -71,9 +67,9 @@ document.getElementById('stock-stats').style.gridTemplateColumns = 'repeat(' + s
             <td>${idx+1}</td><td>${t.date}</td>
             <td>${t.weekday}</td>
             <td>${t.count}</td>
-            <td class="${sideCls(t.side)}">${t.side}</td>
+            <td>${t.side}</td>
             <td>${t.price.toFixed(2)}</td>
-            <td class="${sideCls(t.side)}">${t.qty}</td>
+            <td>${t.qty}</td>
             <td>${t.amount.toFixed(2)}</td>
             <td>${isFinite(t.be)? t.be.toFixed(2):''}</td>
             <td class="${plCls}">${isFinite(t.pl)? t.pl.toFixed(2):''}</td>

@@ -33,7 +33,7 @@ body{margin:0;}
 .modal-content button#t-cancel{background:#ccc;color:#002020;}
 
 
-/* v3.3.7 新增 - 个股页面大字水印 */
+/* v3.3.5 新增 - 个股页面大字水印 */
 .watermark{
   font-size:4rem;
   font-weight:700;
@@ -43,6 +43,3 @@ body{margin:0;}
   margin-top:60px;
   user-select:none;
 }
-
-.purple{color:#9c27b0;}
-.blue{color:#2196f3;}
