@@ -28,7 +28,7 @@
       const price = t.price;
       const qty   = t.qty;
 
-      if(t.side==='BUY' || t.side==='回补' || t.side==='BOUGHT' || t.side==='买入'){
+      if(t.side==='BUY' || t.side==='COVER' || t.side==='回补' || t.side==='BOUGHT' || t.side==='买入'){
         if(st.direction==='NONE' || st.direction==='LONG'){
           st.positionList.push({price, qty});
           st.direction='LONG';
@@ -50,7 +50,7 @@
             st.direction='NONE';
           }
         }
-      }else if(t.side==='SELL' || t.side==='做空' || t.side==='SOLD' || t.side==='卖出'){
+      }else if(t.side==='SELL' || t.side==='SHORT' || t.side==='做空' || t.side==='SOLD' || t.side==='卖出'){
         if(st.direction==='NONE' || st.direction==='SHORT'){
           st.positionList.push({price, qty});
           st.direction='SHORT';
