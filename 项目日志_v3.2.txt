@@ -1,0 +1,21 @@
+Trading777 v3.2 更新日志
+日期：2025-06-30 03:05:03
+
+=== 修复 ===
+1. 实时价格
+   • 在项目根目录新增 KEY.txt，首页 JS 通过 fetch 读取 Finnhub API key 成功获取实时行情。
+   • updatePrices() 现在在每次报价更新后同步刷新持仓表和统计数据。
+
+2. 空头持仓金额显示
+   • 持仓金额列现在使用绝对值，空头仓位展示为正数以反映实际资金规模。
+
+3. 当日盈亏笔数
+   • openTradeForm(): 为“回补”交易正确计算盈利并标记 closed=true。
+   • stats(): wins / losses 仅统计 closed trades（卖出或回补）且按正负 P/L 计数。
+
+=== 优化 ===
+• 动态 <title> 更新为 Trading777 v3.2（index / stock / trades 三页）。
+• renderStats() + renderPositions() 同步调用，报价更新后浮盈亏即时刷新。
+
+=== 未变动 ===
+• 其他页面结构、样式、导入/导出、添加交易 UI、JSON 存储逻辑保持与 v3.1 完全一致。

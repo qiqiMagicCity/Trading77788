@@ -1,15 +1,53 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Stock Detail</title>
+  <title>Trading777 v3.3.4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <h2 id="title"></h2>
-  <table id="detail-table"></table>
-  <h3 id="realized"></h3>
-  <script type="module" src="js/stock.js"></script>
+  <header class="top">
+    
+    <a href="index.html" class="details" style="margin-left:20px;">← 返回</a>
+  </header>
+  <h2 class="section-title" id="title"></h2>
+  <table id="detail-table" class="table"></table>
+
+  <script src="js/fifo.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get('symbol') || '';
+    document.getElementById('title').textContent = symbol ? symbol + ' 交易详情' : '未知标的';
+
+    let trades = JSON.parse(localStorage.getItem('trades')||'[]').filter(t=>t.symbol===symbol);
+    trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
+
+    const tbl=document.getElementById('detail-table');
+    if(trades.length){
+      const head=['#','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本'];
+      tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+      trades.forEach((t,idx)=>{
+        const plCls=t.pl>0?'green':t.pl<0?'red':'white';
+        tbl.insertAdjacentHTML('beforeend',`
+          <tr>
+            <td>${idx+1}</td><td>${t.date}</td>
+            <td>${t.weekday}</td>
+            <td>${t.count}</td>
+            <td>${t.side}</td>
+            <td>${t.price.toFixed(2)}</td>
+            <td>${t.qty}</td>
+            <td>${t.amount.toFixed(2)}</td>
+            <td>${isFinite(t.be)? t.be.toFixed(2):''}</td>
+            <td class="${plCls}">${isFinite(t.pl)? t.pl.toFixed(2):''}</td>
+            <td>${t.afterQty}</td>
+            <td>${isFinite(t.avgCost)? t.avgCost.toFixed(2):''}</td>
+          </tr>`);
+      });
+    }else{
+      tbl.innerHTML='<tr><td>暂无数据</td></tr>';
+    }
+
+  </script>
 </body>
 </html>
