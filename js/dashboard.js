@@ -199,46 +199,24 @@ tbl.insertAdjacentHTML('beforeend',`
 }
 
 /* Trades table */
-function 
-
-renderTrades(){
+function renderTrades(){
   const tbl=document.getElementById('trades');
   if(!tbl) return;
   const head=['日期','星期','代码','中文','方向','单价','数量','订单金额','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-  const weekdayMap=['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
   trades.slice(0,100).forEach(t=>{
-    const wNum = t.weekday || ((new Date(t.date)).getDay()+6)%7+1;
-    const wdStr = weekdayMap[wNum] || '';
-    const cn = window.SymbolCN[t.symbol]||'';
-    const amt=(t.qty*t.price).toFixed(2);
+    const weekday = (new Date(t.date)).toLocaleDateString('en-US',{weekday:'short'});
+    const amt = (t.qty * t.price).toFixed(2);
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
-        <td>${t.date}</td><td>${wdStr}</td><td>${t.symbol}</td><td>${cn}</td><td>${t.side}</td>
-        <td>${t.price.toFixed(2)}</td><td>${t.qty}</td><td>${amt}</td>
-        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
-      </tr>`);
-  });
-}</th>`).join('')+'</tr>';
-  const weekdayMap=['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  trades.slice(0,100).forEach(t=>{
-    const wdStr = weekdayMap[t.weekday] || '';
-    const cn = window.SymbolCN[t.symbol]||'';
-    const amt=(t.qty*t.price).toFixed(2);
-    tbl.insertAdjacentHTML('beforeend',`
-      <tr>
-        <td>${t.date}</td><td>${wdStr}</td><td>${t.symbol}</td><td>${cn}</td><td>${t.side}</td>
-        <td>${t.price.toFixed(2)}</td><td>${t.qty}</td><td>${amt}</td>
-        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
-      </tr>`);
-  });
-}</th>`).join('')+'</tr>';
-  trades.slice(0,100).forEach(t=>{
-    const amt=(t.qty*t.price).toFixed(2);
-    tbl.insertAdjacentHTML('beforeend',`
-      <tr>
-        <td>${t.date}</td><td>${t.symbol}</td><td>${t.side}</td>
-        <td>${t.price.toFixed(2)}</td><td>${t.qty}</td>
+        <td>${t.date}</td>
+        <td>${weekday}</td>
+        <td>${t.symbol}</td>
+        <td>${window.SymbolCN[t.symbol] || ''}</td>
+        <td>${t.side}</td>
+        <td>${t.price.toFixed(2)}</td>
+        <td>${t.qty}</td>
         <td>${amt}</td>
         <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
       </tr>`);

@@ -7,7 +7,6 @@ function render(){
 
   const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本','编辑','删除'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-  const weekdayMap=['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   let histReal = 0;
 
@@ -22,7 +21,7 @@ function render(){
         <td>${t.symbol}</td>
         <td>${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
-        <td>${weekdayMap[t.weekday]||""}</td>
+        <td>${t.weekday}</td>
         <td>${t.count}</td>
         <td>${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
