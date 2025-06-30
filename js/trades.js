@@ -37,14 +37,12 @@ function render(){
 render();
 
 /* clocks */
+
 function updateClocks(){
-  const now=new Date();
-  const ny   = new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const val  = new Date(now.toLocaleString('en-GB',{timeZone:'Europe/Madrid'}));
-  const sh   = new Date(now.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));
-  const fmt=d=>d.toTimeString().slice(0,8);
-  document.getElementById('clocks').innerHTML=
-      `纽约：${fmt(ny)} | 瓦伦西亚：${fmt(val)} | 上海：${fmt(sh)}`;
+  const fmt = tz => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
+  document.getElementById('clocks').innerHTML =
+      `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
 }
 updateClocks(); setInterval(updateClocks,1000);
+(updateClocks,1000);
 })();
