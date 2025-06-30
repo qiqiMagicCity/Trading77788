@@ -4,6 +4,7 @@
 (function(){
 
 /* ---------- 1. Data bootstrap ---------- */
+recalcPositions();
 const defaultPositions = [{symbol:'AAPL',qty:900,avgPrice:100,last:188.95},{symbol:'TSLA',qty:50,avgPrice:200,last:178.45}];
 const defaultTrades = [
  {date:'2025-06-30',symbol:'AAPL',side:'SELL',qty:100,price:220,pl:12000,closed:true},
@@ -11,13 +12,12 @@ const defaultTrades = [
  {date:'2025-06-29',symbol:'TSLA',side:'SELL',qty:50,price:210,pl:500,closed:true}
 ];
 
-let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
+let positions = [];
 let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
 
 /* Save helper */
 function saveData(){
-  localStorage.setItem('positions',JSON.stringify(positions));
-  localStorage.setItem('trades',JSON.stringify(trades));
+localStorage.setItem('trades',JSON.stringify(trades));
 }
 
 /* ---------- 2. Utils ---------- */
@@ -34,31 +34,25 @@ const Utils={fmtDollar,fmtInt,fmtWL};
 /* ---------- 3. Derived data ---------- */
 
 /* Re‑calc positions by applying trades on top of existing positions */
+
 function recalcPositions(){
-  const map={};
-  // start from current positions snapshot
-  positions.forEach(p=>{
-    map[p.symbol]={symbol:p.symbol,qty:p.qty,cost:p.avgPrice*p.qty,last:p.last};
+  const map = {};
+  trades.forEach(t=>{
+    const sym = t.symbol;
+    if(!map[sym]) map[sym] = {symbol:sym, qty:0, cost:0, last:t.price};
+    const dir = (t.side||'').toUpperCase();
+    const signedQty = (dir==='BUY'||dir==='COVER'||dir==='回补') ? t.qty :
+                      (dir==='SELL'||dir==='SHORT'||dir==='做空') ? -t.qty : 0;
+    map[sym].qty += signedQty;
+    map[sym].cost += t.price * signedQty;
+    map[sym].last = t.price;
   });
-  // apply trades chronologically
-  trades.slice().reverse().forEach(t=>{
-    const m=map[t.symbol]||(map[t.symbol]={symbol:t.symbol,qty:0,cost:0,last:t.price});
-    const qty=t.qty;
-    const price=t.price;
-    if(t.side==='BUY' || t.side==='回补'){
-      m.cost += price*qty;
-      m.qty  += qty;
-    }else if(t.side==='SELL' || t.side==='做空'){
-      const avg = m.qty ? m.cost/m.qty : price;
-      m.qty -= qty;
-      m.cost -= avg*qty;
-    }
-    m.last = price;
-  });
-  positions = Object.values(map).filter(p=>p.qty>0).map(p=>{
-    return {symbol:p.symbol,qty:p.qty,avgPrice:p.qty? p.cost/p.qty:0,last:p.last};
+  positions = Object.values(map).filter(p=>p.qty!==0).map(p=>{
+    const avg = p.qty ? p.cost / p.qty : 0;
+    return {symbol:p.symbol, qty:p.qty, avgPrice:Math.abs(avg), last:p.last};
   });
 }
+
 
 /* ---------- 4. Statistics ---------- */
 function stats(){
@@ -237,12 +231,18 @@ function openTradeForm(editIndex){
      const qty=parseInt(document.getElementById('t-qty').value,10);
      const price=parseFloat(document.getElementById('t-price').value);
      if(!symbol||!qty||!price){alert('请完整填写表单');return;}
-     let pl=0;
-     if(side==='SELL'){
-       const pos=positions.find(p=>p.symbol===symbol);
-       const avg=pos?pos.avgPrice:price;
-       pl=(price-avg)*qty;
-     }
+     
+  let pl=0;
+  if(side==='SELL'){
+    const pos = positions.find(p=>p.symbol===symbol);
+    const avg = pos ? pos.avgPrice : price;
+    pl = (price - avg) * qty;
+  }else if(side==='COVER'){
+    const pos = positions.find(p=>p.symbol===symbol);
+    const avg = pos ? pos.avgPrice : price;
+    pl = (avg - price) * qty; // profit when cover lower
+  }
+
      const trade={date,symbol,side,qty,price,pl,closed:side==='SELL'};
      if(editIndex!=null){
         trades[editIndex]=trade;
