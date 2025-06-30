@@ -43,3 +43,10 @@ body{margin:0;}
   margin-top:60px;
   user-select:none;
 }
+
+/* v3.3.6 new styles */
+#stock-stats{grid-template-columns:repeat(5,180px)!important;}
+.buy{color:#00e676;}
+.sell{color:#ff5252;}
+.short{color:#bb86fc;}
+.cover{color:#0090ff;}
