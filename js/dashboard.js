@@ -334,23 +334,32 @@ window.addEventListener('load',()=>{
 
 
 /* ---------- 6. Real‑time price via Finnhub ---------- */
+
 function updatePrices(){
-  fetch('KEY.txt').then(r=>r.text()).then(t=>{
-     const match=t.match(/Finnhub key：([\w]+)/);
-     const apiKey=match?match[1].trim():null;
-     if(!apiKey) return;
-     positions.forEach(p=>{
-        fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
-          .then(r=>r.json()).then(q=>{
-             if(q && q.c){
-                p.last=q.c;
-                const cell=document.getElementById('rt-'+p.symbol);
-                if(cell) cell.textContent=q.c.toFixed(2);
-                renderStats();renderPositions();
-             }
-          }).catch(()=>{});
-     });
-  });
+  // 尝试读取 KEY.txt 里的 Finnhub key；如果读取失败就回退到内置 key
+  fetch('KEY.txt')
+    .then(r=> r.ok ? r.text() : '')
+    .catch(()=> '')        // in case of 404/网络错误
+    .then(text=>{
+       const m   = text.match(/Finnhub key：([\w]+)/);
+       const apiKey = (m?m[1]:'d19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg').trim();
+       if(!apiKey) return;
+
+       // 为当前所有持仓并行请求价格，全部返回后再统一刷新界面
+       const reqs = positions.map(p=>{
+         return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
+                .then(r=>r.json())
+                .then(q=>{
+                   if(q && q.c){ p.last = q.c; }
+                })
+                .catch(()=>{/* 网络错误忽略 */});
+       });
+
+       Promise.all(reqs).then(()=>{
+          renderPositions();
+          renderStats();
+       });
+    });
 }
 
 /* fetch prices on load */
