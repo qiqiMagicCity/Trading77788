@@ -11,6 +11,7 @@ function render(){
   let histReal = 0;
 
   trades.forEach((t,i)=>{
+    const sideCls = (t.side==='BUY'||t.side==='SELL')?'red':'';
     const be = isFinite(t.be)? t.be.toFixed(2):'';
     const plCls = t.pl>0?'green':t.pl<0?'red':'white';
     const plStr = isFinite(t.pl)? t.pl.toFixed(2):'';
@@ -23,7 +24,7 @@ function render(){
         <td>${t.date}</td>
         <td>${t.weekday}</td>
         <td>${t.count}</td>
-        <td>${t.side}</td>
+        <td class="${sideCls}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
         <td>${t.qty}</td>
         <td>${(t.amount).toFixed(2)}</td>

@@ -85,7 +85,10 @@
       }
 
       // enrich trade object
-      t.weekday = (function(d){ const w=d.getDay(); return ((w+6)%7)+1; })(new Date(t.date));
+      t.weekday = (function(d){
+        const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        return days[d.getDay()];
+      })(new Date(t.date)); return ((w+6)%7)+1; })(new Date(t.date));
       t.count   = st.count;
       t.amount  = t.qty * t.price;
       t.be      = jVal;

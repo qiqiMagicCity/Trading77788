@@ -202,13 +202,16 @@ tbl.insertAdjacentHTML('beforeend',`
 function renderTrades(){
   const tbl=document.getElementById('trades');
   if(!tbl) return;
-  const head=['日期','代码','方向','单价','数量','订单金额','详情'];
+  const head=['日期','星期','代码','方向','单价','数量','订单金额','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   trades.slice(0,100).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
+    const dayName = new Date(t.date).toLocaleDateString('en-US',{weekday:'short'});
+    const sideCls = (t.side==='BUY'||t.side==='SELL')?'red':'';
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
-        <td>${t.date}</td><td>${t.symbol}</td><td>${t.side}</td>
+        <td>${t.date}</td><td>${dayName}</td><td>${t.symbol}</td>
+        <td class="${sideCls}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td><td>${t.qty}</td>
         <td>${amt}</td>
         <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
