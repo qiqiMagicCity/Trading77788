@@ -74,8 +74,8 @@ function stats(){
   const floating=value-cost;
   const today=trades.filter(t=>t.date===new Date().toISOString().slice(0,10));
   const todayReal=today.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
-  const wins=today.filter(t=>t.pl>0).length;
-  const losses=today.filter(t=>t.pl<0).length;
+  const wins=today.filter(t=>t.closed && t.pl>0).length;
+  const losses=today.filter(t=>t.closed && t.pl<0).length;
   const todayTrades=today.length;
   const histReal=trades.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
   return {cost,value,floating,todayReal,wins,losses,todayTrades,totalTrades:trades.length,histReal};
@@ -118,7 +118,7 @@ function renderPositions(){
   const head=['代码','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   positions.forEach(p=>{
-    const amt=p.qty*p.avgPrice;
+    const amt=Math.abs(p.qty*p.avgPrice);
     const pl=(p.last-p.avgPrice)*p.qty;
     const cls=pl>0?'green':pl<0?'red':'white';
     const times=trades.filter(t=>t.symbol===p.symbol).length;
@@ -192,7 +192,7 @@ function importData(){
         if(data.trades){ trades=data.trades; }
         if(data.positions){ positions=data.positions; } else { recalcPositions(); }
         saveData();
-        renderStats();renderPositions();renderTrades();
+        renderStats();renderPositions();renderPositions();renderTrades();
         alert('导入成功!');
       }catch(err){
         alert('导入失败: '+err.message);
@@ -251,12 +251,17 @@ function openTradeForm(editIndex){
      const price=parseFloat(document.getElementById('t-price').value);
      if(!symbol||!qty||!price){alert('请完整填写表单');return;}
      let pl=0;
-     if(side==='SELL'){
-       const pos=positions.find(p=>p.symbol===symbol);
-       const avg=pos?pos.avgPrice:price;
-       pl=(price-avg)*qty;
-     }
-     const trade={date,symbol,side,qty,price,pl,closed:side==='SELL'};
+     let closedFlag = (side==='SELL' || side==='回补');
+if(side==='SELL'){
+  const pos=positions.find(p=>p.symbol===symbol);
+  const avg=pos?pos.avgPrice:price;
+  pl=(price-avg)*qty;
+}else if(side==='回补'){
+  const pos=positions.find(p=>p.symbol===symbol);
+  const avg=pos?Math.abs(pos.avgPrice):price;
+  pl=(avg-price)*qty;   // profit for covering short
+}
+const trade={date,symbol,side,qty,price,pl,closed:closedFlag};date,symbol,side,qty,price,pl,closed:side==='SELL'};
      if(editIndex!=null){
         trades[editIndex]=trade;
      }else{
@@ -264,7 +269,7 @@ function openTradeForm(editIndex){
      }
      recalcPositions();
      saveData();
-     renderStats();renderPositions();renderTrades();
+     renderStats();renderPositions();renderPositions();renderTrades();
      close();
   };
   
@@ -275,7 +280,7 @@ function openTradeForm(editIndex){
 window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
   recalcPositions();
-  renderStats();renderPositions();renderTrades();
+  renderStats();renderPositions();renderPositions();renderTrades();
   updateClocks();
   setInterval(updateClocks,1000);
 
@@ -307,7 +312,7 @@ function updatePrices(){
                 p.last=q.c;
                 const cell=document.getElementById('rt-'+p.symbol);
                 if(cell) cell.textContent=q.c.toFixed(2);
-                renderStats();
+                renderStats();renderPositions();
              }
           }).catch(()=>{});
      });
