@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v3.3.7</title>
+  <title>Trading777 v2.0</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -50,14 +50,7 @@
 
 // Center the stats grid based on box count
 document.getElementById('stock-stats').style.gridTemplateColumns = 'repeat(' + statsArr.length + ',180px)';
-// mapping side to color class
-function sideCls(side){
-  if(side==='BUY') return 'green';
-  if(side==='SELL') return 'red';
-  if(side==='SHORT') return 'purple';
-  if(side==='COVER') return 'blue';
-  return '';
-}
+
       const box=document.getElementById('stock-stat-'+(i+1));
       if(box){ box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;}
     });

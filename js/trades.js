@@ -1,6 +1,13 @@
 
 (function(){
 const tbl=document.getElementById('all-trades');
+function sideCls(side){
+  if(side==='BUY') return 'green';
+  if(side==='SELL') return 'red';
+  if(side==='SHORT') return 'purple';
+  if(side==='COVER') return 'blue';
+  return '';
+}
 function render(){
   let trades = JSON.parse(localStorage.getItem('trades')||'[]');
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
@@ -23,9 +30,9 @@ function render(){
         <td>${t.date}</td>
         <td>${t.weekday}</td>
         <td>${t.count}</td>
-        <td>${t.side}</td>
+        <td class="${sideCls(t.side)}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
-        <td>${t.qty}</td>
+        <td class="${sideCls(t.side)}">${t.qty}</td>
         <td>${(t.amount).toFixed(2)}</td>
         <td>${be}</td>
         <td class="${plCls}">${plStr}</td>
