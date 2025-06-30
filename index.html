@@ -26,37 +26,13 @@
     <div class="box" id="stat-8"></div>
   </section>
 
-  <h3 class="section-title">持仓明细</h3>
+  <h3 class="section-title" id="records-title">交易记录 <a href="trades.html" class="details">详情</a></h3>
   <table id="positions" class="table"></table>
 
-  <h3 class="section-title">交易记录 <a href="trades.html" class="details">详情</a></h3>
+  <h3 class="section-title">交易记录 <a href="trades.html" class="details">详情</a>详情</a></h3>
   <table id="trades" class="table"></table>
 
   <button id="fab">+</button>
-
-  <!-- 添加交易模态窗口 -->
-  <dialog id="tradeModal">
-    <form method="dialog" id="tradeForm">
-      <h3>新增交易</h3>
-      <label>交易日期: <input type="date" id="tm-date" required></label><br>
-      <label>股票代码: <input type="text" id="tm-symbol" required></label><br>
-      <label>交易方向:
-        <select id="tm-side">
-          <option value="BUY">买</option>
-          <option value="SELL">卖</option>
-          <option value="SHORT">做空</option>
-          <option value="COVER">回补</option>
-        </select>
-      </label><br>
-      <label>数量: <input type="number" id="tm-qty" min="1" required></label><br>
-      <label>单价: <input type="number" id="tm-price" step="0.01" min="0" required></label><br>
-      <menu>
-        <button value="cancel">取消</button>
-        <button id="tm-submit" value="default">保存</button>
-      </menu>
-    </form>
-  </dialog>
-
 
   <script src="js/calc.js"></script>
   <script src="js/dashboard.js"></script>

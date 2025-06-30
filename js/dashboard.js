@@ -33,26 +33,30 @@ const Utils={fmtDollar,fmtInt,fmtWL};
 
 /* ---------- 3. Derived data ---------- */
 
+/* Re‑calc positions by applying trades on top of existing positions */
 function recalcPositions(){
   const map={};
-  trades.forEach(t=>{
-    if(!map[t.symbol]) map[t.symbol]={symbol:t.symbol,qty:0,cost:0,last:t.price};
-    const m=map[t.symbol];
-    const signedQty = (t.side==='BUY'||t.side==='COVER') ? t.qty : -t.qty; // BUY/COVER positive, SELL/SHORT negative
-    m.qty += signedQty;
-    m.cost += t.price * signedQty;
-    m.last = t.price;
+  // start from current positions snapshot
+  positions.forEach(p=>{
+    map[p.symbol]={symbol:p.symbol,qty:p.qty,cost:p.avgPrice*p.qty,last:p.last};
   });
-  positions = Object.values(map).filter(p=>p.qty!==0).map(p=>{
-    return {
-      symbol:p.symbol,
-      qty:p.qty,
-      avgPrice: Math.abs(p.qty) ? Math.abs(p.cost)/Math.abs(p.qty) : 0,
-      last:p.last
-    };
+  // apply trades chronologically
+  trades.slice().reverse().forEach(t=>{
+    const m=map[t.symbol]||(map[t.symbol]={symbol:t.symbol,qty:0,cost:0,last:t.price});
+    const qty=t.qty;
+    const price=t.price;
+    if(t.side==='BUY' || t.side==='回补'){
+      m.cost += price*qty;
+      m.qty  += qty;
+    }else if(t.side==='SELL' || t.side==='做空'){
+      const avg = m.qty ? m.cost/m.qty : price;
+      m.qty -= qty;
+      m.cost -= avg*qty;
+    }
+    m.last = price;
   });
-}
-
+  positions = Object.values(map).filter(p=>p.qty>0).map(p=>{
+    return {symbol:p.symbol,qty:p.qty,avgPrice:p.qty? p.cost/p.qty:0,last:p.last};
   });
 }
 
@@ -71,16 +75,17 @@ function stats(){
 }
 
 /* ---------- 5. Render helpers ---------- */
+
 function updateClocks(){
   const now=new Date();
-  const ny=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const vlc=new Date(now.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}));
-  const sh=new Date(now.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));
-  const sh=new Date(now.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));
+  const ny   = new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const val  = new Date(now.toLocaleString('en-GB',{timeZone:'Europe/Madrid'})); // Valencia
+  const sh   = new Date(now.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));
   const fmt=d=>d.toTimeString().slice(0,8);
   document.getElementById('clocks').innerHTML=
-      `纽约：${fmt(ny)} | 瓦伦西亚：${fmt(vlc)} | 上海：${fmt(sh)}`;
+      `纽约：${fmt(ny)} | 瓦伦西亚：${fmt(val)} | 上海：${fmt(sh)}`;
 }
+
 
 /* Stats boxes */
 function renderStats(){
@@ -142,22 +147,9 @@ function renderTrades(){
 }
 
 /* ---------- 6. Actions ---------- */
-  const qty=parseInt(prompt('数量?'),10);
-  if(!qty||qty<=0){alert('数量无效');return;}
-  const price=parseFloat(prompt('单价?'));
-  if(!price||price<=0){alert('单价无效');return;}
-  const date=new Date().toISOString().slice(0,10);
-  // 计算盈亏 (简单计算，假设即时结算)
-  let pl=0;
-  if(side==='SELL'){
-    const pos=positions.find(p=>p.symbol===symbol);
-    const avg=pos?pos.avgPrice:price;
-    pl=(price-avg)*qty;
-  }
-  trades.unshift({date,symbol,side,qty,price,pl,closed:side==='SELL'});
-  recalcPositions();
-  saveData();
-  renderStats();renderPositions();renderTrades();
+
+function addTrade(){
+  openTradeForm();
 }
 
 /* Export */
@@ -198,6 +190,74 @@ function importData(){
   input.click();
 }
 
+
+/* ---------- 7b. Trade modal ---------- */
+function openTradeForm(editIndex){
+  let modal=document.getElementById('trade-modal');
+  if(modal){ modal.remove(); }
+  modal=document.createElement('div');
+  modal.id='trade-modal';
+  modal.className='modal';
+  modal.innerHTML=`
+    <div class="modal-content">
+      <h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
+      <label>交易时间</label><input type="datetime-local" id="t-date" />
+      <label>股票代码</label><input type="text" id="t-symbol" />
+      <label>交易方向</label>
+        <select id="t-side">
+          <option value="BUY">买</option>
+          <option value="SELL">卖</option>
+          <option value="做空">做空</option>
+          <option value="回补">回补</option>
+        </select>
+      <label>数量</label><input type="number" id="t-qty" />
+      <label>单价</label><input type="number" step="0.01" id="t-price" />
+      <div style="margin-top:14px;text-align:right;">
+        <button id="t-cancel">取消</button>
+        <button id="t-save">确定</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  if(editIndex!=null){
+     const t=trades[editIndex];
+     document.getElementById('t-date').value=t.date+'T00:00:00';
+     document.getElementById('t-symbol').value=t.symbol;
+     document.getElementById('t-side').value=t.side;
+     document.getElementById('t-qty').value=t.qty;
+     document.getElementById('t-price').value=t.price;
+  }else{
+     document.getElementById('t-date').value=new Date().toISOString().slice(0,16);
+  }
+  function close(){modal.remove();}
+  document.getElementById('t-cancel').onclick=close;
+  document.getElementById('t-save').onclick=function(){
+     const date=document.getElementById('t-date').value.slice(0,10);
+     const symbol=document.getElementById('t-symbol').value.trim().toUpperCase();
+     const side=document.getElementById('t-side').value;
+     const qty=parseInt(document.getElementById('t-qty').value,10);
+     const price=parseFloat(document.getElementById('t-price').value);
+     if(!symbol||!qty||!price){alert('请完整填写表单');return;}
+     let pl=0;
+     if(side==='SELL'){
+       const pos=positions.find(p=>p.symbol===symbol);
+       const avg=pos?pos.avgPrice:price;
+       pl=(price-avg)*qty;
+     }
+     const trade={date,symbol,side,qty,price,pl,closed:side==='SELL'};
+     if(editIndex!=null){
+        trades[editIndex]=trade;
+     }else{
+        trades.unshift(trade);
+     }
+     recalcPositions();
+     saveData();
+     renderStats();renderPositions();renderTrades();
+     close();
+  };
+  modal.addEventListener('click',e=>{ if(e.target===modal) close(); });
+}
+
+
 /* ---------- 7. Wire up ---------- */
 window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
@@ -206,54 +266,17 @@ window.addEventListener('load',()=>{
   updateClocks();
   setInterval(updateClocks,1000);
 
-  document.getElementById('fab')?.addEventListener('click',()=>showTradeModal());
+  document.getElementById('fab')?.addEventListener('click',addTrade);
   document.getElementById('export')?.addEventListener('click',exportData);
-  document.querySelector('h3.section-title .details')?.addEventListener('click',()=>window.location='trades.html');
+  if(location.hash==='#edit'){
+    const idx=parseInt(localStorage.getItem('editIndex'),10);
+    if(!isNaN(idx)){
+      openTradeForm(idx);
+      localStorage.removeItem('editIndex');
+      history.replaceState(null,'',location.pathname);
+    }
+  }
   document.getElementById('import')?.addEventListener('click',importData);
 });
 
 })();
-
-
-/* Modern add trade modal */
-function showTradeModal(editIndex=null){
-  const dlg=document.getElementById('tradeModal');
-  const form=document.getElementById('tradeForm');
-  const dateInput=document.getElementById('tm-date');
-  const symbolInput=document.getElementById('tm-symbol');
-  const sideInput=document.getElementById('tm-side');
-  const qtyInput=document.getElementById('tm-qty');
-  const priceInput=document.getElementById('tm-price');
-  if(editIndex!==null){
-    const t=trades[editIndex];
-    dateInput.value=t.date;
-    symbolInput.value=t.symbol;
-    sideInput.value=t.side;
-    qtyInput.value=t.qty;
-    priceInput.value=t.price;
-  }else{
-    dateInput.value = new Date().toISOString().slice(0,10);
-    symbolInput.value='';
-    sideInput.value='BUY';
-    qtyInput.value='';
-    priceInput.value='';
-  }
-  dlg.showModal();
-  form.onsubmit=e=>{
-    e.preventDefault();
-    const date=dateInput.value;
-    const symbol=symbolInput.value.trim().toUpperCase();
-    const side=sideInput.value.toUpperCase();
-    const qty=parseInt(qtyInput.value,10);
-    const price=parseFloat(priceInput.value);
-    if(!date||!symbol||!qty||!price){alert('请完整填写');return;}
-    const trade={date,symbol,side,qty,price,pl:0,closed:false};
-    // 简单 PL 计算
-    trade.closed = (side==='SELL'||side==='COVER');
-    trades.unshift(trade);
-    recalcPositions();
-    saveData();
-    renderStats();renderPositions();renderTrades();
-    dlg.close();
-  };
-}
