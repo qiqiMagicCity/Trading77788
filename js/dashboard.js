@@ -220,17 +220,6 @@ function renderTrades(){
         <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
       </tr>`);
   });
-}</th>`).join('')+'</tr>';
-  trades.slice(0,100).forEach(t=>{
-    const amt=(t.qty*t.price).toFixed(2);
-    tbl.insertAdjacentHTML('beforeend',`
-      <tr>
-        <td>${t.date}</td><td>${t.symbol}</td><td>${t.side}</td>
-        <td>${t.price.toFixed(2)}</td><td>${t.qty}</td>
-        <td>${amt}</td>
-        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
-      </tr>`);
-  });
 }
 
 /* ---------- 6. Actions ---------- */
