@@ -68,18 +68,40 @@ function recalcPositions(){
 }
 
 /* ---------- 4. Statistics ---------- */
+
 function stats(){
-  const cost=positions.reduce((s,p)=>s+p.qty*p.avgPrice,0);
-  const value=positions.reduce((s,p)=>s+p.qty*p.last,0);
-  const floating=value-cost;
-  const today=trades.filter(t=>t.date===new Date().toISOString().slice(0,10));
-  const todayReal=today.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
-  const wins=today.filter(t=>t.closed && t.pl>0).length;
-  const losses=today.filter(t=>t.closed && t.pl<0).length;
-  const todayTrades=today.length;
-  const histReal=trades.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
-  return {cost,value,floating,todayReal,wins,losses,todayTrades,totalTrades:trades.length,histReal};
+  // 重新计算账户统计数据，兼容多空仓位显示
+  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((sum, p)=> sum + Math.abs(p.qty) * p.last, 0);
+  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
+  const floating = positions.reduce((sum, p)=>{
+    if(p.qty === 0) return sum;
+    const pl = p.qty > 0
+        ? (p.last - p.avgPrice) * p.qty          // 多头
+        : (p.avgPrice - p.last) * Math.abs(p.qty); // 空头
+    return sum + pl;
+  }, 0);
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayTrades = trades.filter(t=> t.date === todayStr);
+  const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
+  const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
+  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
+
+  return {
+    cost,
+    value,
+    floating,
+    todayReal,
+    wins,
+    losses,
+    todayTrades: todayTrades.length,
+    totalTrades: trades.length,
+    histReal
+  };
 }
+
 
 /* ---------- 5. Render helpers ---------- */
 
@@ -243,35 +265,47 @@ function openTradeForm(editIndex){
   }
   function close(){modal.remove();}
   document.getElementById('t-cancel').onclick=close;
-  document.getElementById('t-save').onclick=function(){
-     const date=document.getElementById('t-date').value.slice(0,10);
-     const symbol=document.getElementById('t-symbol').value.trim().toUpperCase();
-     const side=document.getElementById('t-side').value;
-     const qty=parseInt(document.getElementById('t-qty').value,10);
-     const price=parseFloat(document.getElementById('t-price').value);
-     if(!symbol||!qty||!price){alert('请完整填写表单');return;}
-     let pl=0;
-     let closedFlag = (side==='SELL' || side==='回补');
-if(side==='SELL'){
-  const pos=positions.find(p=>p.symbol===symbol);
-  const avg=pos?pos.avgPrice:price;
-  pl=(price-avg)*qty;
-}else if(side==='回补'){
-  const pos=positions.find(p=>p.symbol===symbol);
-  const avg=pos?Math.abs(pos.avgPrice):price;
-  pl=(avg-price)*qty;   // profit for covering short
-}
-const trade={date,symbol,side,qty,price,pl,closed:closedFlag};date,symbol,side,qty,price,pl,closed:side==='SELL'};
-     if(editIndex!=null){
-        trades[editIndex]=trade;
-     }else{
+  
+document.getElementById('t-save').onclick=function(){
+    const dateInput = document.getElementById('t-date').value;
+    const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
+    const symbol  = document.getElementById('t-symbol').value.trim().toUpperCase();
+    const side    = document.getElementById('t-side').value;
+    const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
+    const price   = parseFloat(document.getElementById('t-price').value);
+    if(!symbol || !qty || !price){ alert('请完整填写表单'); return; }
+
+    let pl = 0;
+    let closedFlag = false;
+    // 计算盈亏并确定是否平仓
+    if(side === 'SELL'){        // 卖出现有多头
+        const pos = positions.find(p=>p.symbol===symbol && p.qty>0);
+        const avg = pos ? pos.avgPrice : price;
+        pl = (price - avg) * qty;
+        closedFlag = true;
+    }else if(side === '回补'){   // 回补空头
+        const pos = positions.find(p=>p.symbol===symbol && p.qty<0);
+        const avg = pos ? Math.abs(pos.avgPrice) : price;
+        pl = (avg - price) * qty;
+        closedFlag = true;
+    }
+
+    const trade = {date,symbol,side,qty,price,pl,closed:closedFlag};
+
+    if(editIndex != null){
+        trades[editIndex] = trade;
+    }else{
         trades.unshift(trade);
-     }
-     recalcPositions();
-     saveData();
-     renderStats();renderPositions();renderPositions();renderTrades();
-     close();
-  };
+    }
+
+    recalcPositions();
+    saveData();
+    renderStats();
+    renderPositions();
+    renderTrades();
+    close();
+};
+
   
 }
 
@@ -321,4 +355,6 @@ function updatePrices(){
 
 /* fetch prices on load */
 updatePrices();
+  // 每分钟刷新一次价格
+  setInterval(updatePrices, 60000);
 })();
