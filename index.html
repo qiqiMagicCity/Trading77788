@@ -1,4 +1,49 @@
-<!-- 添加到 body 尾部 script 之前 -->
-<input type="file" id="file-input" accept=".json" style="display:none" />
-<script src="js/calc.js"></script>
-<script src="js/dashboard.js"></script>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trading777 v1.6</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div id="clocks" class="clocks"></div>
+    <div class="logo">Trading777</div>
+    <div class="right-btns">
+      <!-- 必须有这两个 id -->
+      <button id="import">导入</button>
+      <button id="export">导出</button>
+    </div>
+  </header>
+
+  <section id="stats" class="stats-grid">
+    <!-- 8 格统计 -->
+    <div class="box" id="stat-1"></div>
+    <div class="box" id="stat-2"></div>
+    <div class="box" id="stat-3"></div>
+    <div class="box" id="stat-4"></div>
+    <div class="box" id="stat-5"></div>
+    <div class="box" id="stat-6"></div>
+    <div class="box" id="stat-7"></div>
+    <div class="box" id="stat-8"></div>
+  </section>
+
+  <h3 class="section-title">持仓明细</h3>
+  <table id="positions" class="table"></table>
+
+  <h3 class="section-title">
+    最新交易 删除（100） <a href="#" class="details">详情</a>
+  </h3>
+  <table id="trades" class="table"></table>
+
+  <!-- 隐藏的文件上传控件 -->
+  <input type="file" id="file-input" accept=".json" style="display:none" />
+
+  <button id="fab">+</button>
+
+  <!-- 脚本放在末尾，保证元素已渲染 -->
+  <script src="js/calc.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
