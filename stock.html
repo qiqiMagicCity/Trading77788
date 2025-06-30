@@ -50,6 +50,9 @@
       const box=document.getElementById('stock-stat-'+(i+1));
       if(box){ box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;}
     });
+    const statGrid = document.getElementById('stock-stats');
+    if(statGrid){ statGrid.style.gridTemplateColumns = `repeat(${statsArr.length},180px)`; }
+
     // 设置水印文本大字
     const cnName = window.SymbolCN[symbol]||'';
     document.getElementById('watermark').textContent = symbol + (cnName?(' '+cnName):'');
@@ -61,19 +64,19 @@
       const head=['#','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本'];
       tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
       trades.forEach((t,idx)=>{
-        
-        const clsMap={BUY:'green',SELL:'red',SHORT:'purple',COVER:'blue'};
-        const sideCls=clsMap[t.side]||'white';
-        const plCls=t.pl>0?'green':t.pl<0?'red':'white';
+        const plCls = t.pl>0 ? 'green' : t.pl<0 ? 'red' : 'white';
+        const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
+        const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];
         tbl.insertAdjacentHTML('beforeend',`
           <tr>
-            <td>${idx+1}</td><td>${t.date}</td>
-            <td>${t.weekday}</td>
+            <td>${idx+1}</td>
+            <td>${t.date}</td>
+            <td>${wkAbbr}</td>
             <td>${t.count}</td>
             <td class="${sideCls}">${t.side}</td>
             <td>${t.price.toFixed(2)}</td>
             <td class="${sideCls}">${t.qty}</td>
-            <td>${t.amount.toFixed(2)}</td>
+            <td>${(t.amount).toFixed(2)}</td>
             <td>${isFinite(t.be)? t.be.toFixed(2):''}</td>
             <td class="${plCls}">${isFinite(t.pl)? t.pl.toFixed(2):''}</td>
             <td>${t.afterQty}</td>
