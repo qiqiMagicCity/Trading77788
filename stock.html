@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v3.2</title>
+  <title>Trading777 v3.3.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -14,24 +14,40 @@
   <h2 class="section-title" id="title"></h2>
   <table id="detail-table" class="table"></table>
 
+  <script src="js/fifo.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get('symbol') || '';
-    document.getElementById('title').textContent = symbol ? symbol + ' 交易详情' : '未知股票';
-    const sample = JSON.parse(localStorage.getItem('trades')||'[]').filter(t=>t.symbol===symbol);
+    document.getElementById('title').textContent = symbol ? symbol + ' 交易详情' : '未知标的';
+
+    let trades = JSON.parse(localStorage.getItem('trades')||'[]').filter(t=>t.symbol===symbol);
+    trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
+
     const tbl=document.getElementById('detail-table');
-    if(sample.length){
-      const head=['日期','方向','单价','数量','盈亏'];
+    if(trades.length){
+      const head=['日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本'];
       tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-      sample.forEach(t=>{
+      trades.forEach(t=>{
         const plCls=t.pl>0?'green':t.pl<0?'red':'white';
         tbl.insertAdjacentHTML('beforeend',`
-          <tr><td>${t.date}</td><td>${t.side}</td><td>${t.price.toFixed(2)}</td><td>${t.qty}</td>
-          <td class="${plCls}">${t.pl.toFixed(2)}</td></tr>`);
+          <tr>
+            <td>${t.date}</td>
+            <td>${t.weekday}</td>
+            <td>${t.count}</td>
+            <td>${t.side}</td>
+            <td>${t.price.toFixed(2)}</td>
+            <td>${t.qty}</td>
+            <td>${t.amount.toFixed(2)}</td>
+            <td>${isFinite(t.be)? t.be.toFixed(2):''}</td>
+            <td class="${plCls}">${isFinite(t.pl)? t.pl.toFixed(2):''}</td>
+            <td>${t.afterQty}</td>
+            <td>${isFinite(t.avgCost)? t.avgCost.toFixed(2):''}</td>
+          </tr>`);
       });
     }else{
       tbl.innerHTML='<tr><td>暂无数据</td></tr>';
     }
+
   </script>
 </body>
 </html>
