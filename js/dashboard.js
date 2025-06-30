@@ -2,6 +2,8 @@
 /* Trading777 v3.0 dashboard – implements import / export, dynamic positions, add‑trade */
 
 (function(){
+const VERSION='3.1';
+document.title=`Trading777 v${VERSION}`;
 
 /* ---------- 1. Data bootstrap ---------- */
 const defaultPositions = [{symbol:'AAPL',qty:900,avgPrice:100,last:188.95},{symbol:'TSLA',qty:50,avgPrice:200,last:178.45}];
@@ -14,6 +16,11 @@ const defaultTrades = [
 let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
 let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
 recalcPositions();
+renderStats();
+renderPositions();
+renderTrades();
+updatePrices();
+
 
 
 /* Save helper */
@@ -56,30 +63,33 @@ function recalcPositions(){
     m.last = price;
   });
   positions = Object.values(map)
-     .filter(p=>p.qty>0)                        /* keep only open long positions */
+     .filter(p=>p.qty!==0)                        /* keep only open long positions */
      .map(p=>{
         return {
           symbol: p.symbol,
           qty: p.qty,
-          avgPrice: p.qty ? p.cost / p.qty : 0,
+          avgPrice: p.qty ? Math.abs(p.cost) / Math.abs(p.qty) : 0,
           last: p.last
         };
      });
 }
 
 /* ---------- 4. Statistics ---------- */
+
 function stats(){
-  const cost=positions.reduce((s,p)=>s+p.qty*p.avgPrice,0);
-  const value=positions.reduce((s,p)=>s+p.qty*p.last,0);
-  const floating=value-cost;
-  const today=trades.filter(t=>t.date===new Date().toISOString().slice(0,10));
-  const todayReal=today.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
-  const wins=today.filter(t=>t.pl>0).length;
-  const losses=today.filter(t=>t.pl<0).length;
-  const todayTrades=today.length;
-  const histReal=trades.filter(t=>t.closed).reduce((s,t)=>s+t.pl,0);
+  const cost = positions.reduce((s,p)=> s + Math.abs(p.qty) * p.avgPrice, 0);
+  const floating = positions.reduce((s,p)=> s + (p.last - p.avgPrice) * p.qty, 0);
+  const value = positions.reduce((s,p)=> s + p.qty * p.last, 0);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayTradesArr = trades.filter(t=> t.date === todayStr);
+  const todayReal = todayTradesArr.filter(t=> t.closed).reduce((s,t)=> s + t.pl, 0);
+  const wins = todayTradesArr.filter(t=> t.pl > 0).length;
+  const losses = todayTradesArr.filter(t=> t.pl < 0).length;
+  const todayTrades = todayTradesArr.length;
+  const histReal = trades.filter(t=> t.closed).reduce((s,t)=> s + t.pl, 0);
   return {cost,value,floating,todayReal,wins,losses,todayTrades,totalTrades:trades.length,histReal};
 }
+
 
 /* ---------- 5. Render helpers ---------- */
 
@@ -112,27 +122,36 @@ function renderStats(){
 }
 
 /* Positions table */
+
 function renderPositions(){
   const tbl=document.getElementById('positions');
   if(!tbl) return;
-  const head=['代码','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','历史交易次数','详情'];
+  const head=['代码','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   positions.forEach(p=>{
-    const amt=p.qty*p.avgPrice;
-    const pl=(p.last-p.avgPrice)*p.qty;
-    const cls=pl>0?'green':pl<0?'red':'white';
-    const times=trades.filter(t=>t.symbol===p.symbol).length;
+    const amt = Math.abs(p.qty) * p.avgPrice;
+    const breakeven = p.avgPrice;
+    const floating = (p.last - breakeven) * p.qty; // long positive, short negative
+    const underlying = floating; // 同交易模型，标的盈亏=浮盈亏
+    const cls = underlying>0?'green':underlying<0?'red':'white';
+    const times = trades.filter(t=>t.symbol===p.symbol).length;
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
-        <td>${p.symbol}</td><td>${p.qty}</td><td>${p.avgPrice.toFixed(2)}</td><td>${amt.toFixed(2)}</td>
-        <td>${(p.avgPrice).toFixed(2)}</td><td class="${cls}">${pl.toFixed(2)}</td>
+        <td>${p.symbol}</td>
+        <td>${p.last.toFixed(2)}</td>
+        <td>${p.qty}</td>
+        <td>${p.avgPrice.toFixed(2)}</td>
+        <td>${amt.toFixed(2)}</td>
+        <td>${breakeven.toFixed(2)}</td>
+        <td class="${cls}">${floating.toFixed(2)}</td>
+        <td class="${cls}">${underlying.toFixed(2)}</td>
         <td>${times}</td>
         <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
       </tr>`);
   });
 }
 
-/* Trades table */
+
 function renderTrades(){
   const tbl=document.getElementById('trades');
   if(!tbl) return;
@@ -282,5 +301,24 @@ window.addEventListener('load',()=>{
   }
   document.getElementById('import')?.addEventListener('click',importData);
 });
+
+
+/* ---------- Price updater (Finnhub) ---------- */
+const FINNHUB_TOKEN = window.FINNHUB_TOKEN || ''; // in js/config.js or set globally
+async function updatePrices(){
+  if(!FINNHUB_TOKEN){ console.warn('Finnhub token missing. Skipping price update.'); renderStats(); renderPositions(); return; }
+  const uniqueSymbols = [...new Set(positions.map(p=>p.symbol))];
+  await Promise.all(uniqueSymbols.map(async sym=>{
+    try{
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`);
+      const jsn = await res.json();
+      if(jsn && jsn.c){
+         positions.filter(p=>p.symbol===sym).forEach(p=> p.last = jsn.c);
+      }
+    }catch(e){ console.error('Price fetch error',sym,e); }
+  }));
+  renderStats();
+  renderPositions();
+}
 
 })();
