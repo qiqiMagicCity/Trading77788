@@ -1,41 +1,31 @@
+
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v3.3.2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trading777 – Dashboard v3.3.4</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <header class="top">
-    <div id="clocks" class="clocks"></div>
+  <header id="topbar">
+    <span id="clock"></span>
     <div class="right-btns">
-      <button id="import">导入</button>
-      <button id="export">导出</button>
+      <button id="btn-import">导入</button>
+      <button id="btn-export">导出</button>
     </div>
   </header>
 
-  <section id="stats" class="stats-grid">
-    <div class="box" id="stat-1"></div>
-    <div class="box" id="stat-2"></div>
-    <div class="box" id="stat-3"></div>
-    <div class="box" id="stat-4"></div>
-    <div class="box" id="stat-5"></div>
-    <div class="box" id="stat-6"></div>
-    <div class="box" id="stat-7"></div>
-    <div class="box" id="stat-8"></div>
-  </section>
+  <main>
+    <section id="kpi-board" class="grid"></section>
 
-  <h3 class="section-title" id="positions-title">目前持仓 <a href="trades.html" class="details">详情</a></h3>
-  <table id="positions" class="table"></table>
+    <h3>当前持仓 <a href="position.html" target="_blank">详情</a></h3>
+    <table id="position-table"></table>
 
-  <h3 class="section-title">交易记录 <a href="trades.html" class="details">详情</a></h3>
-  <table id="trades" class="table"></table>
+    <h3>交易记录 <a href="record.html" target="_blank">详情</a></h3>
+    <table id="trade-table"></table>
+  </main>
 
-  <button id="fab">+</button>
-
-  <script src="js/fifo.js"></script>
-  <script src="js/calc.js"></script>
-  <script src="js/dashboard.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

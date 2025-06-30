@@ -1,0 +1,51 @@
+[
+  {
+    "date": "2025-05-14",
+    "symbol": "UNH",
+    "direction": "BOUGHT",
+    "price": 312.7,
+    "qty": 120
+  },
+  {
+    "date": "2025-05-14",
+    "symbol": "UNH",
+    "direction": "SOLD",
+    "price": 312.73,
+    "qty": 120
+  },
+  {
+    "date": "2025-05-15",
+    "symbol": "UNH",
+    "direction": "SHORT",
+    "price": 256.66,
+    "qty": 120
+  },
+  {
+    "date": "2025-05-15",
+    "symbol": "UNH",
+    "direction": "SHORT",
+    "price": 261.24,
+    "qty": 10
+  },
+  {
+    "date": "2025-05-15",
+    "symbol": "UNH",
+    "direction": "COVER",
+    "price": 254.78,
+    "qty": 130
+  },
+  {
+    "date": "2025-05-15",
+    "symbol": "UNH",
+    "direction": "SHORT",
+    "price": 260.16,
+    "qty": 50
+  },
+  {
+    "date": "2025-05-15",
+    "symbol": "UNH",
+    "direction": "COVER",
+    "price": 257.79,
+    "qty": 50
+  }
+]
