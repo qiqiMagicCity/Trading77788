@@ -32,24 +32,27 @@ function fmtWL(w,l){return `<span class="green">W${w}</span>/<span class="red">L
 const Utils={fmtDollar,fmtInt,fmtWL};
 
 /* ---------- 3. Derived data ---------- */
+
 function recalcPositions(){
   const map={};
   trades.forEach(t=>{
     if(!map[t.symbol]) map[t.symbol]={symbol:t.symbol,qty:0,cost:0,last:t.price};
     const m=map[t.symbol];
-    if(t.side==='BUY'){
-      m.cost+=t.price*t.qty;
-      m.qty +=t.qty;
-    }else if(t.side==='SELL'){
-      // Reduce qty first (simple FIFO approximation)
-      const avg=m.qty?m.cost/m.qty:0;
-      m.qty -= t.qty;
-      m.cost-= avg*t.qty;
-    }
-    m.last=t.price;
+    const signedQty = (t.side==='BUY'||t.side==='COVER') ? t.qty : -t.qty; // BUY/COVER positive, SELL/SHORT negative
+    m.qty += signedQty;
+    m.cost += t.price * signedQty;
+    m.last = t.price;
   });
-  positions = Object.values(map).filter(p=>p.qty>0).map(p=>{
-    return {symbol:p.symbol,qty:p.qty,avgPrice:p.qty? p.cost/p.qty:0,last:p.last};
+  positions = Object.values(map).filter(p=>p.qty!==0).map(p=>{
+    return {
+      symbol:p.symbol,
+      qty:p.qty,
+      avgPrice: Math.abs(p.qty) ? Math.abs(p.cost)/Math.abs(p.qty) : 0,
+      last:p.last
+    };
+  });
+}
+
   });
 }
 
@@ -71,11 +74,12 @@ function stats(){
 function updateClocks(){
   const now=new Date();
   const ny=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const lon=new Date(now.toLocaleString('en-GB',{timeZone:'Europe/London'}));
+  const vlc=new Date(now.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}));
+  const sh=new Date(now.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));
   const sh=new Date(now.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}));
   const fmt=d=>d.toTimeString().slice(0,8);
   document.getElementById('clocks').innerHTML=
-      `纽约 ${fmt(ny)} 伦敦 ${fmt(lon)} 上海 ${fmt(sh)}`;
+      `纽约：${fmt(ny)} | 瓦伦西亚：${fmt(vlc)} | 上海：${fmt(sh)}`;
 }
 
 /* Stats boxes */
@@ -138,11 +142,6 @@ function renderTrades(){
 }
 
 /* ---------- 6. Actions ---------- */
-function addTrade(){
-  const symbol=prompt('股票代码?').toUpperCase();
-  if(!symbol) return;
-  const side=prompt('方向 (BUY/SELL)?','BUY').toUpperCase();
-  if(side!=='BUY' && side!=='SELL') {alert('方向必须为 BUY 或 SELL');return;}
   const qty=parseInt(prompt('数量?'),10);
   if(!qty||qty<=0){alert('数量无效');return;}
   const price=parseFloat(prompt('单价?'));
@@ -207,9 +206,54 @@ window.addEventListener('load',()=>{
   updateClocks();
   setInterval(updateClocks,1000);
 
-  document.getElementById('fab')?.addEventListener('click',addTrade);
+  document.getElementById('fab')?.addEventListener('click',()=>showTradeModal());
   document.getElementById('export')?.addEventListener('click',exportData);
+  document.querySelector('h3.section-title .details')?.addEventListener('click',()=>window.location='trades.html');
   document.getElementById('import')?.addEventListener('click',importData);
 });
 
 })();
+
+
+/* Modern add trade modal */
+function showTradeModal(editIndex=null){
+  const dlg=document.getElementById('tradeModal');
+  const form=document.getElementById('tradeForm');
+  const dateInput=document.getElementById('tm-date');
+  const symbolInput=document.getElementById('tm-symbol');
+  const sideInput=document.getElementById('tm-side');
+  const qtyInput=document.getElementById('tm-qty');
+  const priceInput=document.getElementById('tm-price');
+  if(editIndex!==null){
+    const t=trades[editIndex];
+    dateInput.value=t.date;
+    symbolInput.value=t.symbol;
+    sideInput.value=t.side;
+    qtyInput.value=t.qty;
+    priceInput.value=t.price;
+  }else{
+    dateInput.value = new Date().toISOString().slice(0,10);
+    symbolInput.value='';
+    sideInput.value='BUY';
+    qtyInput.value='';
+    priceInput.value='';
+  }
+  dlg.showModal();
+  form.onsubmit=e=>{
+    e.preventDefault();
+    const date=dateInput.value;
+    const symbol=symbolInput.value.trim().toUpperCase();
+    const side=sideInput.value.toUpperCase();
+    const qty=parseInt(qtyInput.value,10);
+    const price=parseFloat(priceInput.value);
+    if(!date||!symbol||!qty||!price){alert('请完整填写');return;}
+    const trade={date,symbol,side,qty,price,pl:0,closed:false};
+    // 简单 PL 计算
+    trade.closed = (side==='SELL'||side==='COVER');
+    trades.unshift(trade);
+    recalcPositions();
+    saveData();
+    renderStats();renderPositions();renderTrades();
+    dlg.close();
+  };
+}
