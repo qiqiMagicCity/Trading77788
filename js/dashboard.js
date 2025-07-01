@@ -205,7 +205,7 @@ function renderTrades(){
   if(!tbl) return;
   const head=['日期','星期','代码','方向','单价','数量','订单金额','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-  trades.slice(0,100).forEach(t=>{
+  trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
     const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
     const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];

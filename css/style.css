@@ -54,6 +54,8 @@ body{margin:0;}
   flex-wrap:wrap;
   gap:8px;
   margin:10px 0 20px;
+
+  justify-content:center;
 }
 .symbol-tag{
   padding:4px 8px;
@@ -63,6 +65,9 @@ body{margin:0;}
   color:#05c788;
   text-decoration:none;
   font-size:14px;
+
+  flex:0 0 calc(5% - 8px);
+  text-align:center;
 }
 .symbol-tag:hover{
   background:#05c788;
