@@ -6,7 +6,7 @@ function render(){
   trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
-  const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'],'中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本','编辑','删除'];
+    const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
