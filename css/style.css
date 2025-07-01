@@ -1,3 +1,34 @@
+:root{
+  --page-max:1200px;
+}
+
+/* v5.3.7 页面宽度统一 */
+.section-title,.table,#symbols-list,.stats-grid{
+  width:90%;
+  max-width:var(--page-max);
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.stats-grid{
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+}
+
+/* 确保符号按钮始终10个一行 */
+.symbols-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-start;
+  width:90%;
+  max-width:var(--page-max);
+  margin:10px auto 0;
+}
+
+.symbol-tag{
+  flex:0 0 calc(10% - 8px);
+}
+
 html{font-size:115%;background:#002020;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;}
 body{margin:0;}
 .top{background:rgba(0,255,153,0.3);display:flex;justify-content:space-between;align-items:center;padding:8px 20px;box-sizing:border-box;}
