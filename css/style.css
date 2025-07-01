@@ -46,3 +46,27 @@ body{margin:0;}
 
 .purple{color:#b266ff;}
 .blue{color:#66ccff;}
+
+
+
+/* v5.2 新增 个股情况标签区 */
+.symbols-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  width:90%;
+  max-width:1100px;
+  margin:8px auto 20px;
+}
+.symbols-list a{
+  background:#003030;
+  color:#00e676;
+  padding:6px 12px;
+  border:1px solid #00e67666;
+  border-radius:6px;
+  text-decoration:none;
+  font-weight:600;
+}
+.symbols-list a:hover{
+  background:#004040;
+}

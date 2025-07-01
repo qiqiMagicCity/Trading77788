@@ -137,6 +137,16 @@ const floating = positions.reduce((sum,p)=>{
 }
 
 
+
+/* Symbols list (功能区3 个股情况) */
+function renderSymbols(){
+  const box = document.getElementById('symbols-list');
+  if(!box) return;
+  const symbols = Array.from(new Set(trades.map(t=>t.symbol))).sort();
+  box.innerHTML = symbols.map(s=>`<a href="stock.html?symbol=${s}">${s}</a>`).join('');
+}
+
+
 /* ---------- 5. Render helpers ---------- */
 
 
@@ -200,11 +210,16 @@ tbl.insertAdjacentHTML('beforeend',`
 
 /* Trades table */
 function renderTrades(){
+  const sorted = trades.slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  // 使用最新日期在前的排序
+
   const tbl=document.getElementById('trades');
   if(!tbl) return;
   const head=['日期','星期','代码','方向','单价','数量','订单金额','详情'];
-  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-  trades.slice(0,100).forEach(t=>{
+  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h
+  renderSymbols();
+}</th>`).join('')+'</tr>';
+  sorted.slice(0,100).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
     const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
     const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];
