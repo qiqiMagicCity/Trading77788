@@ -3,10 +3,10 @@
 const tbl=document.getElementById('all-trades');
 function render(){
   let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
-  trades.sort((a,b)=> new Date(b.date) - new Date(a.date));
 
-  const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','详情','盈亏平衡点','盈亏','目前持仓','持仓成本','编辑','删除'];
+  const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'],'中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本','编辑','删除'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
@@ -27,9 +27,9 @@ function render(){
         <td>${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
         <td>${t.qty}</td>
-        <td>${(t.amount).toFixed(2)}</td><td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
+        <td>${(t.amount).toFixed(2)}</td>
         <td>${be}</td>
-        <td class="${plCls}">${plStr}</td>
+        <td class="${plCls}">${plStr}</td>\n        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
         <td>${t.afterQty}</td>
         <td>${isFinite(t.avgCost)? t.avgCost.toFixed(2):''}</td>
         <td><button data-edit="${i}">编辑</button></td>

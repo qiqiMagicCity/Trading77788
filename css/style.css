@@ -47,7 +47,24 @@ body{margin:0;}
 .purple{color:#b266ff;}
 .blue{color:#66ccff;}
 
-/* --- Symbols list (个股情况) --- */
-.symbols-list{width:90%;max-width:1100px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:8px;}
-.symbol-tag{background:#004040;border:1px solid #00e67666;padding:6px 12px;border-radius:4px;color:#00e676;font-weight:600;cursor:pointer;text-decoration:none;}
-.symbol-tag:hover{background:#006060;}
+
+/* -------- symbols list (功能区3) -------- */
+.symbols-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:10px 0 20px;
+}
+.symbol-tag{
+  padding:4px 8px;
+  background:#002b29;
+  border:1px solid #05c788;
+  border-radius:4px;
+  color:#05c788;
+  text-decoration:none;
+  font-size:14px;
+}
+.symbol-tag:hover{
+  background:#05c788;
+  color:#002b29;
+}

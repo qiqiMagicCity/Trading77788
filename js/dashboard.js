@@ -1,5 +1,5 @@
 
-/* Trading777 v3.0 dashboard – implements import / export, dynamic positions, add‑trade */
+/* Trading777 v5.3.2 dashboard – implements import / export, dynamic positions, add‑trade */
 
 (function(){
 
@@ -200,28 +200,11 @@ tbl.insertAdjacentHTML('beforeend',`
 
 /* Trades table */
 function renderTrades(){
-  const tbl = document.getElementById('trades');
+  renderSymbolsList();
+  const tbl=document.getElementById('trades');
   if(!tbl) return;
-  const head = ['日期','星期','代码','方向','单价','数量','订单金额','详情'];
-  const sortedTrades = trades.slice().sort((a,b)=> new Date(b.date) - new Date(a.date)); // 倒序排序
-  tbl.innerHTML = '<tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr>';
-  sortedTrades.slice(0,100).forEach(t=>{
-    const amt = (t.qty * t.price).toFixed(2);
-    const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
-    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];
-    tbl.insertAdjacentHTML('beforeend', `
-      <tr>
-        <td>${t.date}</td>
-        <td>${wkAbbr}</td>
-        <td>${t.symbol}</td>
-        <td class="${sideCls}">${t.side}</td>
-        <td>${t.price.toFixed(2)}</td>
-        <td class="${sideCls}">${t.qty}</td>
-        <td>${amt}</td>
-        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
-      </tr>`);
-  });
-}</th>`).join('')+'</tr>';
+  const head=['日期','星期','代码','方向','单价','数量','订单金额','详情'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   trades.slice(0,100).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
     const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
@@ -240,21 +223,6 @@ function renderTrades(){
   });
 }
 
-
-/* ---------- 5. Symbols List (功能区3) ---------- */
-function renderSymbolsList(){
-  const area = document.getElementById('symbols-list');
-  if(!area) return;
-  area.innerHTML='';
-  const syms = [...new Set(trades.map(t=>t.symbol))].sort();
-  syms.forEach(sym=>{
-    const a=document.createElement('a');
-    a.href='stock.html?symbol='+encodeURIComponent(sym);
-    a.className='symbol-tag';
-    a.textContent=sym;
-    area.appendChild(a);
-  });
-}
 /* ---------- 6. Actions ---------- */
 
 function addTrade(){
@@ -289,6 +257,7 @@ function importData(){
         if(data.positions){ positions=data.positions; } else { recalcPositions(); }
         saveData();
         renderStats();renderPositions();renderPositions();renderTrades();
+  renderSymbolsList();
         alert('导入成功!');
       }catch(err){
         alert('导入失败: '+err.message);
@@ -377,6 +346,7 @@ document.getElementById('t-save').onclick=function(){
     renderStats();
     renderPositions();
     renderTrades();
+  renderSymbolsList();
     close();
 };
 
@@ -389,6 +359,7 @@ window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
   recalcPositions();
   renderStats();renderPositions();renderPositions();renderTrades();
+  renderSymbolsList();
   updateClocks();
   setInterval(updateClocks,1000);
 
@@ -436,9 +407,25 @@ function updatePrices(){
     });
 }
 
+
+
+/* ---------- Symbols List Renderer (功能区3) ---------- */
+function renderSymbolsList(){
+  const container = document.getElementById('symbols-list');
+  if(!container) return;
+  const symbols = [...new Set(trades.map(t=>t.symbol))].sort();
+  container.innerHTML = '';
+  symbols.forEach(sym=>{
+    const a = document.createElement('a');
+    a.href = 'stock.html?symbol=' + encodeURIComponent(sym);
+    a.textContent = sym;
+    a.className = 'symbol-tag';
+    container.appendChild(a);
+  });
+}
+/* re-render symbols list whenever trades change */
 /* fetch prices on load */
 updatePrices();
   // 每分钟刷新一次价格
   setInterval(updatePrices, 60000);
-  renderSymbolsList();
 })();
