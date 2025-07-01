@@ -200,11 +200,28 @@ tbl.insertAdjacentHTML('beforeend',`
 
 /* Trades table */
 function renderTrades(){
-  const tbl=document.getElementById('trades');
+  const tbl = document.getElementById('trades');
   if(!tbl) return;
-  const head=['日期','星期','代码','方向','单价','数量','订单金额','详情'];
-  const sorted = sorted.slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
-  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  const head = ['日期','星期','代码','方向','单价','数量','订单金额','详情'];
+  const sortedTrades = trades.slice().sort((a,b)=> new Date(b.date) - new Date(a.date)); // 倒序排序
+  tbl.innerHTML = '<tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr>';
+  sortedTrades.slice(0,100).forEach(t=>{
+    const amt = (t.qty * t.price).toFixed(2);
+    const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
+    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];
+    tbl.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${t.date}</td>
+        <td>${wkAbbr}</td>
+        <td>${t.symbol}</td>
+        <td class="${sideCls}">${t.side}</td>
+        <td>${t.price.toFixed(2)}</td>
+        <td class="${sideCls}">${t.qty}</td>
+        <td>${amt}</td>
+        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
+      </tr>`);
+  });
+}</th>`).join('')+'</tr>';
   trades.slice(0,100).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
     const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
