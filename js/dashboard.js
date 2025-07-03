@@ -244,7 +244,7 @@ function renderTrades(){
   renderSymbolsList();
   const tbl=document.getElementById('trades');
   if(!tbl) return;
-  const head=['日期','星期','代码','方向','单价','数量','订单金额','详情'];
+  const head=['日期','星期','代码','中文','方向','单价','数量','订单金额','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
@@ -255,7 +255,8 @@ function renderTrades(){
         <td>${t.date}</td>
         <td>${wkAbbr}</td>
         <td>${t.symbol}</td>
-        <td class="${sideCls}">${t.side}</td>
+        <td>${window.SymbolCN[t.symbol]||""}</td>
+<td class="${sideCls}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
         <td class="${sideCls}">${t.qty}</td>
         <td>${amt}</td>

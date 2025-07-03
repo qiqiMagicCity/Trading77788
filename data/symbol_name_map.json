@@ -1,5 +1,4 @@
-/* Auto‑generated Symbols Chinese mapping – v5.3.14 */
-window.SymbolCN = {
+{
   "MSFT": "微软",
   "AAPL": "苹果",
   "AMZN": "亚马逊",
@@ -670,4 +669,4 @@ window.SymbolCN = {
   "VEA": "Vanguard发达市场ETF",
   "VWO": "Vanguard新兴市场ETF",
   "SPDW": "SPDR发达市场ETF"
-};
+}

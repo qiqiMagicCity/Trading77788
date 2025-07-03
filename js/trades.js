@@ -22,7 +22,7 @@ function render(){
         <td>${t.symbol}</td>
         <td>${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
-        <td>${t.weekday}</td>
+        <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ]}</td>
         <td>${t.count}</td>
         <td>${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
