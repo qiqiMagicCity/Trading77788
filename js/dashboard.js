@@ -30,12 +30,8 @@ function fmtSign(n){
 }
 function fmtDollar(n){return `$ ${fmtSign(n)}`;}
 function fmtInt(n){return `<span class="white">${Number(n).toLocaleString()}</span>`;}
-function fmtWL(w,l){
-  return `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;
-}
-function fmtPct(p){
-  return `<span class="white">${Number(p).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span>`;
-}
+function fmtWL(w,l){return `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;}
+function fmtPct(p){return `<span class="white">${Number(p).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span>`;}
 const Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
 
 /* ---------- 3. Derived data ---------- */
@@ -101,12 +97,7 @@ function recalcPositions(){
               qty: qty,
               avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
               last: lots.length ? lots[lots.length-1].price : 0,
-              priceOk: false,
-    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
-  };
+              priceOk: false};
   }).filter(p=> p.qty !== 0);
 }
 
@@ -138,27 +129,27 @@ const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal
 
 const now = new Date();
 const monday = new Date(now);
-monday.setDate(now.getDate() - ((now.getDay() + 6)%7));
+monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
 monday.setHours(0,0,0,0);
 
 const wtdReal = trades.filter(t=>{
-    const d = new Date(t.date);
-    return d >= monday && d <= now;
-}).reduce((s,t)=> s + (t.pl||0),0);
+  const d = new Date(t.date);
+  return d >= monday && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
 
 const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 firstOfMonth.setHours(0,0,0,0);
 const mtdReal = trades.filter(t=>{
-    const d = new Date(t.date);
-    return d >= firstOfMonth && d <= now;
-}).reduce((s,t)=> s + (t.pl||0),0);
+  const d = new Date(t.date);
+  return d >= firstOfMonth && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
 
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
 const ytdReal = trades.filter(t=>{
-    const d = new Date(t.date);
-    return d >= firstOfYear && d <= now;
-}).reduce((s,t)=> s + (t.pl||0),0);
+  const d = new Date(t.date);
+  return d >= firstOfYear && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
 
   return {
     cost,
@@ -169,7 +160,11 @@ const ytdReal = trades.filter(t=>{
     losses,
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
-    histReal
+    histReal,
+    winRate,
+    wtdReal,
+    mtdReal,
+    ytdReal
   };
 }
 
@@ -187,24 +182,26 @@ function updateClocks(){
 /* Stats boxes */
 function renderStats(){
   const s=stats();
-  const a=[
-    ['账户总成本',Utils.fmtDollar(s.cost)],
-    ['现有市值',Utils.fmtDollar(s.value)],
-    ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
-    ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
-    ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
-    ['当日交易次数',Utils.fmtInt(s.todayTrades)],
-    ['累计交易次数',Utils.fmtInt(s.totalTrades)],
-    ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
-    ['WIN','WIN'],
-    ['WIN','WIN'],
-    ['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
-    ['WTD', Utils.fmtDollar(s.wtdReal)],
-    ['MTD', Utils.fmtDollar(s.mtdReal)],
-    ['YTD', Utils.fmtDollar(s.ytdReal)],
-    ['WIN','WIN'],
-    ['WIN','WIN']
-  ];  a.forEach((it,i)=>{
+  
+const a=[
+  ['账户总成本',Utils.fmtDollar(s.cost)],
+  ['现有市值',Utils.fmtDollar(s.value)],
+  ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
+  ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
+  ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
+  ['当日交易次数',Utils.fmtInt(s.todayTrades)],
+  ['累计交易次数',Utils.fmtInt(s.totalTrades)],
+  ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+  ['WIN','WIN'],
+  ['WIN','WIN'],
+  ['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
+  ['WTD', Utils.fmtDollar(s.wtdReal)],
+  ['MTD', Utils.fmtDollar(s.mtdReal)],
+  ['YTD', Utils.fmtDollar(s.ytdReal)],
+  ['WIN','WIN'],
+  ['WIN','WIN']
+];
+  a.forEach((it,i)=>{
     const box=document.getElementById('stat-'+(i+1));
     if(!box) return;
     box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;
