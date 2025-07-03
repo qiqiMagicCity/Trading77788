@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v5.3.7</title>
+  <title>Trading777 v5.3.8</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -63,7 +63,7 @@
     if(trades.length){
       const head=['#','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','目前持仓','持仓成本'];
       tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-      trades.sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach((t,idx)=>{
+      trades.sort((a,b)=>{ if(a.date!==b.date) return new Date(b.date)-new Date(a.date); return (b.count||0)-(a.count||0); }).forEach((t,idx)=>{
         const plCls = t.pl>0 ? 'green' : t.pl<0 ? 'red' : 'white';
         const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
         const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];
