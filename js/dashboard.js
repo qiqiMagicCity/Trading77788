@@ -96,11 +96,7 @@ function recalcPositions(){
               qty: qty,
               avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
               last: lots.length ? lots[lots.length-1].price : 0,
-              priceOk: false,
-    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal};
+              priceOk: false};
   }).filter(p=> p.qty !== 0);
 }
 
@@ -126,23 +122,6 @@ const floating = positions.reduce((sum,p)=>{
   const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
   const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
   const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
-// --- 新增统计 ---
-const totalWins = trades.filter(t=> (t.pl||0) > 0).length;
-const totalLosses = trades.filter(t=> (t.pl||0) < 0).length;
-const winRate = (totalWins + totalLosses) ? (totalWins / (totalWins + totalLosses)) * 100 : 0;
-
-const today = new Date();
-const dayIdx = (today.getDay() + 6) % 7; // Monday = 0
-const weekStart = new Date(today); weekStart.setDate(today.getDate() - dayIdx);
-const weekStartStr = weekStart.toISOString().slice(0,10);
-const wtdReal = trades.filter(t => t.date >= weekStartStr).reduce((s, t) => s + (t.pl || 0), 0);
-
-const monthStartStr = today.toISOString().slice(0,7) + '-01';
-const mtdReal = trades.filter(t => t.date >= monthStartStr).reduce((s, t) => s + (t.pl || 0), 0);
-
-const yearStartStr = today.getFullYear() + '-01-01';
-const ytdReal = trades.filter(t => t.date >= yearStartStr).reduce((s, t) => s + (t.pl || 0), 0);
-
 
   return {
     cost,
@@ -154,7 +133,11 @@ const ytdReal = trades.filter(t => t.date >= yearStartStr).reduce((s, t) => s + 
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
     histReal
-  };
+  
+    ,winRate
+    ,wtdReal
+    ,mtdReal
+    ,ytdReal};
 }
 
 
@@ -179,18 +162,14 @@ function renderStats(){
     ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
     ['当日交易次数',Utils.fmtInt(s.todayTrades)],
     ['累计交易次数',Utils.fmtInt(s.totalTrades)],
-    ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+    ['历史已实现盈亏',Utils.fmtDollar(s.histReal)]
+  
     ['胜率 Win Rate', `<span class="white">${s.winRate.toFixed(1)}%</span>`],
     ['WTD', Utils.fmtDollar(s.wtdReal)],
     ['MTD', Utils.fmtDollar(s.mtdReal)],
-    ['YTD', Utils.fmtDollar(s.ytdReal)]
-  ];
+    ['YTD', Utils.fmtDollar(s.ytdReal)],];
   a.forEach((it,i)=>{
     const box=document.getElementById('stat-'+(i+1));
-// 动态调整统计模块列数
-const statGrid = document.getElementById('stats');
-if(statGrid){ statGrid.style.gridTemplateColumns = `repeat(${a.length},180px)`; }
-
     if(!box) return;
     box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;
   });
