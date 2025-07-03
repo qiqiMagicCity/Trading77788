@@ -3,8 +3,8 @@
   "AAPL": "苹果",
   "AMZN": "亚马逊",
   "META": "Meta（原Facebook）",
-  "GOOGL": "谷歌A",
-  "GOOG": "谷歌C",
+  "GOOGL": "Alphabet A 类",
+  "GOOG": "Alphabet C 类",
   "JNJ": "强生",
   "BRK.B": "伯克希尔哈撒韦 B 股",
   "V": "Visa",
@@ -668,9 +668,5 @@
   "IGF": "全球基础设施ETF",
   "VEA": "Vanguard发达市场ETF",
   "VWO": "Vanguard新兴市场ETF",
-  "TSLL": "两倍做多特斯拉",
-  "TSDD": "两倍做空特斯拉",
-  "DJT": "川普媒体科技集团",
-  "DDM": "两倍做多道指",
   "SPDW": "SPDR发达市场ETF"
 }

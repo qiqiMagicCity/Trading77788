@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v5.3.14</title>
+  <title>Trading777 v5.3.16</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -15,7 +15,22 @@
   <table id="all-trades" class="table"></table>
 
   <script src="js/fifo.js"></script>
-  <script src="js/symbols.js"></script>
-  <script src="js/trades.js"></script>
+  <script>
+  // 动态加载 symbol_name_map.json 并启动 Trades 页面
+  fetch('./data/symbol_name_map.json')
+    .then(res => res.json())
+    .then(data => {
+      window.SymbolCN = data;
+      var s = document.createElement('script');
+      s.src = 'js/trades.js';
+      document.body.appendChild(s);
+    })
+    .catch(err => {
+      console.error('加载symbol_name_map.json失败', err);
+      var s = document.createElement('script');
+      s.src = 'js/trades.js';
+      document.body.appendChild(s);
+    });
+</script>
 </body>
 </html>
