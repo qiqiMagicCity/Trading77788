@@ -1,0 +1,12 @@
+Trading777 v5.3.11
+------------------
+日期: 2025-07-03 03:29:01
+* 修复 5.3.10 统计模块无法渲染的问题:
+  - 还原 recalcPositions() 原始实现，避免语法中断
+  - 在 Utils 中新增 fmtPct() 百分比格式化函数
+  - stats() 计算新增字段: winRate, wtdReal, mtdReal, ytdReal
+  - renderStats() 扩充至 16 个统计块，并为 9/10/15/16 预留占位
+* index.html:
+  - 添加统计块 stat‑9 至 stat‑16
+  - 更新 <title> 至 v5.3.11
+* 其他文件保持与 v5.3.7 一致

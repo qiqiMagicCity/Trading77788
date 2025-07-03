@@ -23,17 +23,17 @@ function saveData(){
 }
 
 /* ---------- 2. Utils ---------- */
-
 function fmtSign(n){
-  const cls = n>0 ? 'green' : n<0 ? 'red' : 'white';
-  const val = Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const cls=n>0?'green':n<0?'red':'white';
+  const val=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<span class="${cls}">${n<0?'-':''}${val}</span>`;
 }
-function fmtDollar(n){ return `$ ${fmtSign(n)}`; }
-function fmtInt(n){ return `<span class="white">${Number(n).toLocaleString()}</span>`; }
-function fmtWL(w,l){ return `<span class="green">W${w}</span>/<span class="red">L${l}</span>`; }
-function fmtPct(p){ return `<span class="white">${Number(p).toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1})}%</span>`; }
-const Utils = { fmtDollar, fmtInt, fmtWL, fmtPct };
+function fmtDollar(n){return `$ ${fmtSign(n)}`;}
+function fmtInt(n){return `<span class="white">${Number(n).toLocaleString()}</span>`;}
+function fmtWL(w,l){return `<span class="green">W${w}
+function fmtPct(p){return `<span class="white">${Number(p).toLocaleString("en-US",{minimumFractionDigits:1,maximumFractionDigits:1})}%</span>`; }
+</span>/<span class="red">L${l}</span>`;}
+const Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
 
 /* ---------- 3. Derived data ---------- */
 
@@ -94,7 +94,20 @@ function recalcPositions(){
   positions = Object.entries(symbolLots).map(([sym, lots])=>{
       const qty = lots.reduce((s,l)=> s + l.qty, 0);
       const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
-      
+      return {symbol: sym,
+              qty: qty,
+              avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
+              last: lots.length ? lots[lots.length-1].price : 0,
+              priceOk: false,
+    winRate,
+    wtdReal,
+    mtdReal,
+    ytdReal
+  };
+  }).filter(p=> p.qty !== 0);
+}
+
+
 /* ---------- 4. Statistics ---------- */
 
 function stats(){
@@ -116,41 +129,35 @@ const floating = positions.reduce((sum,p)=>{
   const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
   const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
   const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
-
-  
-// ---- v5.3.9 extended stats ----
-// 全部盈亏笔数
 const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
 const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
-const winRate = (winsTotal + lossesTotal) ? (winsTotal / (winsTotal + lossesTotal) * 100).toFixed(1) : null;
+const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
 
-// Week to date
 const now = new Date();
-const day = now.getDay();
-const diffToMonday = day === 0 ? -6 : 1 - day;
 const monday = new Date(now);
-monday.setDate(now.getDate() + diffToMonday);
+monday.setDate(now.getDate() - ((now.getDay() + 6)%7));
 monday.setHours(0,0,0,0);
+
 const wtdReal = trades.filter(t=>{
     const d = new Date(t.date);
     return d >= monday && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
+}).reduce((s,t)=> s + (t.pl||0),0);
 
-// Month to date
 const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+firstOfMonth.setHours(0,0,0,0);
 const mtdReal = trades.filter(t=>{
     const d = new Date(t.date);
     return d >= firstOfMonth && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
+}).reduce((s,t)=> s + (t.pl||0),0);
 
-// Year to date
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
+firstOfYear.setHours(0,0,0,0);
 const ytdReal = trades.filter(t=>{
     const d = new Date(t.date);
     return d >= firstOfYear && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
-return {
+}).reduce((s,t)=> s + (t.pl||0),0);
 
+  return {
     cost,
     value,
     floating,
@@ -160,11 +167,6 @@ return {
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
     histReal
-  ,
-    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
   };
 }
 
@@ -183,24 +185,23 @@ function updateClocks(){
 function renderStats(){
   const s=stats();
   const a=[
-  ['账户总成本',Utils.fmtDollar(s.cost)],
-  ['现有市值',Utils.fmtDollar(s.value)],
-  ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
-  ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
-  ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
-  ['当日交易次数',Utils.fmtInt(s.todayTrades)],
-  ['累计交易次数',Utils.fmtInt(s.totalTrades)],
-  ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
-  ['WIN','WIN'],
-  ['WIN','WIN'],
-  ['胜率', (s.winRate!==null ? Utils.fmtPct(s.winRate) : '<span class="white">N/A</span>')],
-  ['WTD', Utils.fmtDollar(s.wtdReal)],
-  ['MTD', Utils.fmtDollar(s.mtdReal)],
-  ['YTD', Utils.fmtDollar(s.ytdReal)],
-  ['WIN','WIN'],
-  ['WIN','WIN']
-];
-  a.forEach((it,i)=>{
+    ['账户总成本',Utils.fmtDollar(s.cost)],
+    ['现有市值',Utils.fmtDollar(s.value)],
+    ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
+    ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
+    ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
+    ['当日交易次数',Utils.fmtInt(s.todayTrades)],
+    ['累计交易次数',Utils.fmtInt(s.totalTrades)],
+    ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+    ['WIN','WIN'],
+    ['WIN','WIN'],
+    ['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
+    ['WTD', Utils.fmtDollar(s.wtdReal)],
+    ['MTD', Utils.fmtDollar(s.mtdReal)],
+    ['YTD', Utils.fmtDollar(s.ytdReal)],
+    ['WIN','WIN'],
+    ['WIN','WIN']
+  ];  a.forEach((it,i)=>{
     const box=document.getElementById('stat-'+(i+1));
     if(!box) return;
     box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;

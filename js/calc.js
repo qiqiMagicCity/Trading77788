@@ -7,6 +7,5 @@ function fmtSign(n){
 function fmtDollar(n){return `$ ${fmtSign(n)}`;}
 function fmtInt(n){return `<span class="white">${Number(n).toLocaleString()}</span>`;}
 function fmtWL(w,l){return `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;}
-function fmtPct(pct){return `<span class="white">${pct}%</span>`;}
-g.Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
+g.Utils={fmtDollar,fmtInt,fmtWL};
 })(window);
