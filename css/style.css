@@ -104,3 +104,15 @@ body{margin:0;}
   background:#05c788;
   color:#002b29;
 }
+
+
+/* v5.3.10 override: stats grid uses flex to center second row */
+.stats-grid{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+}
+.stats-grid .box{
+  width:180px;
+}

@@ -92,7 +92,11 @@ function recalcPositions(){
   positions = Object.entries(symbolLots).map(([sym, lots])=>{
       const qty = lots.reduce((s,l)=> s + l.qty, 0);
       const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
-      return {symbol: sym,
+      return {    winRate,
+    wtdReal,
+    mtdReal,
+    ytdReal,
+symbol: sym,
               qty: qty,
               avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
               last: lots.length ? lots[lots.length-1].price : 0,
@@ -122,6 +126,20 @@ const floating = positions.reduce((sum,p)=>{
   const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
   const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
   const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
+// 新增统计 - 全局胜率 & WTD/MTD/YTD
+const totalWins = trades.filter(t=> (t.pl||0) > 0).length;
+const totalLosses = trades.filter(t=> (t.pl||0) < 0).length;
+const winRate = (totalWins+totalLosses) ? totalWins/(totalWins+totalLosses) : 0;
+const now = new Date();
+const weekStart = new Date(now);
+const weekDay = (weekStart.getDay()+6)%7;
+weekStart.setDate(weekStart.getDate()-weekDay);
+const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+const yearStart = new Date(now.getFullYear(),0,1);
+const wtdReal = trades.filter(t=> new Date(t.date)>=weekStart).reduce((s,t)=> s + (t.pl||0), 0);
+const mtdReal = trades.filter(t=> new Date(t.date)>=monthStart).reduce((s,t)=> s + (t.pl||0), 0);
+const ytdReal = trades.filter(t=> new Date(t.date)>=yearStart).reduce((s,t)=> s + (t.pl||0), 0);
+
 
   return {
     cost,
@@ -133,11 +151,7 @@ const floating = positions.reduce((sum,p)=>{
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
     histReal
-  
-    ,winRate
-    ,wtdReal
-    ,mtdReal
-    ,ytdReal};
+  };
 }
 
 
@@ -163,11 +177,7 @@ function renderStats(){
     ['当日交易次数',Utils.fmtInt(s.todayTrades)],
     ['累计交易次数',Utils.fmtInt(s.totalTrades)],
     ['历史已实现盈亏',Utils.fmtDollar(s.histReal)]
-  
-    ['胜率 Win Rate', `<span class="white">${s.winRate.toFixed(1)}%</span>`],
-    ['WTD', Utils.fmtDollar(s.wtdReal)],
-    ['MTD', Utils.fmtDollar(s.mtdReal)],
-    ['YTD', Utils.fmtDollar(s.ytdReal)],];
+  ];
   a.forEach((it,i)=>{
     const box=document.getElementById('stat-'+(i+1));
     if(!box) return;
