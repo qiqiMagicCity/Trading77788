@@ -212,7 +212,7 @@ const a=[
 function renderPositions(){
   const tbl=document.getElementById('positions');
   if(!tbl) return;
-  const head=['Logo','代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
+  const head=['代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   positions.forEach(p=>{
     const amt=Math.abs(p.qty*p.avgPrice);
@@ -224,7 +224,7 @@ const realized=trades.filter(t=>t.symbol===p.symbol&&t.closed).reduce((s,t)=>s+t
 const totalPNL=pl+realized;
 tbl.insertAdjacentHTML('beforeend',`
   <tr>
-    <td><img class="logo" src="logos/${p.symbol}.png" onerror="this.style.display='none'" /></td><td>${p.symbol}</td>
+    <td>${p.symbol}</td>
     <td>${window.SymbolCN[p.symbol]||''}</td>
     <td id="rt-${p.symbol}">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
@@ -244,7 +244,7 @@ function renderTrades(){
   renderSymbolsList();
   const tbl=document.getElementById('trades');
   if(!tbl) return;
-  const head=['日期','星期','Logo','代码','中文','方向','单价','数量','订单金额','详情'];
+  const head=['日期','星期','代码','中文','方向','单价','数量','订单金额','详情'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
@@ -254,7 +254,7 @@ function renderTrades(){
       <tr>
         <td>${t.date}</td>
         <td>${wkAbbr}</td>
-        <td><img class="logo" src="logos/${t.symbol}.png" onerror="this.style.display='none'" /></td><td>${t.symbol}</td>
+        <td>${t.symbol}</td>
         <td>${window.SymbolCN[t.symbol]||""}</td>
 <td class="${sideCls}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
@@ -471,3 +471,18 @@ updatePrices();
   // 每分钟刷新一次价格
   setInterval(updatePrices, 60000);
 })();
+
+
+
+// === helper to refresh all tables when SymbolCN or data updated ===
+function refreshAll(){
+  try{
+    renderStats();
+  }catch(e){}
+  try{
+    renderPositions();
+  }catch(e){}
+  try{
+    renderTrades();
+  }catch(e){}
+}
