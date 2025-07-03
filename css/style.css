@@ -1,18 +1,21 @@
-:root{
-  --page-max:1200px;
-}
-
-/* v5.3.7 页面宽度统一 */
-.section-title,.table,#symbols-list,.stats-grid{
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:10px;
+  justify-content:center;
   width:90%;
   max-width:var(--page-max);
   margin-left:auto;
   margin-right:auto;
 }
-
-.stats-grid{
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+:root{
+  --page-max:1200px;
 }
+
+/* v5.3.7 页面宽度统一 */
+.section-title,.table,#symbols-list,
+
+
 
 /* 确保符号按钮始终10个一行 */
 .symbols-list{
@@ -36,7 +39,7 @@ body{margin:0;}
 .logo{flex:1;text-align:center;}
 .right-btns{margin-left:auto;margin-right:40px;}
 .right-btns button{margin-left:10px;padding:4px 12px;border:none;border-radius:4px;background:#00e676;color:#002020;font-weight:600;cursor:pointer;}
-.stats-grid{display:grid;grid-template-columns:repeat(8,180px);gap:10px;justify-content:center;margin:20px auto;}
+
 .box{background:#003030;border:1px solid #00e67666;border-radius:6px;min-height:100px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:10px;}
 .box-title{font-size:0.8rem;margin-bottom:4px;opacity:0.85;}
 .box-value{font-size:1rem;font-weight:700;}
@@ -103,16 +106,4 @@ body{margin:0;}
 .symbol-tag:hover{
   background:#05c788;
   color:#002b29;
-}
-
-
-/* v5.3.10 override: stats grid uses flex to center second row */
-.stats-grid{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  gap:10px;
-}
-.stats-grid .box{
-  width:180px;
 }

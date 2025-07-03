@@ -92,15 +92,11 @@ function recalcPositions(){
   positions = Object.entries(symbolLots).map(([sym, lots])=>{
       const qty = lots.reduce((s,l)=> s + l.qty, 0);
       const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
-      return {    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal,
-symbol: sym,
+      return {symbol: sym,
               qty: qty,
               avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
               last: lots.length ? lots[lots.length-1].price : 0,
-              priceOk: false};
+              priceOk: false,
   }).filter(p=> p.qty !== 0);
 }
 
@@ -125,21 +121,25 @@ const floating = positions.reduce((sum,p)=>{
   const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
   const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
   const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
-  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
-// 新增统计 - 全局胜率 & WTD/MTD/YTD
-const totalWins = trades.filter(t=> (t.pl||0) > 0).length;
-const totalLosses = trades.filter(t=> (t.pl||0) < 0).length;
-const winRate = (totalWins+totalLosses) ? totalWins/(totalWins+totalLosses) : 0;
-const now = new Date();
-const weekStart = new Date(now);
-const weekDay = (weekStart.getDay()+6)%7;
-weekStart.setDate(weekStart.getDate()-weekDay);
-const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-const yearStart = new Date(now.getFullYear(),0,1);
-const wtdReal = trades.filter(t=> new Date(t.date)>=weekStart).reduce((s,t)=> s + (t.pl||0), 0);
-const mtdReal = trades.filter(t=> new Date(t.date)>=monthStart).reduce((s,t)=> s + (t.pl||0), 0);
-const ytdReal = trades.filter(t=> new Date(t.date)>=yearStart).reduce((s,t)=> s + (t.pl||0), 0);
+  
+  // 新增统计
+  const winsAll = trades.filter(t=> (t.pl||0) > 0).length;
+  const lossesAll = trades.filter(t=> (t.pl||0) < 0).length;
+  const winRate = (winsAll + lossesAll) ? (winsAll / (winsAll + lossesAll) * 100) : 0;
 
+  // 计算当前周、本月、本年已实现盈亏
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - ((now.getDay()+6)%7)); // Monday as first day
+  const startOfWeekStr = startOfWeek.toISOString().slice(0,10);
+
+  const startOfMonthStr = now.getFullYear().toString().padStart(4,'0') + '-' + (String(now.getMonth()+1).padStart(2,'0')) + '-01';
+  const startOfYearStr = now.getFullYear() + '-01-01';
+
+  const wtdReal = trades.filter(t=> t.date >= startOfWeekStr).reduce((s,t)=> s + (t.pl||0), 0);
+  const mtdReal = trades.filter(t=> t.date >= startOfMonthStr).reduce((s,t)=> s + (t.pl||0), 0);
+  const ytdReal = trades.filter(t=> t.date >= startOfYearStr).reduce((s,t)=> s + (t.pl||0), 0);
+const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
 
   return {
     cost,
@@ -150,7 +150,11 @@ const ytdReal = trades.filter(t=> new Date(t.date)>=yearStart).reduce((s,t)=> s 
     losses,
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
-    histReal
+    histReal,
+    winRate,
+    wtdReal,
+    mtdReal,
+    ytdReal
   };
 }
 
@@ -176,7 +180,11 @@ function renderStats(){
     ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
     ['当日交易次数',Utils.fmtInt(s.todayTrades)],
     ['累计交易次数',Utils.fmtInt(s.totalTrades)],
-    ['历史已实现盈亏',Utils.fmtDollar(s.histReal)]
+    ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+    ['胜率', `<span class="white">${s.winRate.toFixed(1)}%</span>`],
+    ['WTD', Utils.fmtDollar(s.wtdReal)],
+    ['MTD', Utils.fmtDollar(s.mtdReal)],
+    ['YTD', Utils.fmtDollar(s.ytdReal)]
   ];
   a.forEach((it,i)=>{
     const box=document.getElementById('stat-'+(i+1));
