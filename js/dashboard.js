@@ -30,8 +30,10 @@ function fmtSign(n){
 }
 function fmtDollar(n){return `$ ${fmtSign(n)}`;}
 function fmtInt(n){return `<span class="white">${Number(n).toLocaleString()}</span>`;}
-function fmtWL(w,l){return `<span class="green">W${w}</span>/<span class="red">L${l}</span>`;}
-const Utils={fmtDollar,fmtInt,fmtWL};
+function fmtWL(w,l){return `<span class="green">W${w}
+function fmtPct(p){return `<span class="white">${Number(p).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1})}%</span>`;}
+</span>/<span class="red">L${l}</span>`;}
+const Utils={ fmtDollar,fmtInt,fmtWL,fmtPct };
 
 /* ---------- 3. Derived data ---------- */
 
@@ -93,57 +95,6 @@ function recalcPositions(){
       const qty = lots.reduce((s,l)=> s + l.qty, 0);
       const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
       
-/* ----- extended statistics v5.3.8 ----- */
-// 全部盈亏笔数
-const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
-const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
-const winRate = (winsTotal + lossesTotal) ? (winsTotal / (winsTotal + lossesTotal) * 100).toFixed(1) : null;
-
-// Week start (Monday)
-const now = new Date();
-const day = now.getDay();
-const diffToMonday = day === 0 ? -6 : (1 - day);
-const monday = new Date(now);
-monday.setDate(now.getDate() + diffToMonday);
-monday.setHours(0,0,0,0);
-const sunday = new Date(monday);
-sunday.setDate(monday.getDate() + 6);
-sunday.setHours(23,59,59,999);
-
-const wtdTrades = trades.filter(t=> {
-  const d = new Date(t.date);
-  return d >= monday && d <= sunday && (t.pl||0);
-});
-const wtdReal = wtdTrades.reduce((s,t)=> s + (t.pl||0), 0);
-
-// Month start
-const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-const mtdTrades = trades.filter(t=> {
-  const d = new Date(t.date);
-  return d >= firstOfMonth && d <= now && (t.pl||0);
-});
-const mtdReal = mtdTrades.reduce((s,t)=> s + (t.pl||0), 0);
-
-// Year start
-const firstOfYear = new Date(now.getFullYear(), 0, 1);
-const ytdTrades = trades.filter(t=> {
-  const d = new Date(t.date);
-  return d >= firstOfYear && d <= now && (t.pl||0);
-});
-const ytdReal = ytdTrades.reduce((s,t)=> s + (t.pl||0), 0);
-return {symbol: sym,
-              qty: qty,
-              avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
-              last: lots.length ? lots[lots.length-1].price : 0,
-              priceOk: false,
-    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal};
-  }).filter(p=> p.qty !== 0);
-}
-
-
 /* ---------- 4. Statistics ---------- */
 
 function stats(){
@@ -166,7 +117,40 @@ const floating = positions.reduce((sum,p)=>{
   const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
   const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
 
-  return {
+  
+// ---- v5.3.9 extended stats ----
+// 全部盈亏笔数
+const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
+const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
+const winRate = (winsTotal + lossesTotal) ? (winsTotal / (winsTotal + lossesTotal) * 100).toFixed(1) : null;
+
+// Week to date
+const now = new Date();
+const day = now.getDay();
+const diffToMonday = day === 0 ? -6 : 1 - day;
+const monday = new Date(now);
+monday.setDate(now.getDate() + diffToMonday);
+monday.setHours(0,0,0,0);
+const wtdReal = trades.filter(t=>{
+    const d = new Date(t.date);
+    return d >= monday && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
+
+// Month to date
+const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+const mtdReal = trades.filter(t=>{
+    const d = new Date(t.date);
+    return d >= firstOfMonth && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
+
+// Year to date
+const firstOfYear = new Date(now.getFullYear(), 0, 1);
+const ytdReal = trades.filter(t=>{
+    const d = new Date(t.date);
+    return d >= firstOfYear && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
+return {
+
     cost,
     value,
     floating,
@@ -176,6 +160,11 @@ const floating = positions.reduce((sum,p)=>{
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
     histReal
+  ,
+    winRate,
+    wtdReal,
+    mtdReal,
+    ytdReal
   };
 }
 
