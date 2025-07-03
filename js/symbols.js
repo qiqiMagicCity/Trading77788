@@ -684,3 +684,6 @@ window.SymbolCN = {
       }).catch(console.error);
   }catch(e){console.error(e);}
 })();
+
+/* v5.3.20 ensure global refresh */
+if (typeof renderAllTrades === 'function') renderAllTrades();
