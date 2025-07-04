@@ -212,8 +212,8 @@ const a=[
 function renderPositions(){
   const tbl=document.getElementById('positions');
   if(!tbl) return;
-  const head=['图标','代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
-  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  const head=['logo','代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
   positions.forEach(p=>{
     const amt=Math.abs(p.qty*p.avgPrice);
     const pl=(p.last-p.avgPrice)*p.qty;
@@ -224,15 +224,15 @@ const realized=trades.filter(t=>t.symbol===p.symbol&&t.closed).reduce((s,t)=>s+t
 const totalPNL=pl+realized;
 tbl.insertAdjacentHTML('beforeend',`
   <tr>
-    <td><img src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
-    <td>${window.SymbolCN[p.symbol]||''}</td>
+    <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
+    <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
     <td id="rt-${p.symbol}">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
     <td>${(p.avgPrice).toFixed(2)}</td>
-    <td class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
-    <td class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
+    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
+    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
     <td>${times}</td>
     <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
   </tr>`);
@@ -245,7 +245,7 @@ function renderTrades(){
   const tbl=document.getElementById('trades');
   if(!tbl) return;
   const head=['日期','星期','图标','代码','中文','方向','单价','数量','订单金额','详情'];
-  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
   trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
     const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
@@ -421,6 +421,30 @@ window.addEventListener('load',()=>{
 
 /* ---------- 6. Real‑time price via Finnhub ---------- */
 
+
+/* ---------- Price cell updater to avoid full re-render ---------- */
+function updatePriceCells(){
+  positions.forEach(p=>{
+    const priceCell = document.getElementById(`rt-${p.symbol}`);
+    if(priceCell) priceCell.textContent = (p.priceOk===false?'--':p.last.toFixed(2));
+
+    const pl = (p.last - p.avgPrice) * p.qty;
+    const cls = pl>0?'green':pl<0?'red':'white';
+    const plCell = document.getElementById(`pl-${p.symbol}`);
+    if(plCell){
+      plCell.textContent = (p.priceOk===false?'--':pl.toFixed(2));
+      plCell.className = cls;
+    }
+    const realized = trades.filter(t=>t.symbol===p.symbol && t.closed).reduce((s,t)=>s+t.pl,0);
+    const totalPNL = pl + realized;
+    const totalCell = document.getElementById(`total-${p.symbol}`);
+    if(totalCell){
+      totalCell.textContent = (p.priceOk===false?'--':totalPNL.toFixed(2));
+      totalCell.className = totalPNL>0?'green':totalPNL<0?'red':'white';
+    }
+  });
+}
+
 function updatePrices(){
   // 尝试读取 KEY.txt 里的 Finnhub key；如果读取失败就回退到内置 key
   fetch('KEY.txt')
@@ -442,7 +466,7 @@ function updatePrices(){
        });
 
        Promise.all(reqs).then(()=>{
-          renderPositions();
+        updatePriceCells();
           renderStats();
        });
     });

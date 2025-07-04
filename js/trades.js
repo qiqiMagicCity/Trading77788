@@ -12,8 +12,8 @@ function render(){
   trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
-    const head=['#','图标','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
-  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+    const head=['#','logo','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
 
@@ -24,8 +24,8 @@ function render(){
     histReal += t.pl||0;
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
-        <td>${i+1}</td><td><img src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
-        <td>${window.SymbolCN[t.symbol]||''}</td>
+        <td>${i+1}</td><td><img loading="lazy" src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
+        <td class="cn">${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
         <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ]}</td>
         <td>${t.count}</td>
