@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trading777 v5.3.20</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div id="clocks" class="clocks"></div>
+    <div class="right-btns">
+      <button id="import">导入</button>
+      <button id="export">导出</button>
+    </div>
+  </header>
+
+  <section id="stats" class="stats-grid">
+    <div class="box" id="stat-1"></div>
+    <div class="box" id="stat-2"></div>
+    <div class="box" id="stat-3"></div>
+    <div class="box" id="stat-4"></div>
+    <div class="box" id="stat-5"></div>
+    <div class="box" id="stat-6"></div>
+    <div class="box" id="stat-7"></div>
+    <div class="box" id="stat-8"></div>
+    <div class="box" id="stat-9"></div>
+    <div class="box" id="stat-10"></div>
+    <div class="box" id="stat-11"></div>
+    <div class="box" id="stat-12"></div>
+    <div class="box" id="stat-13"></div>
+    <div class="box" id="stat-14"></div>
+    <div class="box" id="stat-15"></div>
+    <div class="box" id="stat-16"></div>
+  </section>
+
+  <h3 class="section-title" id="positions-title">目前持仓 <a href="trades.html" class="details">详情</a></h3>
+  <table id="positions" class="table"></table>
+
+  
+<h3 class="section-title">个股情况 <a href="index.html" class="details" style="visibility:hidden;">详情</a></h3>
+<div id="symbols-list" class="symbols-list"></div>
+
+
+  <h3 class="section-title">交易记录 <a href="trades.html" class="details">详情</a></h3>
+  <table id="trades" class="table"></table>
+
+  <button id="fab">+</button>
+
+  <script src="js/fifo.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/symbols.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
