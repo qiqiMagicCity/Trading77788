@@ -171,5 +171,23 @@ body{margin:0;}
 
 #all-trades th:nth-child(4),
 #all-trades td:nth-child(4){
-  max-width:180px;
+  max-width:220px;
+}
+
+
+/* v7.7.2 column width fine‑tuning */
+#all-trades {
+  table-layout: auto; /* keep natural width calc */
+}
+
+#all-trades th:nth-child(2),
+#all-trades td:nth-child(2) { /* logo 列 */
+  width: 56px;           /* 正方形 logo + padding */
+  text-align: center;
+}
+
+#all-trades th:nth-child(4),
+#all-trades td:nth-child(4) { /* 中文列 */
+  width: 1%;             /* 最小化列占比，宽度由内容决定 */
+  white-space: nowrap;   /* 不换行 */
 }
