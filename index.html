@@ -52,12 +52,9 @@
 
   <button id="fab">+</button>
 
-  <!-- ① 先加载依赖 -->
   <script src="js/fifo.js"></script>
   <script src="js/calc.js"></script>
-  <!-- ② 再加载 dashboard.js，注册 window.refreshAll/renderAllTrades -->
-  <script src="js/dashboard.js"></script>
-  <!-- ③ 最后加载 symbols.js，fetch 完对照后调用 window.refreshAll() -->
   <script src="js/symbols.js"></script>
+  <script src="js/dashboard.js"></script>
 </body>
 </html>
