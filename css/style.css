@@ -106,3 +106,55 @@ body{margin:0;}
 }
 
 .table td, .table th { white-space: nowrap; }
+/* -- 美化 trades.html 页 编辑/删除按钮（圆形图标、动效、气泡） -- */
+.btn-action {
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  margin: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: rgba(40,60,60,0.09);
+  color: #fff;
+  box-shadow: 0 1px 8px 0 rgba(0,0,0,0.10);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.18s, transform 0.14s, box-shadow 0.14s;
+  z-index: 1;
+}
+.btn-edit { color: #29b6f6; }
+.btn-del  { color: #ff5252; }
+
+.btn-action:hover {
+  background: rgba(70,200,240,0.19);
+  transform: scale(1.15) rotate(-7deg);
+  box-shadow: 0 4px 18px 0 rgba(36,190,190,0.10);
+}
+.btn-del:hover {
+  background: rgba(255,82,82,0.17);
+  color: #fff;
+  transform: scale(1.18) rotate(8deg);
+}
+
+/* 气泡提示 */
+.btn-action[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40,50,60,0.97);
+  color: #fff;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0.97;
+  pointer-events: none;
+  box-shadow: 0 2px 7px 0 rgba(0,0,0,0.19);
+  z-index: 10;
+}

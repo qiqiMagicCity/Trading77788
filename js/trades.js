@@ -1,7 +1,5 @@
 (function(){
-const tbl = document.getElementById('all-trades');
-
-// 新增：方向着色
+const tbl=document.getElementById('all-trades');
 function getSideClass(side) {
   if (side === 'BUY') return 'green';
   if (side === 'SELL') return 'red';
@@ -9,29 +7,28 @@ function getSideClass(side) {
   if (side === 'COVER') return 'blue';
   return '';
 }
-
-function render() {
-  let trades = JSON.parse(localStorage.getItem('trades') || '[]');
-  trades.sort((a, b) => new Date(b.date) - new Date(a.date));
+function render(){
+  let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
-  const head = ['#', '代码', '中文', '日期', '星期', '统计', '方向', '单价', '数量', '订单金额', '盈亏平衡点', '盈亏', '详情', '目前持仓', '持仓成本', '编辑', '删除'];
-  tbl.innerHTML = '<tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr>';
+    const head=['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
 
-  trades.forEach((t, i) => {
-    const be = isFinite(t.be) ? t.be.toFixed(2) : '';
-    const plCls = t.pl > 0 ? 'green' : t.pl < 0 ? 'red' : 'white';
-    const plStr = isFinite(t.pl) ? t.pl.toFixed(2) : '';
-    histReal += t.pl || 0;
-    tbl.insertAdjacentHTML('beforeend', `
+  trades.forEach((t,i)=>{
+    const be = isFinite(t.be)? t.be.toFixed(2):'';
+    const plCls = t.pl>0?'green':t.pl<0?'red':'white';
+    const plStr = isFinite(t.pl)? t.pl.toFixed(2):'';
+    histReal += t.pl||0;
+    tbl.insertAdjacentHTML('beforeend',`
       <tr>
-        <td>${i + 1}</td>
+        <td>${i+1}</td>
         <td>${t.symbol}</td>
-        <td>${window.SymbolCN[t.symbol] || ''}</td>
+        <td>${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
-        <td>${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(t.date).getDay()]}</td>
+        <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ]}</td>
         <td>${t.count}</td>
         <td class="${getSideClass(t.side)}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
@@ -41,33 +38,41 @@ function render() {
         <td class="${plCls}">${plStr}</td>
         <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
         <td>${t.afterQty}</td>
-        <td>${isFinite(t.avgCost) ? t.avgCost.toFixed(2) : ''}</td>
-        <td><button data-edit="${i}">编辑</button></td>
-        <td><button data-del="${i}">删除</button></td>
+        <td>${isFinite(t.avgCost)? t.avgCost.toFixed(2):''}</td>
+        <td>
+          <button class="btn-action btn-edit" data-edit="${i}" data-tooltip="编辑">
+            ✏️
+          </button>
+        </td>
+        <td>
+          <button class="btn-action btn-del" data-del="${i}" data-tooltip="删除">
+            🗑️
+          </button>
+        </td>
       </tr>`);
   });
 
   // footer for historical realized P/L
   const footer = document.createElement('tr');
-  footer.innerHTML = `<td colspan="9">历史已实现盈亏</td><td class="${histReal > 0 ? 'green' : histReal < 0 ? 'red' : 'white'}">${histReal.toFixed(2)}</td><td colspan="4"></td>`;
+  footer.innerHTML = `<td colspan="9">历史已实现盈亏</td><td class="${histReal>0?'green':histReal<0?'red':'white'}">${histReal.toFixed(2)}</td><td colspan="4"></td>`;
   tbl.appendChild(footer);
 
   // attach event listeners for edit / delete
-  tbl.querySelectorAll('button[data-del]').forEach(btn => {
-    btn.onclick = () => {
-      const idx = parseInt(btn.getAttribute('data-del'), 10);
-      const trades = JSON.parse(localStorage.getItem('trades') || '[]');
-      trades.splice(idx, 1);
-      localStorage.setItem('trades', JSON.stringify(trades));
-      render();
-    };
+  tbl.querySelectorAll('button[data-del]').forEach(btn=>{
+     btn.onclick=()=>{
+       const idx=parseInt(btn.getAttribute('data-del'),10);
+       const trades=JSON.parse(localStorage.getItem('trades')||'[]');
+       trades.splice(idx,1);
+       localStorage.setItem('trades',JSON.stringify(trades));
+       render();
+     };
   });
-  tbl.querySelectorAll('button[data-edit]').forEach(btn => {
-    btn.onclick = () => {
-      const idx = parseInt(btn.getAttribute('data-edit'), 10);
-      localStorage.setItem('editIndex', idx);
-      location.href = 'index.html#edit';
-    };
+  tbl.querySelectorAll('button[data-edit]').forEach(btn=>{
+     btn.onclick=()=>{
+       const idx=parseInt(btn.getAttribute('data-edit'),10);
+       localStorage.setItem('editIndex',idx);
+       location.href='index.html#edit';
+     };
   });
 }
 render();
