@@ -158,3 +158,6 @@ body{margin:0;}
   box-shadow: 0 2px 7px 0 rgba(0,0,0,0.19);
   z-index: 10;
 }
+
+/* Logo column */
+.logo{width:24px;height:24px;object-fit:contain;vertical-align:middle;}

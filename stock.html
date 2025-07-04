@@ -28,7 +28,14 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get('symbol') || '';
-    document.getElementById('title').textContent = symbol ? symbol + ' 交易详情' : '未知标的';
+    
+const titleEl = document.getElementById('title');
+if(symbol){
+  titleEl.innerHTML = `<img src="logos/${symbol}.png" class="logo" alt="${symbol}" onerror="this.style.display='none';"/> ${symbol} 交易详情`;
+}else{
+  titleEl.textContent = '未知标的';
+}
+
 
     let trades = JSON.parse(localStorage.getItem('trades')||'[]').filter(t=>t.symbol===symbol);
     trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
