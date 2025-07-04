@@ -57,10 +57,12 @@
     <a href="index.html" class="details" style="margin-left:20px;">← 返回</a>
   </header>
   
+  
   <div style="text-align:center; margin-top:20px;">
-    <img id="stock-logo" src="" alt="Logo" style="height:100px; object-fit:contain;" />
-    <div id="stock-header" style="color:white; font-size:20px; margin-top:10px;"></div>
+    <img id="stock-logo" src="" alt="Logo" style="height:150px; object-fit:contain;" />
+    <h2 class="section-title" id="title" style="margin-top:10px;"></h2>
   </div>
+
 
   <h2 class="section-title" id="title"></h2>
   <section class="stats-grid" id="stock-stats">
@@ -79,20 +81,23 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     
+    
+    // 获取中文名映射
+    const zhNameGlobal = window.symbolNameMap ? (window.symbolNameMap[params.get('symbol') || ''] || '') : '';
     const symbol = params.get('symbol') || '';
     
 
     document.addEventListener('DOMContentLoaded', () => {
         const zhName = window.symbolNameMap ? (window.symbolNameMap[symbol] || '') : '';
         document.getElementById("stock-logo").src = `logos/${symbol}.png`;
-        document.getElementById("stock-header").textContent = `${symbol} (${zhName}) 交易详情`;
+        
         const wm = document.getElementById("watermark");
-        if (wm) wm.textContent = `${symbol} ${zhName}`;
+        if (wm) wm.textContent = `${symbol} ${zhNameGlobal}`;
     });
 
 const titleEl = document.getElementById('title');
 if(symbol){
-  titleEl.innerHTML = `<img src="logos/${symbol}.png" class="logo" alt="${symbol}" onerror="this.style.display='none';"/> ${symbol} 交易详情`;
+  titleEl.textContent = `${symbol}${zhNameGlobal ? ` (${zhNameGlobal})` : ""} 交易详情`;
 }else{
   titleEl.textContent = '未知标的';
 }
