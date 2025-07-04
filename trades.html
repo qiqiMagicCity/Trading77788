@@ -1,80 +1,21 @@
-(function(){
-  const tbl = document.getElementById('all-trades');
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trading777 v5.3.20</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <a href="index.html" class="details" style="margin-right:20px;">← 返回</a>
+    <div id="clocks" class="clocks"></div>
+  </header>
+  <h2 class="section-title">全部交易记录</h2>
+  <table id="all-trades" class="table"></table>
 
-  function render(){
-    let trades = JSON.parse(localStorage.getItem('trades') || '[]');
-    trades.sort((a, b) => new Date(b.date) - new Date(a.date));
-    trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
-
-    const head = ['#','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
-    tbl.innerHTML = '<tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr>';
-
-    let histReal = 0;
-    trades.forEach((t, i) => {
-      const be     = isFinite(t.be)   ? t.be.toFixed(2)   : '';
-      const plCls  = t.pl > 0         ? 'green'           : t.pl < 0 ? 'red' : 'white';
-      const plStr  = isFinite(t.pl)   ? t.pl.toFixed(2)   : '';
-      histReal    += t.pl || 0;
-
-      tbl.insertAdjacentHTML('beforeend', `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${t.symbol}</td>
-          <!-- 中文名 -->
-          <td>${window.SymbolCN[t.symbol] || ''}</td>
-          <td>${t.date}</td>
-          <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(t.date).getDay()]}</td>
-          <td>${t.count}</td>
-          <!-- 方向列：BUY 绿，SELL 红 -->
-          <td class="${t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : 'white'}">${t.side}</td>
-          <td>${t.price.toFixed(2)}</td>
-          <!-- 数量列同样高亮 -->
-          <td class="${t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : 'white'}">${t.qty}</td>
-          <td>${t.amount.toFixed(2)}</td>
-          <td>${be}</td>
-          <td class="${plCls}">${plStr}</td>
-          <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
-          <td>${t.afterQty}</td>
-          <td>${isFinite(t.avgCost) ? t.avgCost.toFixed(2) : ''}</td>
-          <td><button data-edit="${i}">编辑</button></td>
-          <td><button data-del="${i}">删除</button></td>
-        </tr>`);
-    });
-
-    // 历史已实现盈亏 Footer
-    const footer = document.createElement('tr');
-    footer.innerHTML = `
-      <td colspan="9">历史已实现盈亏</td>
-      <td class="${histReal > 0 ? 'green' : histReal < 0 ? 'red' : 'white'}">
-        ${histReal.toFixed(2)}
-      </td>
-      <td colspan="4"></td>`;
-    tbl.appendChild(footer);
-
-    // 绑定编辑/删除按钮事件
-    tbl.querySelectorAll('button[data-del]').forEach(btn => {
-      btn.onclick = () => {
-        const idx = +btn.getAttribute('data-del');
-        const arr = JSON.parse(localStorage.getItem('trades') || '[]');
-        arr.splice(idx, 1);
-        localStorage.setItem('trades', JSON.stringify(arr));
-        render();
-      };
-    });
-    tbl.querySelectorAll('button[data-edit]').forEach(btn => {
-      btn.onclick = () => {
-        const idx = +btn.getAttribute('data-edit');
-        localStorage.setItem('editIndex', idx);
-        location.href = 'index.html#edit';
-      };
-    });
-  }
-
-  // —— 暴露给 symbols.js 在对照表加载完后调用 ——  
-  window.refreshAll      = render;
-  window.renderAllTrades = render;
-
-  // （如果你需要首次渲染，请在这里调用 render()，否则由 symbols.js 触发二次渲染）
-  render();
-
-})();
+  <script src="js/fifo.js"></script>
+  <script src="js/symbols.js"></script>
+  <script src="js/trades.js"></script>
+</body>
+</html>
