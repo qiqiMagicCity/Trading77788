@@ -79,12 +79,6 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     
-    const zhName = window.symbolNameMap?.[symbol] || '';
-    const logoPath = `logos/${symbol}.png`;
-    document.getElementById("stock-logo").src = logoPath;
-    document.getElementById("stock-header").textContent = `${symbol} (${zhName}) 交易详情`;
-    document.getElementById("watermark").textContent = `${symbol} ${zhName}`;
-
     const symbol = params.get('symbol') || '';
     
 
