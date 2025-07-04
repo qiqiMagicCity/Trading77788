@@ -664,6 +664,8 @@ window.SymbolCN = {
   "COPX": "铜矿ETF",
   "REMX": "稀土与战略金属ETF",
   "WOOD": "木材ETF",
+  "TSM": "台积电",
+  "SONY": "索尼",
   "PAVE": "基础设施ETF",
   "IFRA": "美国基础设施ETF",
   "IGF": "全球基础设施ETF",
