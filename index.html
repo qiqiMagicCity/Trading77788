@@ -34,22 +34,30 @@
     <div class="box" id="stat-16"></div>
   </section>
 
-  <h3 class="section-title" id="positions-title">目前持仓 <a href="trades.html" class="details">详情</a></h3>
+  <h3 class="section-title" id="positions-title">
+    目前持仓 <a href="trades.html" class="details">详情</a>
+  </h3>
   <table id="positions" class="table"></table>
 
-  
-<h3 class="section-title">个股情况 <a href="index.html" class="details" style="visibility:hidden;">详情</a></h3>
-<div id="symbols-list" class="symbols-list"></div>
+  <h3 class="section-title">
+    个股情况 
+    <a href="index.html" class="details" style="visibility:hidden;">详情</a>
+  </h3>
+  <div id="symbols-list" class="symbols-list"></div>
 
-
-  <h3 class="section-title">交易记录 <a href="trades.html" class="details">详情</a></h3>
+  <h3 class="section-title">
+    交易记录 <a href="trades.html" class="details">详情</a>
+  </h3>
   <table id="trades" class="table"></table>
 
   <button id="fab">+</button>
 
+  <!-- ① 先加载依赖 -->
   <script src="js/fifo.js"></script>
   <script src="js/calc.js"></script>
-  <script src="js/symbols.js"></script>
+  <!-- ② 再加载 dashboard.js，注册 window.refreshAll/renderAllTrades -->
   <script src="js/dashboard.js"></script>
+  <!-- ③ 最后加载 symbols.js，fetch 完对照后调用 window.refreshAll() -->
+  <script src="js/symbols.js"></script>
 </body>
 </html>
