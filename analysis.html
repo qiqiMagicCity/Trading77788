@@ -1,0 +1,47 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trading777 交易分析 v7.7.3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    .tab-toggle{cursor:pointer;margin:0 6px;padding:4px 10px;border:1px solid #0f8;border-radius:4px;}
+    .tab-toggle.active{background:#0f8;color:#000;}
+    .calendar-controls{display:flex;align-items:center;gap:8px;margin:10px 0;}
+    .calendar-controls button{padding:4px 8px;font-size:14px;}
+    .calendar{width:100%;border-collapse:collapse;margin-top:6px;}
+    .calendar th,.calendar td{width:14.28%;border:1px solid #044;padding:4px;text-align:center;vertical-align:top;font-size:14px;}
+    .calendar td span.day{display:block;font-size:12px;opacity:0.7;}
+    .calendar td span.pnl{display:block;font-weight:bold;}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a href="index.html" class="details" style="margin-right:20px;">← 返回</a>
+    <div id="clocks" class="clocks"></div>
+  </header>
+
+  <h2 class="section-title">资金收益 - 折线图</h2>
+  <div id="profit-line" style="width:90%;max-width:1200px;height:320px;margin:0 auto;"></div>
+
+  <h2 class="section-title">交易日历</h2>
+  <div class="calendar-controls" style="width:90%;max-width:1200px;margin:0 auto;">
+    <button id="prev-month">‹</button>
+    <span id="cur-month"></span>
+    <button id="next-month">›</button>
+  </div>
+  <div id="calendar-wrap" style="width:90%;max-width:1200px;margin:0 auto;"></div>
+
+  <h2 class="section-title">盈亏排行榜
+      <span id="tab-profit" class="tab-toggle active">盈利 TOP10</span>
+      <span id="tab-loss" class="tab-toggle">亏损 TOP10</span>
+  </h2>
+  <table id="leaderboard" class="table" style="width:90%;max-width:1200px;margin:0 auto;"></table>
+
+  <script src="js/symbols.js"></script>
+  <script src="js/analysis.js?v=7.7.3"></script>
+</body>
+</html>
