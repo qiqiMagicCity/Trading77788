@@ -1,5 +1,5 @@
 
-/* Trading777 analysis-ui – v7.7.14
+/* Trading777 analysis-ui – v7.7.15
  * Render Total ＆ Intraday calendars once window.Calendars ready
  */
 

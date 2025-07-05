@@ -3,12 +3,20 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>交易分析 - Trading777 v7.7.14</title>
+  <title>交易分析 - Trading777 v7.7.15</title>
   <script defer src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-  <script defer src="js/analysis.js"></script>
+  
+  <script>
+    // Load Finnhub API key
+    fetch('KEY.txt').then(r=>r.ok?r.text():'').then(t=>{
+       const m = t.match(/Finnhub key：([\w]+)/);
+       window.KEY = m?m[1]:'';
+    }).catch(()=>{});
+  </script>
+<script defer src="js/analysis.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
   <!-- Top Nav -->
