@@ -1,5 +1,5 @@
 
-/* Trading777 交易分析 – v7.7.13
+/* Trading777 交易分析 – v7.7.14
  * 日历算法重写：满足「总账户＝每日净值变动」「日内＝当天闭环」原则
  * 时间基准：America/New_York
  * Finnhub 日K收盘价抓取并本地缓存 localStorage('priceCache')
@@ -106,7 +106,7 @@
   }
 
   
-/* ---------- build Intraday calendar (v7.7.13 rewrite) ---------- */
+/* ---------- build Intraday calendar (v7.7.14 rewrite) ---------- */
 function buildIntradayCalendar(){
   // Trades must be sorted ascending by datetime
   const calendar = {};
@@ -190,6 +190,7 @@ function buildIntradayCalendar(){
      console.table(tot);
      console.table(intra);
      window.Calendars = {total:tot, intraday:intra};
+  window.dispatchEvent(new Event("CalendarsReady"));
   }
   main();
 })();
