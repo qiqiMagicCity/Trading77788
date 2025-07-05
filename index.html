@@ -1,42 +1,55 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Trading777 v5.3.20</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div class="max-w-7xl mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-6">Trading777 Dashboard</h1>
-
-    <!-- 当前持仓 -->
-    <div class="flex items-center mb-2">
-      <h2 class="text-xl font-semibold text-green-400 mr-3">当前持仓</h2>
-      <a href="analysis.html" class="text-blue-400 hover:underline">交易分析</a>
+<body>
+  <header class="top">
+    <div id="clocks" class="clocks"></div>
+    <div class="right-btns">
+      <button id="import">导入</button>
+      <button id="export">导出</button>
     </div>
-    <table class="w-full text-sm text-left whitespace-nowrap mb-10">
-      <thead class="uppercase tracking-wider text-slate-400 text-xs border-b border-slate-700">
-        <tr><th>logo</th><th>代码</th><th>中文</th><th>实时价格</th><th>当前持仓</th></tr>
-      </thead>
-      <tbody id="positionsBody" class="text-slate-300">
-        <!-- 动态填充 -->
-      </tbody>
-    </table>
+  </header>
 
-    <!-- 交易记录 -->
-    <div class="flex items-center mb-2">
-      <h2 class="text-xl font-semibold text-green-400 mr-3">交易记录</h2>
-      <a href="trades.html" class="text-blue-400 hover:underline">查看全部</a>
-    </div>
-    <table class="w-full text-sm text-left whitespace-nowrap">
-      <thead class="uppercase tracking-wider text-slate-400 text-xs border-b border-slate-700">
-        <tr><th>日期</th><th>代码</th><th>方向</th><th>价格</th><th>数量</th></tr>
-      </thead>
-      <tbody id="tradesBody" class="text-slate-300">
-        <!-- 动态填充 -->
-      </tbody>
-    </table>
-  </div>
+  <section id="stats" class="stats-grid">
+    <div class="box" id="stat-1"></div>
+    <div class="box" id="stat-2"></div>
+    <div class="box" id="stat-3"></div>
+    <div class="box" id="stat-4"></div>
+    <div class="box" id="stat-5"></div>
+    <div class="box" id="stat-6"></div>
+    <div class="box" id="stat-7"></div>
+    <div class="box" id="stat-8"></div>
+    <div class="box" id="stat-9"></div>
+    <div class="box" id="stat-10"></div>
+    <div class="box" id="stat-11"></div>
+    <div class="box" id="stat-12"></div>
+    <div class="box" id="stat-13"></div>
+    <div class="box" id="stat-14"></div>
+    <div class="box" id="stat-15"></div>
+    <div class="box" id="stat-16"></div>
+  </section>
+
+  <h3 class="section-title" id="positions-title">目前持仓 <a href="analysis.html" class="details">交易分析</a></h3>
+  <table id="positions" class="table"></table>
+
+  
+<h3 class="section-title">个股情况 <a href="index.html" class="details" style="visibility:hidden;">详情</a></h3>
+<div id="symbols-list" class="symbols-list"></div>
+
+
+  <h3 class="section-title">交易记录 <a href="trades.html" class="details">查看全部</a></h3>
+  <table id="trades" class="table"></table>
+
+  <button id="fab">+</button>
+
+  <script src="js/fifo.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/symbols.js"></script>
+  <script src="js/dashboard.js"></script>
 </body>
 </html>

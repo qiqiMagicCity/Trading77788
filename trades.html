@@ -1,23 +1,21 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>All Trades - Trading777</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Trading777 v5.3.20</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div class="max-w-7xl mx-auto p-4">
-    <a href="index.html" class="text-blue-400 hover:underline">← 返回仪表盘</a>
-    <h1 class="text-2xl font-bold mt-4 mb-6">全部交易记录</h1>
-    <table class="w-full text-sm text-left whitespace-nowrap">
-      <thead class="uppercase tracking-wider text-slate-400 text-xs border-b border-slate-700">
-        <tr><th>日期</th><th>时间</th><th>代码</th><th>方向</th><th>价格</th><th>数量</th><th>金额</th></tr>
-      </thead>
-      <tbody id="allTradesBody" class="text-slate-300">
-        <!-- 动态填充 -->
-      </tbody>
-    </table>
-  </div>
+<body>
+  <header class="top">
+    <a href="index.html" class="details" style="margin-right:20px;">← 返回</a>
+    <div id="clocks" class="clocks"></div>
+  </header>
+  <h2 class="section-title">全部交易记录</h2>
+  <table id="all-trades" class="table"></table>
+
+  <script src="js/fifo.js"></script>
+  <script src="js/symbols.js"></script>
+  <script src="js/trades.js"></script>
 </body>
 </html>
