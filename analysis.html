@@ -3,7 +3,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>交易分析 - Trading777 v7.7.6</title>
+  <title>交易分析 - Trading777 v7.7.7</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
@@ -180,7 +180,7 @@ function buildEvents(){
 
 function renderCalendar(){
   if(calendar) calendar.destroy();
-  calendar = new FullCalendar.Calendar(calendarEl,{
+  calendar = new FullCalendar.Calendar(calendarEl,{firstDay:1,
     initialView:'dayGridMonth',
     height:'auto',
     events: buildEvents()
@@ -209,6 +209,8 @@ style.textContent = `
   .fc-theme-standard td,
   .fc-theme-standard th { border:none !important;}
   .fc-col-header-cell-cushion { color:#cbd5e1; }
+  .fc-col-header-cell { background-color:#0f172a !important; }
+  .fc-day-other, .fc-day-sat, .fc-day-sun { background-color:transparent !important; }
 `;
 document.head.appendChild(style);
 
@@ -279,7 +281,7 @@ function buildEventsTotal(){
 }
 function renderTotalCalendar(){
   if(totalCalendar) totalCalendar.destroy();
-  totalCalendar = new FullCalendar.Calendar(totalCalendarEl,{
+  totalCalendar = new FullCalendar.Calendar(totalCalendarEl,{firstDay:1,
     initialView:'dayGridMonth',
     height:'auto',
     events: buildEventsTotal()
