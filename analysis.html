@@ -3,7 +3,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>交易分析 - Trading777 v7.7.5</title>
+  <title>交易分析 - Trading777 v7.7.6</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
@@ -32,15 +32,27 @@
     </section>
 
     <!-- 功能区 2: 交易日历 -->
-    <section id="calendarSection">
+    
+<!-- 功能区 2: 交易日历（总账户） -->
+<section id="totalCalendarSection">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold">交易日历（总账户）</h2>
+    <div>
+      <button id="toggleAbsTotal" class="px-3 py-1 text-xs rounded-l-lg bg-blue-500">绝对值</button>
+      <button id="togglePctTotal" class="px-3 py-1 text-xs rounded-r-lg bg-slate-700">收益率%</button>
+    </div>
+  </div>
+  <div id="totalCalendar" class="bg-slate-800 rounded-xl p-4"></div>
+</section>
+<section id="intraCalendarSection">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">交易日历</h2>
+        <h2 class="text-lg font-semibold">交易日历（日内交易）</h2>
         <div>
-          <button id="toggleAbs" class="px-3 py-1 text-xs rounded-l-lg bg-blue-500">绝对值</button>
-          <button id="togglePct" class="px-3 py-1 text-xs rounded-r-lg bg-slate-700">收益率%</button>
+          <button id="toggleAbsIntra" class="px-3 py-1 text-xs rounded-l-lg bg-blue-500">绝对值</button>
+          <button id="togglePctIntra" class="px-3 py-1 text-xs rounded-r-lg bg-slate-700">收益率%</button>
         </div>
       </div>
-      <div id="calendar" class="bg-slate-800 rounded-xl p-4"></div>
+      <div id="intraCalendar" class="bg-slate-800 rounded-xl p-4"></div>
     </section>
 
     <!-- 功能区 3: 盈亏排行榜 -->
@@ -154,7 +166,7 @@ Object.entries(dailyGrouped).forEach(([date, arr])=>{
   dailyAbs[date] = abs;
   dailyPct[date] = pct;
 });
-const calendarEl = document.getElementById('calendar');
+const calendarEl = document.getElementById('intraCalendar');
 let showPct = false;
 let calendar;
 
@@ -177,16 +189,16 @@ function renderCalendar(){
 }
 renderCalendar();
 
-document.getElementById('toggleAbs').addEventListener('click', ()=>{
+document.getElementById('toggleAbsIntra').addEventListener('click', ()=>{
   showPct=false;
-  document.getElementById('toggleAbs').classList.replace('bg-slate-700','bg-blue-500');
-  document.getElementById('togglePct').classList.replace('bg-blue-500','bg-slate-700');
+  document.getElementById('toggleAbsIntra').classList.replace('bg-slate-700','bg-blue-500');
+  document.getElementById('togglePctIntra').classList.replace('bg-blue-500','bg-slate-700');
   renderCalendar();
 });
-document.getElementById('togglePct').addEventListener('click', ()=>{
+document.getElementById('togglePctIntra').addEventListener('click', ()=>{
   showPct=true;
-  document.getElementById('togglePct').classList.replace('bg-slate-700','bg-blue-500');
-  document.getElementById('toggleAbs').classList.replace('bg-blue-500','bg-slate-700');
+  document.getElementById('togglePctIntra').classList.replace('bg-slate-700','bg-blue-500');
+  document.getElementById('toggleAbsIntra').classList.replace('bg-blue-500','bg-slate-700');
   renderCalendar();
 });
 
@@ -240,6 +252,52 @@ document.getElementById('lossTab').addEventListener('click', ()=>{
   document.getElementById('lossTab').classList.replace('bg-slate-700','bg-blue-500');
   document.getElementById('profitTab').classList.replace('bg-blue-500','bg-slate-700');
   renderRanking('loss');
+});
+
+/* === Total Account Calendar === */
+const dailyAbsIntra = dailyAbs; // reuse intraday abs
+// Build total account pct relative to previous cumulative profit
+const sortedDates = Object.keys(dailyAbsIntra).sort();
+const dailyPctTotal = {};
+let cumulativePrev = 0;
+sortedDates.forEach(date=>{
+  const abs = dailyAbsIntra[date];
+  dailyPctTotal[date] = cumulativePrev === 0 ? 0 : abs / cumulativePrev * 100;
+  cumulativePrev += abs;
+});
+const dailyAbsTotal = {...dailyAbsIntra};
+
+const totalCalendarEl = document.getElementById('totalCalendar');
+let showPctTotalFlag = false;
+let totalCalendar;
+function buildEventsTotal(){
+  return sortedDates.map(d=>{
+    const val = showPctTotalFlag ? dailyPctTotal[d] : dailyAbsTotal[d];
+    const title = showPctTotalFlag ? `${val>=0?'+':''}${val.toFixed(2)}%` : `${val>=0?'+':''}${val.toFixed(2)}`;
+    return {title,start:d,color: val>=0 ? '#22c55e' : '#ef4444'};
+  });
+}
+function renderTotalCalendar(){
+  if(totalCalendar) totalCalendar.destroy();
+  totalCalendar = new FullCalendar.Calendar(totalCalendarEl,{
+    initialView:'dayGridMonth',
+    height:'auto',
+    events: buildEventsTotal()
+  });
+  totalCalendar.render();
+}
+renderTotalCalendar();
+document.getElementById('toggleAbsTotal').addEventListener('click', ()=>{
+  showPctTotalFlag=false;
+  document.getElementById('toggleAbsTotal').classList.replace('bg-slate-700','bg-blue-500');
+  document.getElementById('togglePctTotal').classList.replace('bg-blue-500','bg-slate-700');
+  renderTotalCalendar();
+});
+document.getElementById('togglePctTotal').addEventListener('click', ()=>{
+  showPctTotalFlag=true;
+  document.getElementById('togglePctTotal').classList.replace('bg-slate-700','bg-blue-500');
+  document.getElementById('toggleAbsTotal').classList.replace('bg-blue-500','bg-slate-700');
+  renderTotalCalendar();
 });
 </script>
 
