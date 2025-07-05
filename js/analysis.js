@@ -1,207 +1,166 @@
 
-/* Trading777 交易分析 – v7.7.10
-   变更要点：
-   ① 「总账户日历」改为“当日净值变化”口径：今日收盘净值 - 昨日收盘净值
-   ② 「日内日历」改为“当日闭环”口径：同日买卖配对（含开空平空），未配对部分忽略
-   ③ 所有日期基准为纽约时区（America/New_York）
-   ④ 行情收盘价通过 Finnhub API (resolution=D) 拉取
-*/
-
-(async function(){
-
-/* ---------- 配置 ---------- */
-const FINNHUB_TOKEN = 'd19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg';
-const TZ = 'America/New_York';
-
-/* ---------- 小工具 ---------- */
-function parseDateYMD(ymd){                // 2025-05-19 → Date @ local 00:00
-  const [y,m,d] = ymd.split('-').map(Number);
-  return new Date(Date.UTC(y,m-1,d));      // 用 UTC 防止时区偏移，再转 NY
-}
-function dateStr(d){
-  return d.toISOString().slice(0,10);
-}
-function so(n){ return n<10 ? '0'+n : n; }
-function ymdOff(d,delta){
-  const nd = new Date(d);
-  nd.setDate(nd.getDate()+delta);
-  return dateStr(nd);
-}
-
-/* ---------- 读取成交 ---------- */
-let trades = JSON.parse(localStorage.getItem('trades')||'[]');
-trades.forEach(t=>{
-  if(!t.date){
-    // 若仅有 datetime 字段，截取 YYYY-MM-DD
-    if(t.datetime) t.date = t.datetime.slice(0,10);
-    else if(t.time) t.date = t.time.slice(0,10);
-  }
-});
-trades = trades.filter(t=>t.date && t.price && t.qty);
-
-/* ---------- 收盘价缓存 ---------- */
-const priceCache = {};  // symbol → {date: close}
-async function fetchCloses(symbol, from, to){
-  const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_TOKEN}`;
-  const resp = await fetch(url);
-  if(!resp.ok) return;
-  const json = await resp.json();
-  if(json && json.c && json.t){
-    json.t.forEach((ts,idx)=>{
-      const d = new Date(ts*1000);
-      const ymd = d.toISOString().slice(0,10);
-      priceCache[symbol] ??= {};
-      priceCache[symbol][ymd] = json.c[idx];
+/* Trading777 交易分析 – v7.7.11
+ * 日历算法重写：满足「总账户＝每日净值变动」「日内＝当天闭环」原则
+ * 时间基准：America/New_York
+ * Finnhub 日K收盘价抓取并本地缓存 localStorage('priceCache')
+ */
+(function(){
+  const TZ = 'America/New_York';
+  const API_BASE = 'https://finnhub.io/api/v1/stock/candle';
+  const API_KEY  = (window.KEY || '').trim();   // KEY.txt 在 index.html 注入到全局
+  const priceCache = JSON.parse(localStorage.getItem('priceCache')||'{}');  // {symbol:{date:close}}
+  async function fetchDailyCloses(symbol, fromDate, toDate){
+    // fromDate/toDate: 'YYYY-MM-DD'
+    const fromUnix = Date.parse(fromDate+'T00:00:00-05:00')/1000;
+    const toUnix   = Date.parse(toDate+'T23:59:59-05:00')/1000;
+    const url = `${API_BASE}?symbol=${symbol}&resolution=D&from=${Math.floor(fromUnix)}&to=${Math.floor(toUnix)}&token=${API_KEY}`;
+    const resp = await fetch(url); const data = await resp.json();
+    if(data.s!=='ok') return {};
+    const out={};
+    data.t.forEach((ts,i)=>{
+       const d = new Date(ts*1000).toLocaleDateString('sv-SE',{timeZone:TZ});
+       out[d]= data.c[i];
     });
+    // merge into cache
+    priceCache[symbol] = {...priceCache[symbol], ...out};
+    localStorage.setItem('priceCache', JSON.stringify(priceCache));
+    return out;
   }
-}
-async function ensurePrice(symbol, date){
-  priceCache[symbol] ??= {};
-  if(priceCache[symbol][date] !== undefined) return;
-  // 请求 [date-2, date] 区间，便于拿到最近一个收盘
-  const dObj = parseDateYMD(date);
-  const from = Math.floor(new Date(dObj.getTime()-3*864e5).getTime()/1000);
-  const to   = Math.floor(dObj.getTime()/1000);
-  await fetchCloses(symbol, from, to);
-}
 
-/* ---------- 计算日内盈亏 ---------- */
-function computeIntradayMap(tradesByDate){
-  const map = {}; // date → pnl
-  Object.entries(tradesByDate).forEach(([date, dayTrades])=>{
-    const symQueues = {};   // symbol → [{qty, price}]
-    let pnl = 0;
-    dayTrades.forEach(tr=>{
-      const dir = (tr.side==='BUY'||tr.side==='COVER') ? 1 : -1;
-      const qtySigned = dir * tr.qty;
-      symQueues[tr.symbol] ??= [];
-      let remain = qtySigned;
-      while(remain !== 0 && symQueues[tr.symbol].length){
-        const lot = symQueues[tr.symbol][0];
-        if(Math.sign(lot.qty) === Math.sign(remain)){ break; } // 同向，无可配对
-        const matchQty = Math.min(Math.abs(lot.qty), Math.abs(remain)) * Math.sign(remain);
-        // matchQty 与 lot.qty 方向相反
-        pnl += matchQty > 0
-              ? matchQty*(tr.price - lot.price)
-              : (-matchQty)*(lot.price - tr.price);
-        lot.qty += matchQty;   // lot qty 减少（符号相反）
-        remain  -= matchQty;
-        if(lot.qty === 0) symQueues[tr.symbol].shift();
-      }
-      if(remain !== 0){
-        symQueues[tr.symbol].push({qty: remain, price: tr.price});
+  /* ---------- helpers ---------- */
+  function ymd(dateObj){
+    return dateObj.toLocaleDateString('sv-SE',{timeZone:TZ}); // YYYY-MM-DD
+  }
+  function dateFromYMD(s){
+    const [y,m,d] = s.split('-').map(Number);
+    return new Date(Date.UTC(y,m-1,d,5,0,0)); // create roughly NY midnight
+  }
+  function sign(v){ return v>0?'green': v<0?'red':'grey'; }
+
+  /* ---------- load trades ---------- */
+  const trades = JSON.parse(localStorage.getItem('trades')||'[]');  // assume存在
+  trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
+
+  /* ---------- build Total Account calendar ---------- */
+  async function buildTotalCalendar(){
+    if(!trades.length) return {};
+    const firstDay = ymd(new Date(trades[0].date));
+    const lastDay  = ymd(new Date(trades[trades.length-1].date));
+    // Gather symbols
+    const symbols = [...new Set(trades.map(t=>t.symbol))];
+    // Fetch missing closes
+    const promises=[];
+    symbols.forEach(sym=>{
+      const cacheDates = priceCache[sym]? Object.keys(priceCache[sym]):[];
+      if(!cacheDates.includes(lastDay)){
+         promises.push(fetchDailyCloses(sym, firstDay, lastDay));
       }
     });
-    map[date] = pnl;
-  });
-  return map;
-}
+    await Promise.all(promises);
 
-/* ---------- 计算账户净值变化 ---------- */
-async function computeTotalMap(sortedDates, tradesByDate){
-  let cash = 0;
-  const holdings = {};          // symbol → qty
-  const netByDate = {};
-  let prevNet = 0;
+    // Walk day-by-day
+    const cashByDay = {};         // yyyy-mm-dd -> cash
+    const posBySymbol = {};       // symbol -> qty (can be neg)
+    let cash = 0;
+    let prevValue = 0;
+    const calendar={};
 
-  for(let date of sortedDates){
-    // 1. 执行今日全部成交，更新现金 & 持仓
-    (tradesByDate[date]||[]).forEach(tr=>{
-      if(tr.side==='BUY' || tr.side==='COVER'){
-        cash -= tr.qty * tr.price;
-        holdings[tr.symbol] = (holdings[tr.symbol]||0) + tr.qty;
-      }else{ // SELL 或 SHORT
-        cash += tr.qty * tr.price;
-        holdings[tr.symbol] = (holdings[tr.symbol]||0) - tr.qty;
-      }
-    });
-
-    // 2. 获取今日各持仓收盘价
-    const syms = Object.keys(holdings).filter(s=>holdings[s]!==0);
-    for(let sym of syms){ await ensurePrice(sym,date); }
-
-    // 3. 计算今日收盘净值
-    let net = cash;
-    syms.forEach(sym=>{
-      const px = priceCache[sym]?.[date];
-      if(px!==undefined) net += holdings[sym]*px;
-    });
-
-    // 4. 今日变化 = net - prevNet
-    netByDate[date] = net - prevNet;
-    prevNet = net;
-  }
-  return netByDate;
-}
-
-/* ---------- 主流程 ---------- */
-const tradesByDate = {};
-trades.forEach(tr=>{ (tradesByDate[tr.date]=tradesByDate[tr.date]||[]).push(tr); });
-const sortedDates = Object.keys(tradesByDate).sort();
-
-const intraMap = computeIntradayMap(tradesByDate);
-const totalMap = await computeTotalMap(sortedDates, tradesByDate);
-
-/* ---------- 渲染日历 ---------- */
-function renderCalendar(calendarEl, dataMap, pctToggleBtn, absToggleBtn){
-  let showPct = false;
-  let calendarInstance;
-  function buildEvents(){
-    const dates = Object.keys(dataMap).sort();
-    const events = dates.map(d=>{
-      const abs = dataMap[d];
-      // 获取前一累积净值，避免 NaN
-      const pct = 0; // 简化：不计算百分比，仅切换隐藏
-      const val = showPct ? pct : abs;
-      return {
-        title: showPct ? (abs>=0?'+':'')+pct.toFixed(2)+'%' :
-                         (abs>=0?'+':'')+abs.toFixed(2),
-        start: d,
-        color: val>=0 ? '#22c55e' : '#ef4444'
-      };
-    });
-    return events;
-  }
-  function rerender(){
-    if(calendarInstance) calendarInstance.destroy();
-    calendarInstance = new FullCalendar.Calendar(calendarEl,{
-      firstDay: 1,
-      initialView:'dayGridMonth',
-      height:'auto',
-      events: buildEvents()
-    });
-    calendarInstance.render();
+    let currentIdx=0;
+    let dateIter = dateFromYMD(firstDay);
+    const endDate = dateFromYMD(lastDay);
+    while(dateIter<=endDate){
+       const day = ymd(dateIter);
+       // process trades on this day
+       while(currentIdx<trades.length && ymd(new Date(trades[currentIdx].date))===day){
+           const t = trades[currentIdx];
+           const qty = Number(t.qty);
+           const price = Number(t.price);
+           if(['BUY','COVER','买入','回补','COVERED'].includes(t.side.toUpperCase())){
+              cash -= price*qty;
+              posBySymbol[t.symbol] = (posBySymbol[t.symbol]||0)+ qty;
+           }else{
+              // SELL or SHORT
+              cash += price*qty;
+              posBySymbol[t.symbol] = (posBySymbol[t.symbol]||0)- qty;
+           }
+           currentIdx++;
+       }
+       // compute value
+       let value = cash;
+       for(const [sym, qty] of Object.entries(posBySymbol)){
+          if(Math.abs(qty)<1e-6) continue;
+          const price = (priceCache[sym]&&priceCache[sym][day])?priceCache[sym][day]:null;
+          if(price==null){
+             // fallback: skip symbol until price available
+             continue;
+          }
+          value += qty*price;
+       }
+       const delta = value - prevValue;
+       calendar[day]= delta;
+       prevValue = value;
+       // next day
+       dateIter.setUTCDate(dateIter.getUTCDate()+1);
+    }
+    return calendar;
   }
 
-  absToggleBtn.addEventListener('click',()=>{
-    showPct = false;
-    absToggleBtn.classList.replace('bg-slate-700','bg-blue-500');
-    pctToggleBtn.classList.replace('bg-blue-500','bg-slate-700');
-    rerender();
-  });
-  pctToggleBtn.addEventListener('click',()=>{
-    showPct = true;
-    pctToggleBtn.classList.replace('bg-slate-700','bg-blue-500');
-    absToggleBtn.classList.replace('bg-blue-500','bg-slate-700');
-    rerender();
-  });
-  rerender();
-}
+  /* ---------- build Intraday calendar ---------- */
+  function buildIntradayCalendar(){
+    const calendar={};
+    let idx=0;
+    while(idx<trades.length){
+       const tradeDate = ymd(new Date(trades[idx].date));
+       const queues={};   // per symbol: {buy:[],sell:[]}
+       let pnlDay=0;
+       // gather trades of this day
+       while(idx<trades.length && ymd(new Date(trades[idx].date))===tradeDate){
+           const t=trades[idx];
+           const qty = Number(t.qty);
+           const price = Number(t.price);
+           const sym = t.symbol;
+           queues[sym] = queues[sym]||{buy:[],sell:[]};
+           const q = queues[sym];
+           if(['BUY','COVER','买入','回补'].includes(t.side.toUpperCase())){
+              let remaining = qty;
+              // first try match against sells queue (short)
+              while(remaining>0 && q.sell.length){
+                 const lot = q.sell[0];
+                 const use = Math.min(remaining, lot.qty);
+                 pnlDay += (lot.price - price)*use; // entry was sell
+                 lot.qty -= use; remaining -= use;
+                 if(lot.qty===0) q.sell.shift();
+              }
+              if(remaining>0){
+                 q.buy.push({qty:remaining, price});
+              }
+           }else{ // SELL or SHORT
+              let remaining = qty;
+              while(remaining>0 && q.buy.length){
+                 const lot = q.buy[0];
+                 const use = Math.min(remaining, lot.qty);
+                 pnlDay += (price - lot.price)*use; // entry was buy
+                 lot.qty -= use; remaining -= use;
+                 if(lot.qty===0) q.buy.shift();
+              }
+              if(remaining>0){
+                 q.sell.push({qty:remaining, price});
+              }
+           }
+           idx++;
+       }
+       calendar[tradeDate]=pnlDay;
+    }
+    return calendar;
+  }
 
-// 总账户日历
-renderCalendar(
-  document.getElementById('totalCalendar'),
-  totalMap,
-  document.getElementById('togglePctTotal'),
-  document.getElementById('toggleAbsTotal')
-);
-
-// 日内日历
-renderCalendar(
-  document.getElementById('intraCalendar'),
-  intraMap,
-  document.getElementById('togglePctIntra'),
-  document.getElementById('toggleAbsIntra')
-);
-
-})(); // IIFE end
+  /* ---------- render ---------- */
+  async function main(){
+     const [tot, intra] = await Promise.all([buildTotalCalendar(), Promise.resolve(buildIntradayCalendar())]);
+     // simple console output; integrate into UI later
+     console.table(tot);
+     console.table(intra);
+     window.Calendars = {total:tot, intraday:intra};
+  }
+  main();
+})();
