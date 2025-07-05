@@ -3,7 +3,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>交易分析 - Trading777</title>
+  <title>交易分析 - Trading777 v7.7.5</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
@@ -22,7 +22,13 @@
     <!-- 功能区 1: 资金收益图表 -->
     <section id="pnlChartSection">
       <h2 class="text-lg font-semibold mb-4">资金收益曲线</h2>
-      <canvas id="pnlChart" class="w-full h-72 bg-slate-800 rounded-xl p-4"></canvas>
+      
+<div class="flex gap-1 mb-2">
+  <button data-gran="day" id="granDay" class="px-3 py-1 text-xs rounded-l-lg bg-blue-500">日</button>
+  <button data-gran="week" id="granWeek" class="px-3 py-1 text-xs bg-slate-700">周</button>
+  <button data-gran="month" id="granMonth" class="px-3 py-1 text-xs rounded-r-lg bg-slate-700">月</button>
+</div>
+<canvas id="pnlChart" class="w-full h-72 bg-slate-800 rounded-xl p-4"></canvas>
     </section>
 
     <!-- 功能区 2: 交易日历 -->
@@ -47,7 +53,7 @@
       <div class="bg-slate-800 rounded-xl overflow-x-auto">
         <table id="rankingTable" class="w-full text-sm text-left">
           <thead class="uppercase tracking-wider text-slate-400 text-xs border-b border-slate-700">
-            <tr><th>排名</th><th>代码</th><th>中文</th><th>累计盈亏 ($)</th></tr>
+            <tr><th>排名</th><th>logo</th><th>代码</th><th>中文</th><th>累计盈亏 ($)</th></tr>
           </thead>
           <tbody class="text-slate-300">
             <!-- 动态填充 -->
@@ -57,92 +63,174 @@
     </section>
   </main>
 
-<script>
-// dummy trades data
-const trades = [
-  {date: '2025-05-01', symbol: 'TSLA', side:'SELL', qty:10, price:300},
-  {date: '2025-05-02', symbol: 'AAPL', side:'BUY', qty:50, price:200},
-  {date: '2025-05-05', symbol: 'TSLA', side:'BUY', qty:5, price:310},
-  {date: '2025-05-05', symbol: 'AMD', side:'SELL', qty:100, price:120},
-  {date: '2025-05-07', symbol: 'GOOGL', side:'BUY', qty:10, price:180},
-  {date: '2025-05-22', symbol: 'GOOGL', side:'SELL', qty:5, price:190},
-];
 
-// Helper to group by date sum pnl
-function calcDailyPnl() {
-  const daily = {};
-  trades.forEach(t=>{
-    const amt = (t.side==='SELL'?1:-1)*t.qty*t.price;
-    daily[t.date]=(daily[t.date]||0)+amt;
+<script>
+// ----------------- Data Load -----------------
+const trades = JSON.parse(localStorage.getItem('trades') || '[]');
+
+// helpers
+function tradePnl(t){
+  if (typeof t.pl === 'number' && !isNaN(t.pl)) return t.pl;
+  const sign = (t.side === 'SELL' || t.side === 'COVER') ? 1 : -1;
+  return sign * t.qty * t.price;
+}
+function groupBy(arr, keyFn){
+  const m = {};
+  arr.forEach(it=>{
+    const k = keyFn(it);
+    (m[k] = m[k] || []).push(it);
   });
-  return daily;
+  return m;
 }
 
-// Chart
-const dailyPnl = calcDailyPnl();
-const labels = Object.keys(dailyPnl).sort();
-const data = labels.map(d=>dailyPnl[d]);
+// ----------------- Capital Curve -----------------
+const granBtns = {
+  day: document.getElementById('granDay'),
+  week: document.getElementById('granWeek'),
+  month: document.getElementById('granMonth')
+};
+let granularity = 'day';
+const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+let pnlChart;
 
-const ctx = document.getElementById('pnlChart');
-new Chart(ctx, {
-  type:'line',
-  data:{
-    labels,
-    datasets:[{
-      label:'净收益 ($)',
-      data,
-      fill:false,
-    }]
-  },
-  options:{
-    responsive:true,
-    scales:{
-      x:{ticks:{color:'#94a3b8'}},
-      y:{ticks:{color:'#94a3b8'}}
-    },
-    plugins:{
-      legend:{display:false},
-      tooltip:{callbacks:{label:(c)=>` $${c.parsed.y.toFixed(2)}`}}
-    }
+function labelForGran(date, gran){
+  const d = new Date(date);
+  if(gran === 'week'){
+    const year = d.getFullYear();
+    const firstJan = new Date(year,0,1);
+    const week = Math.ceil((((d - firstJan)/86400000) + firstJan.getDay()+1)/7);
+    return `${year}-W${week}`;
   }
-});
+  if(gran === 'month'){
+    return `${d.getFullYear()}-${('0'+(d.getMonth()+1)).slice(-2)}`;
+  }
+  return d.toISOString().slice(0,10);
+}
 
-// Calendar
-document.addEventListener('DOMContentLoaded', function() {
-  const calendarEl = document.getElementById('calendar');
-  const events = labels.map(d=>({
-    title:`${dailyPnl[d]>0?'+':''}${dailyPnl[d].toFixed(2)}`,
-    start:d,
-    color: dailyPnl[d]>0 ? '#22c55e' : '#ef4444'
-  }));
-  const cal = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    height: 'auto',
-    events
+function buildCurveData(gran){
+  const grouped = groupBy(trades, t=>labelForGran(t.date, gran));
+  const labels = Object.keys(grouped).sort();
+  let cumulative = 0;
+  const data = labels.map(l=>{
+    const periodPnl = grouped[l].reduce((s,t)=>s+tradePnl(t),0);
+    cumulative += periodPnl;
+    return cumulative;
   });
-  cal.render();
+  return {labels,data};
+}
+
+function renderCurve(){
+  const {labels,data} = buildCurveData(granularity);
+  if(pnlChart) pnlChart.destroy();
+  pnlChart = new Chart(pnlCtx,{
+    type:'line',
+    data:{labels,datasets:[{data, borderWidth:2,tension:.3}]},
+    options:{
+      responsive:true,
+      scales:{x:{grid:{display:false},ticks:{color:'#cbd5e1'}},
+              y:{grid:{display:false},ticks:{color:'#cbd5e1'}}},
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+Object.entries(granBtns).forEach(([gran,btn])=>{
+  btn.addEventListener('click', ()=>{
+    granularity = gran;
+    Object.values(granBtns).forEach(b=>b.classList.replace('bg-blue-500','bg-slate-700'));
+    btn.classList.replace('bg-slate-700','bg-blue-500');
+    renderCurve();
+  });
+});
+renderCurve();
+
+// ----------------- Trading Calendar -----------------
+const dailyGrouped = groupBy(trades, t=>t.date);
+const dailyAbs = {};
+const dailyPct = {};
+Object.entries(dailyGrouped).forEach(([date, arr])=>{
+  const abs = arr.reduce((s,t)=>s+tradePnl(t),0);
+  const gross = arr.reduce((s,t)=>s+t.qty*t.price,0) || 1;
+  const pct = abs / gross * 100;
+  dailyAbs[date] = abs;
+  dailyPct[date] = pct;
+});
+const calendarEl = document.getElementById('calendar');
+let showPct = false;
+let calendar;
+
+function buildEvents(){
+  return Object.keys(dailyAbs).sort().map(d=>{
+    const val = showPct ? dailyPct[d] : dailyAbs[d];
+    const title = showPct ? `${val>=0?'+':''}${val.toFixed(2)}%` : `${val>=0?'+':''}${val.toFixed(2)}`;
+    return {title,start:d,color: val>=0 ? '#22c55e' : '#ef4444'};
+  });
+}
+
+function renderCalendar(){
+  if(calendar) calendar.destroy();
+  calendar = new FullCalendar.Calendar(calendarEl,{
+    initialView:'dayGridMonth',
+    height:'auto',
+    events: buildEvents()
+  });
+  calendar.render();
+}
+renderCalendar();
+
+document.getElementById('toggleAbs').addEventListener('click', ()=>{
+  showPct=false;
+  document.getElementById('toggleAbs').classList.replace('bg-slate-700','bg-blue-500');
+  document.getElementById('togglePct').classList.replace('bg-blue-500','bg-slate-700');
+  renderCalendar();
+});
+document.getElementById('togglePct').addEventListener('click', ()=>{
+  showPct=true;
+  document.getElementById('togglePct').classList.replace('bg-slate-700','bg-blue-500');
+  document.getElementById('toggleAbs').classList.replace('bg-blue-500','bg-slate-700');
+  renderCalendar();
 });
 
-// Ranking
-function renderRanking(type='profit') {
-  const symPnl = {};
+// Remove FullCalendar grid borders via CSS injection
+const style = document.createElement('style');
+style.textContent = `
+  .fc-theme-standard .fc-scrollgrid,
+  .fc-theme-standard td,
+  .fc-theme-standard th { border:none !important;}
+  .fc-col-header-cell-cushion { color:#cbd5e1; }
+`;
+document.head.appendChild(style);
+
+// ----------------- P/L Ranking -----------------
+function buildRanking(){
+  const symMap = {};
   trades.forEach(t=>{
-    const amt = (t.side==='SELL'?1:-1)*t.qty*t.price;
-    symPnl[t.symbol]=(symPnl[t.symbol]||0)+amt;
+    const p = tradePnl(t);
+    symMap[t.symbol] = (symMap[t.symbol] || 0) + p;
   });
-  let rows = Object.entries(symPnl).map(([s,p])=>({symbol:s,pnl:p}));
-  rows.sort((a,b)=> type==='profit'? b.pnl-a.pnl : a.pnl-b.pnl);
-  rows = rows.slice(0,10);
-  const tbody = document.querySelector('#rankingTable tbody');
+  const arr = Object.entries(symMap).map(([symbol,pnl])=>({symbol,pnl}));
+  const profitTop = arr.filter(i=>i.pnl>0).sort((a,b)=>b.pnl-a.pnl).slice(0,10);
+  const lossTop   = arr.filter(i=>i.pnl<0).sort((a,b)=>a.pnl-b.pnl).slice(0,10);
+  return {profitTop, lossTop};
+}
+const tbody = document.querySelector('#rankingTable tbody');
+function renderRanking(type='profit'){
+  const {profitTop,lossTop} = buildRanking();
+  const list = type==='profit'?profitTop:lossTop;
   tbody.innerHTML='';
-  rows.forEach((r,i)=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="py-1 px-2">${i+1}</td><td class="py-1 px-2">${r.symbol}</td><td class="py-1 px-2">--</td><td class="py-1 px-2 ${r.pnl>=0?'text-green-400':'text-red-400'}">${r.pnl.toFixed(2)}</td>`;
-    tbody.appendChild(tr);
+  list.forEach((row,i)=>{
+    const cn = window.SymbolCN && window.SymbolCN[row.symbol] ? window.SymbolCN[row.symbol] : '';
+    tbody.insertAdjacentHTML('beforeend',`
+      <tr class="border-b border-slate-700">
+        <td class="py-1 px-2">${i+1}</td>
+        <td class="py-1 px-2"><img loading="lazy" src="logos/${row.symbol}.png" alt="${row.symbol}" onerror="this.style.visibility='hidden';" class="w-5 h-5 inline-block"></td>
+        <td class="py-1 px-2">${row.symbol}</td>
+        <td class="py-1 px-2">${cn}</td>
+        <td class="py-1 px-2 ${row.pnl>=0?'text-green-400':'text-red-400'}">${row.pnl.toFixed(2)}</td>
+      </tr>
+    `);
   });
 }
 renderRanking('profit');
-
 document.getElementById('profitTab').addEventListener('click', ()=>{
   document.getElementById('profitTab').classList.replace('bg-slate-700','bg-blue-500');
   document.getElementById('lossTab').classList.replace('bg-blue-500','bg-slate-700');
@@ -154,5 +242,6 @@ document.getElementById('lossTab').addEventListener('click', ()=>{
   renderRanking('loss');
 });
 </script>
+
 </body>
 </html>
