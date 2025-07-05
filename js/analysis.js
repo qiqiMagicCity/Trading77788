@@ -1,5 +1,5 @@
 
-/* Trading777 交易分析 – v7.7.11
+/* Trading777 交易分析 – v7.7.12
  * 日历算法重写：满足「总账户＝每日净值变动」「日内＝当天闭环」原则
  * 时间基准：America/New_York
  * Finnhub 日K收盘价抓取并本地缓存 localStorage('priceCache')
@@ -105,54 +105,83 @@
     return calendar;
   }
 
-  /* ---------- build Intraday calendar ---------- */
-  function buildIntradayCalendar(){
-    const calendar={};
-    let idx=0;
-    while(idx<trades.length){
-       const tradeDate = ymd(new Date(trades[idx].date));
-       const queues={};   // per symbol: {buy:[],sell:[]}
-       let pnlDay=0;
-       // gather trades of this day
-       while(idx<trades.length && ymd(new Date(trades[idx].date))===tradeDate){
-           const t=trades[idx];
-           const qty = Number(t.qty);
-           const price = Number(t.price);
-           const sym = t.symbol;
-           queues[sym] = queues[sym]||{buy:[],sell:[]};
-           const q = queues[sym];
-           if(['BUY','COVER','买入','回补'].includes(t.side.toUpperCase())){
-              let remaining = qty;
-              // first try match against sells queue (short)
-              while(remaining>0 && q.sell.length){
-                 const lot = q.sell[0];
-                 const use = Math.min(remaining, lot.qty);
-                 pnlDay += (lot.price - price)*use; // entry was sell
-                 lot.qty -= use; remaining -= use;
-                 if(lot.qty===0) q.sell.shift();
-              }
-              if(remaining>0){
-                 q.buy.push({qty:remaining, price});
-              }
-           }else{ // SELL or SHORT
-              let remaining = qty;
-              while(remaining>0 && q.buy.length){
-                 const lot = q.buy[0];
-                 const use = Math.min(remaining, lot.qty);
-                 pnlDay += (price - lot.price)*use; // entry was buy
-                 lot.qty -= use; remaining -= use;
-                 if(lot.qty===0) q.buy.shift();
-              }
-              if(remaining>0){
-                 q.sell.push({qty:remaining, price});
-              }
-           }
-           idx++;
-       }
-       calendar[tradeDate]=pnlDay;
+  
+/* ---------- build Intraday calendar (v7.7.12 rewrite) ---------- */
+function buildIntradayCalendar(){
+  // Trades must be sorted ascending by datetime
+  const calendar = {};
+  const positions = {};   // carry‑over position before current trade, per symbol
+  let currentDay = null;
+  let baseline = {};
+  let queues = {};
+  let pnlDay = 0;
+  function flushDay(){ if(currentDay!==null) calendar[currentDay]=Number(pnlDay.toFixed(2)); }
+  trades.forEach(t=>{
+    const tradeDay = ymd(new Date(t.date));
+    if(tradeDay!==currentDay){
+       // new day – store result of previous day, reset state
+       flushDay();
+       currentDay = tradeDay;
+       baseline = {...positions};   // snapshot of positions at start of day
+       queues = {};                 // per symbol {long:[], short:[]}
+       pnlDay = 0;
     }
-    return calendar;
-  }
+    const sideStr = (t.side||'').toUpperCase();
+    const isBuy = ['BUY','COVER','买入','回补'].some(s=>sideStr.includes(s));
+    const qty = Math.abs(Number(t.qty));
+    const price = Number(t.price);
+    const sym = t.symbol;
+    if(!queues[sym]) queues[sym] = {long:[], short:[]};
+    if(!(sym in baseline)) baseline[sym]=0;
+    if(!(sym in positions)) positions[sym]=baseline[sym];
+    const q = queues[sym];
+    let qtyRem = qty;
+    if(isBuy){
+        // 1. Match against intraday short queue
+        while(qtyRem>0 && q.short.length){
+           const lot = q.short[0];
+           const use = Math.min(qtyRem, lot.qty);
+           pnlDay += (lot.price - price)*use;
+           lot.qty -= use; qtyRem -= use;
+           if(lot.qty===0) q.short.shift();
+        }
+        // 2. Cover baseline short if any remaining
+        if(baseline[sym]<0){
+           const baselineShortRem = Math.max(0, -Math.min(positions[sym], baseline[sym]));
+           const cover = Math.min(qtyRem, baselineShortRem);
+           positions[sym] += cover; qtyRem -= cover;
+        }
+        // 3. Any remainder forms intraday long
+        if(qtyRem>0){
+           q.long.push({qty:qtyRem,price});
+           positions[sym] += qtyRem;
+        }
+    }else{ // SELL / SHORT
+        // 1. Match against intraday long queue
+        while(qtyRem>0 && q.long.length){
+           const lot = q.long[0];
+           const use = Math.min(qtyRem, lot.qty);
+           pnlDay += (price - lot.price)*use;
+           lot.qty -= use; qtyRem -= use;
+           if(lot.qty===0) q.long.shift();
+        }
+        // 2. Reduce baseline long if any remaining
+        if(baseline[sym]>0){
+           const baselineLongRem = Math.max(0, Math.min(positions[sym], baseline[sym]));
+           const reduce = Math.min(qtyRem, baselineLongRem);
+           positions[sym] -= reduce; qtyRem -= reduce;
+        }
+        // 3. Any remainder forms intraday short
+        if(qtyRem>0){
+           q.short.push({qty:qtyRem,price});
+           positions[sym] -= qtyRem;
+        }
+    }
+  });
+  flushDay();
+  return calendar;
+}
+
 
   /* ---------- render ---------- */
   async function main(){
