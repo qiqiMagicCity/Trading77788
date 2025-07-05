@@ -7,6 +7,12 @@ function getSideClass(side) {
   if (side === 'COVER') return 'blue';
   return '';
 }
+function getWeekday(dateStr){
+  if(!dateStr) return 0;
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return new Date(y,m-1,d).getDay();
+}
+
 function render(){
   let trades = JSON.parse(localStorage.getItem('trades')||'[]');
   trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
@@ -27,7 +33,7 @@ function render(){
         <td>${i+1}</td><td><img loading="lazy" src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
         <td class="cn">${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
-        <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ]}</td>
+        <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ getWeekday(t.date) ]}</td>
         <td>${t.count}</td>
         <td class="${getSideClass(t.side)}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
