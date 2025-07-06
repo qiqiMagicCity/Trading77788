@@ -25,6 +25,82 @@
   function monthKey(d){
     return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0');
   }
+
+/* ---------- v7.14 新增：资金收益曲线基于“当日已实现盈亏 + 当日浮动盈亏” ---------- */
+async function getApiKeys(){
+  if(getApiKeys._cache) return getApiKeys._cache;
+  const txt = await fetch('KEY.txt').then(r=>r.text());
+  const m = txt.match(/Finnhub key：([\w]+)/);
+  const finnhub = m? m[1] : '';
+  return (getApiKeys._cache = {finnhub});
+}
+
+/* 获取某股票历史日线收盘价字典 {YYYY-MM-DD:close} */
+async function fetchDailyCloses(symbol, startDate, endDate, token){
+  const fromTs = Math.floor(new Date(startDate+'T00:00:00Z').getTime()/1000);
+  const toTs   = Math.floor(new Date(endDate  +'T23:59:59Z').getTime()/1000);
+  const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${fromTs}&to=${toTs}&token=${token}`;
+  const data = await fetch(url).then(r=>r.json()).catch(()=>({s:'error'}));
+  if(data.s!=='ok') return {};
+  const res = {};
+  data.t.forEach((t,i)=>{
+    const d = new Date(t*1000).toISOString().slice(0,10);
+    res[d] = data.c[i];
+  });
+  return res;
+}
+
+/* 计算每日净值变化 (已实现 + 浮动) */
+async function computeDailyNet(trades){
+  if(!trades || trades.length===0) return [];
+  trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
+  const symbols=[...new Set(trades.map(t=>t.symbol))];
+  const minDate = trades[0].date;
+  const maxDate = trades[trades.length-1].date;
+  const keys = await getApiKeys();
+  const priceDict={};
+  for(const sym of symbols){
+    priceDict[sym] = await fetchDailyCloses(sym, minDate, maxDate, keys.finnhub);
+  }
+  const dateArr=[];
+  for(let d=new Date(minDate+'T00:00:00Z'); d<=new Date(maxDate+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+1)){
+    dateArr.push(formatDate(d));
+  }
+  // 持仓数量（不区分多空，BUY+/SELL-）
+  const posQty={};
+  const result=[];
+  for(let i=0;i<dateArr.length;i++){
+    const dt=dateArr[i];
+    // Realized
+    const dayTrades = trades.filter(t=>t.date===dt);
+    let realized = dayTrades.reduce((s,t)=> s +(typeof t.pl==='number'? t.pl:0), 0);
+    // Update positions
+    dayTrades.forEach(t=>{
+      const delta = (t.side==='BUY'||t.side==='COVER') ? t.qty : -t.qty;
+      posQty[t.symbol]=(posQty[t.symbol]||0)+delta;
+    });
+    // Unrealized (浮动) 当日 = 当日收盘价 - 前一日收盘价
+    let unrealized=0;
+    for(const sym of symbols){
+      const qty=posQty[sym]||0;
+      if(qty===0) continue;
+      const closeToday = priceDict[sym][dt];
+      const prevDate = dateArr[i-1];
+      const closePrev = prevDate ? priceDict[sym][prevDate] : undefined;
+      if(typeof closeToday==='number' && typeof closePrev==='number'){
+        unrealized += qty * (closeToday - closePrev);
+      }
+    }
+    const net=realized+unrealized;
+    result.push({date:dt, realized, unrealized, net});
+  }
+  // 累计曲线
+  let cumulative=0;
+  return result.map(d=>{
+    cumulative += d.net;
+    return {...d, cumulative};
+  });
+}
   function renderClocks(){
     const fmt = tz => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
     document.getElementById('clocks').innerText =
@@ -41,28 +117,8 @@
   // ensure trades sorted by date ascending
   trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
 
-  /* -------- equity curve --------- */
-  function calcAgg(groupFn){
-    const map = {};
-    trades.forEach(tr=>{
-      const key = groupFn(new Date(tr.date+'T00:00:00Z'));
-      const pl = (typeof tr.pl === 'number') ? tr.pl : 0;
-      map[key] = (map[key]||0) + pl;
-    });
-    // sort keys
-    const keys = Object.keys(map).sort();
-    const daily = keys.map(k=>({key:k, pnl:map[k]}));
-    let cumulative = 0;
-    return daily.map(d=>{
-      cumulative += d.pnl;
-      return {...d, cumulative};
-    });
-  }
-  const dataDaily  = calcAgg(d=>formatDate(d));
-  const dataWeekly = calcAgg(weekOfYear);
-  const dataMonthly= calcAgg(monthKey);
-
-  let curMode='day';
+  /* (v7.10 legacy curve code removed) */
+let curMode='day';='day';
 
   // ---- chart ----
   let chartInstance=null;
@@ -91,7 +147,68 @@
       }
     });
   }
-  renderChart('day');
+  
+/* -------- v7.14 curve render ---------- */
+let chartInstance=null;
+let dailyData=[], weeklyData=[], monthlyData=[];
+
+function groupKeyWeek(d){
+  return weekOfYear(new Date(d+'T00:00:00Z'));
+}
+function groupKeyMonth(d){
+  const p=new Date(d+'T00:00:00Z');
+  return p.getUTCFullYear()+'-'+String(p.getUTCMonth()+1).padStart(2,'0');
+}
+function aggregate(dataArr, keyFn){
+  const mp={};
+  dataArr.forEach(r=>{
+    const k=keyFn(r.date);
+    mp[k]=(mp[k]||0)+r.net;
+  });
+  const keys=Object.keys(mp).sort();
+  let cum=0;
+  return keys.map(k=>{
+     cum += mp[k];
+     return {key:k, cumulative:cum};
+  });
+}
+
+async function prepareCurve(){
+  dailyData = await computeDailyNet(trades);
+  weeklyData = aggregate(dailyData, groupKeyWeek);
+  monthlyData= aggregate(dailyData, groupKeyMonth);
+  renderChart(curMode);
+}
+
+function renderChart(mode){
+  curMode = mode;
+  const mapping = {day:dailyData, week:weeklyData, month:monthlyData}[mode]||dailyData;
+  const labels = mapping.map(d=>d.key || d.date);
+  const values = mapping.map(d=>d.cumulative.toFixed(2));
+  const ctx=document.getElementById('pnlCanvas').getContext('2d');
+  if(chartInstance) chartInstance.destroy();
+  chartInstance=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{label:'累计净值($)',data:values,tension:0.25,fill:true}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+             scales:{x:{ticks:{color:'#94a3b8'}},y:{beginAtZero:false,ticks:{color:'#94a3b8'}}}}
+  });
+}
+
+/* buttons */
+['btn-day','btn-week','btn-month'].forEach(id=>{
+  const btn=document.getElementById(id);
+  if(btn){
+    btn.addEventListener('click',()=>{
+      ['btn-day','btn-week','btn-month'].forEach(other=>document.getElementById(other)?.classList.remove('active'));
+      btn.classList.add('active');
+      renderChart(id==='btn-day'?'day': id==='btn-week'?'week':'month');
+    });
+  }
+});
+
+/* ---------- 加载曲线 ---------- */
+prepareCurve();
 
   // buttons
   document.getElementById('btn-day').addEventListener('click',()=>{activateButton('btn-day',['btn-day','btn-week','btn-month']);renderChart('day');});
@@ -210,6 +327,22 @@ buildCalendar();
     return t.closeDate && t.date === t.closeDate;
   }
   function buildCalendar(elId, trades){
+    /* v7.14 日历新增：week header + 日期标注 + 支持 state.view=day */
+    const isDailyArr = Array.isArray(trades) && trades.length && trades[0].date && typeof trades[0].net==='number';
+    let dayMap={};
+    if(isDailyArr){
+      trades.forEach(rec=>{
+        dayMap[rec.date]=rec.net;
+      });
+    }else{
+      // legacy fallback
+      trades.forEach(t=>{
+        const dkey = t.date;
+        const val = (typeof t.net==='number')? t.net :(typeof t.pl==='number'? t.pl:0);
+        dayMap[dkey]=(dayMap[dkey]||0)+val;
+      });
+    }
+
     const container = document.getElementById(elId);
     if(!container) return;
     container.innerHTML='';
@@ -223,7 +356,18 @@ buildCalendar();
       if(!dayMap[dkey]) dayMap[dkey]=0;
       dayMap[dkey]+= (t.real || t.pnl || 0);
     });
-    const grid=document.createElement('div');
+    
+    // 添加星期栏
+    const headerRow=document.createElement('div');
+    headerRow.className='calendar-header';
+    const wdLabels=['日','一','二','三','四','五','六'];
+    wdLabels.forEach(l=>{
+      const h=document.createElement('div');
+      h.textContent='周'+l;
+      headerRow.appendChild(h);
+    });
+    container.appendChild(headerRow);
+const grid=document.createElement('div');
     grid.className='calendar-grid';
     container.appendChild(grid);
     // blank cells until first weekday
@@ -243,24 +387,33 @@ buildCalendar();
       grid.appendChild(cell);
     }
   }
-  function renderCalendars(){
-    const trades = getTrades();
-    const total = trades;
-    const intra = trades.filter(isIntradayTrade);
-    buildCalendar('tradeCalendarTotal', total);
-    buildCalendar('tradeCalendarIntraday', intra);
-  }
-  // controls
+  
+function renderCalendars(){
+    if(!dailyData || dailyData.length===0) return;
+    buildCalendar('tradeCalendarTotal', dailyData);
+    computeDailyNet(trades.filter(isIntradayTrade)).then(intra=>{
+        buildCalendar('tradeCalendarIntraday',intra);
+    });
+}
+// controls
+  
   document.getElementById('cal-prev')?.addEventListener('click',()=>{
-    if(state.view==='month'){
+    if(state.view==='day'){
+      state.date.setUTCDate(state.date.getUTCDate()-1);
+    }else if(state.view==='week'){
+      state.date.setUTCDate(state.date.getUTCDate()-7);
+    }else if(state.view==='month'){
       state.date.setUTCMonth(state.date.getUTCMonth()-1);
     }else if(state.view==='year'){
       state.date.setUTCFullYear(state.date.getUTCFullYear()-1);
     }
     renderCalendars();
   });
+  
+
   document.getElementById('cal-next')?.addEventListener('click',()=>{
-    if(state.view==='month'){
+    if(state.view==='day'){ state.date.setUTCDate(state.date.getUTCDate()-1); }
+    else if(state.view==='month'){
       state.date.setUTCMonth(state.date.getUTCMonth()+1);
     }else if(state.view==='year'){
       state.date.setUTCFullYear(state.date.getUTCFullYear()+1);
