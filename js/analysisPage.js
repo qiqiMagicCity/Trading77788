@@ -291,8 +291,8 @@
     }
     function buildCalendar(elId, trades){
       /* v7.16 日历新增：week header + 日期标注 + 支持 state.view=day */
-      const isDailyArr = Array.isArray(trades) && trades.length && trades[0].date && typeof trades[0].net==='number';
       let dayMap={};
+      const isDailyArr = Array.isArray(trades) && trades.length && trades[0].date && typeof trades[0].net==='number';
       if(isDailyArr){
         trades.forEach(rec=>{
           dayMap[rec.date]=rec.net;
@@ -312,14 +312,9 @@
       const date = state.date;
       const y = date.getUTCFullYear();
       const m = date.getUTCMonth()+1;
-      // Build day map
-      const dayMap = {};
-      trades.forEach(t=>{
-        const dkey = t.date;
-        if(!dayMap[dkey]) dayMap[dkey]=0;
-        dayMap[dkey]+= (t.real || t.pnl || 0);
-      });
-      
+
+      // ***删除了重复声明 dayMap 的代码，只保留上面构造部分***
+
       // 添加星期栏
       const headerRow=document.createElement('div');
       headerRow.className='calendar-header';
