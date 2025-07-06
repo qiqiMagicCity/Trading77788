@@ -26,7 +26,7 @@
     return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0');
   }
 
-/* ---------- v7.14 新增：资金收益曲线基于“当日已实现盈亏 + 当日浮动盈亏” ---------- */
+/* ---------- v7.15 新增：资金收益曲线基于“当日已实现盈亏 + 当日浮动盈亏” ---------- */
 async function getApiKeys(){
   if(getApiKeys._cache) return getApiKeys._cache;
   const txt = await fetch('KEY.txt').then(r=>r.text());
@@ -148,7 +148,7 @@ let curMode='day';='day';
     });
   }
   
-/* -------- v7.14 curve render ---------- */
+/* -------- v7.15 curve render ---------- */
 let chartInstance=null;
 let dailyData=[], weeklyData=[], monthlyData=[];
 
@@ -327,7 +327,7 @@ buildCalendar();
     return t.closeDate && t.date === t.closeDate;
   }
   function buildCalendar(elId, trades){
-    /* v7.14 日历新增：week header + 日期标注 + 支持 state.view=day */
+    /* v7.15 日历新增：week header + 日期标注 + 支持 state.view=day */
     const isDailyArr = Array.isArray(trades) && trades.length && trades[0].date && typeof trades[0].net==='number';
     let dayMap={};
     if(isDailyArr){
