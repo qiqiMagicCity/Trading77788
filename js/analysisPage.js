@@ -118,7 +118,7 @@ async function computeDailyNet(trades){
   trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
 
   /* (v7.10 legacy curve code removed) */
-let curMode='day';='day';
+let curMode='day';
 
   // ---- chart ----
   let chartInstance=null;
