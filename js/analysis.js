@@ -1,4 +1,3 @@
-
 /* Trading777 交易分析 – v7.7.5 */
 /* 功能区1：资金收益曲线（总账户每日收益变化） */
 (async function(){
@@ -21,13 +20,12 @@
   const symbols = [...new Set(trades.map(t=>t.symbol))];
   
 
-
 /* ---------- Finnhub token ---------- */
 async function fetchFinnhubToken(){
     try{
         const txt = await (await fetch('/KEY.txt', {cache:'no-cache'})).text();
-        const lines = txt.split(/?
-/).filter(l=>l.trim());
+        // 这一行是唯一修改的地方：将正则表达式 /? 修正为 /\r?\n/
+        const lines = txt.split(/\r?\n/).filter(l=>l.trim()); 
         // 查找包含 finnhub 的行，或回退到任意疑似 token 的行
         for(const line of lines){
             if(/finnhub/i.test(line)){
@@ -54,7 +52,6 @@ async function fetchFinnhubToken(){
     return 'demo'; // fallback 公共演示 token，速率受限
 }
 const token = await fetchFinnhubToken();
-
 
   /* ---------- Fetch daily close price for each symbol ---------- */
   const fromTs = toTimestamp(dates[0]) - 86400;
