@@ -1,0 +1,32 @@
+Trading777 v7.7.17  更新日志
+==============================
+
+发布日期: 2025-07-06 02:27
+
+**核心改动**
+1. **交易日历算法重写 (analysis.js)**
+   - **日内交易**: 仅统计当日开仓+当日平仓的部分，严格排除对历史头寸的减仓/回补。
+   - **总账户**: 逻辑保持 FIFO 已实现 + 浮动盈亏，调用新的价格缓存。
+2. **增量价格缓存 (price-store.js)**
+   - 本地 `localStorage` 持久化；
+   - 首次缺价时自动调用 Finnhub API，仅拉一次并写缓存；
+   - 60 req/min 免费额度足够。
+3. **统一数据文件格式 (records.json) 兼容旧版**
+   - `{ trades, prices, dailyPnL, metadata }` 单文件导入/导出；
+   - analysis 页优先读取 records.json，找不到则回退 trades.json + prices.json。
+4. **分析页 UI**
+   - 新增 `<script src="js/price-store.js">`;
+   - 浏览器标题 **v7.7.17**。
+5. **其他**
+   - 所有 HTML 标题号同步至 v7.7.17。
+   - 新增 README 片段说明增量逻辑（见 docs）。
+
+**自检清单** ✔
+- [x] 在空缓存环境导入 demo 数据 → 正确拉价并渲染日历
+- [x] 断网后刷新 → 读取本地缓存不报错
+- [x] 重复导入旧文件 → 只重算受影响日期
+- [x] API 限流模拟 (sleep) 不影响 UI
+- [x] ESLint / Prettier 通过 (`npm run lint`)
+- [x] `npm run build` / `serve` 静态包正常
+
+-- end --
