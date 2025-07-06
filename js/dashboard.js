@@ -1,4 +1,10 @@
 
+// ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
+function getWeekIdx(dateStr){
+  const parts = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
+}
+
 /* Trading777 v5.3.2 dashboard – implements import / export, dynamic positions, add‑trade */
 
 (function(){
@@ -306,7 +312,7 @@ function renderTrades(){
   trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
     const amt=(t.qty*t.price).toFixed(2);
     const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
-    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ];
+    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ getWeekIdx(t.date) ];
     tbl.insertAdjacentHTML('beforeend',`
       <tr>
         <td>${t.date}</td>
@@ -566,3 +572,11 @@ function refreshAll(){
     renderTrades();
   }catch(e){}
 }
+
+/* ---- NY Date Display ---- */
+function renderNYDate(){
+  const opts = {timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'};
+  document.getElementById('nyDate').textContent = new Intl.DateTimeFormat('zh-CN',opts).format(new Date());
+}
+renderNYDate();
+setInterval(renderNYDate,60*1000);

@@ -1,4 +1,10 @@
 
+// ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
+function getWeekIdx(dateStr){
+  const parts = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
+}
+
 /* FIFO cost calculation & metrics – ported from Apps Script (迭代3.3.2) */
 (function(g){
   function computeFIFO(allTrades){

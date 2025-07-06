@@ -1,3 +1,9 @@
+
+// ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
+function getWeekIdx(dateStr){
+  const parts = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
+}
 (function(){
 const tbl=document.getElementById('all-trades');
 function getSideClass(side) {
@@ -27,7 +33,7 @@ function render(){
         <td>${i+1}</td><td><img loading="lazy" src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
         <td class="cn">${window.SymbolCN[t.symbol]||''}</td>
         <td>${t.date}</td>
-        <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date(t.date).getDay() ]}</td>
+        <td>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ getWeekIdx(t.date) ]}</td>
         <td>${t.count}</td>
         <td class="${getSideClass(t.side)}">${t.side}</td>
         <td>${t.price.toFixed(2)}</td>
