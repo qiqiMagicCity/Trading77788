@@ -16,7 +16,7 @@
   <!-- Top Nav -->
   <nav class="bg-slate-800 py-3 shadow-lg">
     <div class="max-w-7xl mx-auto px-4 flex items-center justify-between">
-      <h1 class="text-xl font-bold tracking-wide">Trading777 · 交易分析</h1>
+      <h1 class="text-xl font-bold tracking-wide">Trading777 v7.8.1 · 交易分析</h1>
       <a href="index.html" class="text-sm text-blue-400 hover:underline">← 返回仪表盘</a>
     </div>
   </nav>
@@ -70,7 +70,7 @@
   const labels = curve.map(p=>p.date);
   const data = curve.map(p=>p.cumulative);
   if(labels.length===0) return;
-  new Chart(ctx,{
+  window.pnlChartInstance = new Chart(ctx,{
     type:'line',
     data:{labels, datasets:[{label:'累计净值变化', data, tension:0.25, fill:true}]},
     options:{scales:{y:{beginAtZero:true}}, plugins:{legend:{display:false}}}

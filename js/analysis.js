@@ -130,3 +130,94 @@ document.getElementById('tab-loss').onclick=()=>{
   renderBoard(lossList);
 };
 })();
+
+/* ---- v7.8.1 新增: Alpha Vantage 收盘价 + 当日浮动盈亏 ---- */
+(function(){
+  const today = new Date().toISOString().slice(0,10);
+  // Fetch Alpha Vantage key from KEY.txt (格式: Alpha key：XXXXX)
+  function fetchAlphaKey(){
+    return fetch('KEY.txt').then(r=> r.ok? r.text():'').then(txt=>{
+      const m = txt.match(/Alpha\s+key：([A-Z0-9]+)/i);
+      return m? m[1].trim(): '';
+    });
+  }
+  // 计算当前持仓平均成本
+  function calcOpenPositions(trades){
+    const pos = {}; // {SYM: {qty, cost}}
+    trades.forEach(t=>{
+      const q = Number(t.qty);
+      const p = Number(t.price);
+      if(t.side==='BUY' || t.side==='COVER'){ // 增仓
+          const obj = pos[t.symbol] || (pos[t.symbol]={qty:0,cost:0});
+          const newQty = obj.qty + q;
+          obj.cost = (obj.cost*obj.qty + p*q)/newQty;
+          obj.qty = newQty;
+      }else if(t.side==='SELL' || t.side==='SHORT'){ // 减仓
+          const obj = pos[t.symbol] || (pos[t.symbol]={qty:0,cost:0});
+          obj.qty -= q;
+          if(obj.qty<=0){delete pos[t.symbol];}
+      }
+    });
+    return pos;
+  }
+
+  function fetchPrices(symbols, key){
+    // Sequential fetch to avoid hitting 5/min limit
+    const result = {};
+    let promise = Promise.resolve();
+    symbols.forEach(sym=>{
+      promise = promise.then(()=> fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${sym}&apikey=${key}`))
+                       .then(r=> r.json())
+                       .then(js=>{
+                          const price = Number(js['Global Quote'] && js['Global Quote']['05. price']);
+                          if(price>0) result[sym]=price;
+                          return new Promise(res=> setTimeout(res, 15000)); // 15s delay to respect rate limit
+                       });
+    });
+    return promise.then(()=> result);
+  }
+
+  async function updateCurveWithUnreal(){
+    try{
+      const trades = JSON.parse(localStorage.getItem('trades')||'[]');
+      if(!trades.length) return;
+      const positions = calcOpenPositions(trades);
+      const symbols = Object.keys(positions);
+      if(!symbols.length) return;
+
+      const key = await fetchAlphaKey();
+      if(!key) { console.warn('Alpha Vantage key missing'); return; }
+
+      const prices = await fetchPrices(symbols, key);
+
+      let unreal = 0;
+      symbols.forEach(sym=>{
+        if(prices[sym]){
+          const pos = positions[sym];
+          unreal += (prices[sym]-pos.cost)*pos.qty;
+        }
+      });
+
+      // Append or replace today's value on chart
+      const idx = lineData.findIndex(i=> i[0]===today);
+      const newCum = (lineData.length? Number(lineData[lineData.length-1][1]):0) + unreal;
+      if(idx>=0){
+         lineData[idx][1] = newCum.toFixed(2);
+      }else{
+         lineData.push([today,newCum.toFixed(2)]);
+      }
+      // Update chart (Chart.js or ECharts detection)
+      if(typeof lineChart!=='undefined' && lineChart.setOption){
+         lineChart.setOption({xAxis:{data:lineData.map(i=>i[0])},
+                              series:[{data:lineData.map(i=>i[1])}]});
+      }else if(typeof window.pnlChartInstance!=='undefined'){
+         window.pnlChartInstance.data.labels = lineData.map(i=>i[0]);
+         window.pnlChartInstance.data.datasets[0].data = lineData.map(i=>i[1]);
+         window.pnlChartInstance.update();
+      }
+    }catch(e){ console.error('updateCurveWithUnreal error',e);}
+  }
+
+  // initial call
+  updateCurveWithUnreal();
+})();
