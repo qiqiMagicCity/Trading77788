@@ -1,9 +1,0 @@
-Trading777 v7.7.21  — 2025‑07‑06
---------------------------------
-* Fix 404 errors for /data/*.json on analysis page
-  - Added stub files: data/records.json, data/trades.json, data/prices.json
-  - analysis.js: loadRecords() now falls back to:
-      • localStorage.records / trades / prices when static files missing
-      • Keeps previous Finnhub price‑store behaviour
-* Improved resilience: page no longer throws "No trades data" when datasets empty.
-* analysis.html: <title> bumped to v7.7.21.

@@ -1,250 +1,132 @@
 
-/* Trading777 – Analysis Engine  v7.7.17
- *
- * - Intraday calendar strictly follows user‑defined rule:
- *     Only trades that BOTH open and close within the same day, **and**
- *     whose opening leg also occurred on the same day, count.
- *     Any trade that merely reduces a carry‑in position is ignored.
- *
- * - Total calendar logic unchanged (FIFO realised + MTM float).
- *
- * - Data source: A SINGLE records file /data/records.json with schema:
- *     { trades:[...], prices:{sym:{YYYY-MM-DD:close}}, dailyPnL:{...}, metadata:{...} }
- *     For backward compat we still support /data/trades.json and /data/prices.json .
- *
- * - Price lookup now goes through priceStore (js/price-store.js):
- *     º local cache in localStorage
- *     º on cache miss → Finnhub API → persist
- *
- * After computation:
- *     window.Calendars = { intraday:{day: pnl}, total:{day:pnl} }
- *   and a "CalendarsReady" event is fired for UI layer.
- */
+/* Trading777 交易分析 – v7.7.3 */
 (function(){
-  /* ---------- helpers ---------- */
-  const num = v=> Number(v||0);
-  const abs = Math.abs;
-  const ymd = d => d.toISOString().slice(0,10);   // YYYY-MM-DD
-  const isBuy = s=> /BUY|COVER|买|回补/i.test(s);
-  const isSell= s=> !isBuy(s);
-
-  /* ---------- load data ---------- */
-  async function loadRecords(){
-      // try unified file first
-      let rec=null;
-      try{
-         const r = await fetch('/data/records.json');
-         if(r.ok) rec = await r.json();
-      }catch(_){}
-      if(rec){
-         return { trades:rec.trades||[], prices:rec.prices||{} };
-      }
-      // fallback
-      const [trades, prices] = await Promise.all([
-         fetch('/data/trades.json').then(r=>r.ok?r.json():[]).catch(_=>[]),
-         fetch('/data/prices.json').then(r=>r.ok?r.json():{}).catch(_=>({}))
-      ]);
-
-// fallback to localStorage when no static files present
-if(trades.length===0){
-   try{
-       const lsTrades = JSON.parse(localStorage.getItem('trades')||'[]');
-       trades = lsTrades;
-   }catch(e){}
+/* ---------- utilities ---------- */
+function numberColor(v){
+  if(v>0) return 'green';
+  if(v<0) return 'red';
+  return 'white';
 }
-if(Object.keys(prices).length===0){
-   try{
-       const lsPrices = JSON.parse(localStorage.getItem('prices')||'{}');
-       prices = lsPrices;
-   }catch(e){}
+function formatPnL(v){ return (isFinite(v)? v.toFixed(2):''); }
+
+/* ---------- clock ---------- */
+function renderClocks(){
+  const fmt = tz => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
+  document.getElementById('clocks').innerHTML =
+      `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
 }
-      return { trades, prices };
-  }
+renderClocks();
+setInterval(renderClocks,1000*30);
 
-  /* ---------- ensure prices ---------- */
-  async function ensurePrices(trades){
-      const syms = [...new Set(trades.map(t=>t.symbol))];
-      const days = [...new Set(trades.map(t=> ymd(new Date(t.date))))];
-      for(const sym of syms){
-          for(const d of days){
-              if(priceStore.cache?.[sym]?.[d]==null){
-                 await priceStore.getClose(sym,d);
-              }
-          }
+/* ---------- load trades ---------- */
+let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+trades.forEach(t=>{ t.date = t.date||t.time||t.datetime; });
+trades = trades.filter(t=>t.date && isFinite(t.pl));
+
+/* ---------- build daily pnl map ---------- */
+const dailyMap = {};
+trades.forEach(t=>{
+  const d = t.date.slice(0,10);
+  const pl = Number(t.pl)||0;
+  dailyMap[d] = (dailyMap[d]||0)+pl;
+});
+const allDates = Object.keys(dailyMap).sort();
+
+/* ---------- line chart (cumulative) ---------- */
+let cum = 0, lineData=[], lastDate='';
+allDates.forEach(d=>{
+   const v = dailyMap[d];
+   cum += v;
+   lineData.push([d,cum.toFixed(2)]);
+   lastDate=d;
+});
+const lineChart = echarts.init(document.getElementById('profit-line'));
+lineChart.setOption({
+  tooltip:{trigger:'axis'},
+  xAxis:{type:'category',data:lineData.map(i=>i[0])},
+  yAxis:{type:'value'},
+  series:[{type:'line',smooth:true,data:lineData.map(i=>i[1])}]
+});
+
+/* ---------- calendar ---------- */
+const calendarWrap = document.getElementById('calendar-wrap');
+let curYearMonth = lastDate? lastDate.slice(0,7): (new Date()).toISOString().slice(0,7);
+function renderCalendar(ym){
+   const [y,m] = ym.split('-').map(n=>parseInt(n,10));
+   const first=new Date(y,m-1,1);
+   const last=new Date(y,m,0);
+   const startDow = (first.getDay()+6)%7; // Monday=0
+   const weeks=Math.ceil((startDow+last.getDate())/7);
+   let html='<table class="calendar"><thead><tr>';
+   ['一','二','三','四','五','六','日'].forEach(d=>{html+=`<th>${d}</th>`});
+   html+='</tr></thead><tbody>';
+   let day=1;
+   for(let w=0;w<weeks;w++){
+      html+='<tr>';
+      for(let dow=0;dow<7;dow++){
+         const cellIndex=w*7+dow;
+         const dateStr=day<=last.getDate()? `${ym}-${String(day).padStart(2,'0')}`:'';
+         if(cellIndex<startDow || day>last.getDate()){
+            html+='<td></td>';
+         }else{
+            const pnl=dailyMap[dateStr]||0;
+            const cls = numberColor(pnl);
+            html+=`<td class="${cls}"><span class="day">${day}</span><span class="pnl">${formatPnL(pnl)}</span></td>`;
+            day++;
+         }
       }
-      return priceStore.cache;
-  }
+      html+='</tr>';
+   }
+   html+='</tbody></table>';
+   calendarWrap.innerHTML=html;
+   document.getElementById('cur-month').textContent = ym;
+}
+renderCalendar(curYearMonth);
 
-  /* ---------- Intraday Calendar ---------- */
-  function buildIntradayCalendar(tradesSorted){
-      const cal = {};
-      const posCarry = {};   // symbol -> qty carried into current day (long +, short -)
+document.getElementById('prev-month').onclick = ()=>{
+  const [y,m]=curYearMonth.split('-').map(Number);
+  const date = new Date(y,m-2,1);
+  curYearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+  renderCalendar(curYearMonth);
+};
+document.getElementById('next-month').onclick = ()=>{
+  const [y,m]=curYearMonth.split('-').map(Number);
+  const date = new Date(y,m,1);
+  curYearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+  renderCalendar(curYearMonth);
+};
 
-      let currentDay=null, dayTrades=[];
-      const flushDay = ()=>{
-         if(!currentDay) return;
-         const pnl = calcDay(dayTrades, posCarry);
-         cal[currentDay]=Number(pnl.toFixed(2));
-         // update carry with end‑of‑day position
-         dayTrades.forEach(tr=>{
-            const q = num(tr.qty)*(isBuy(tr.side)?1:-1);
-            posCarry[tr.symbol]=(posCarry[tr.symbol]||0)+q;
-         });
-         // reset
-         dayTrades=[];
-      };
-
-      const calcDay = (list, carry)=>{        // list already time‑sorted
-         const bySym = {};
-         list.forEach(t=>{ (bySym[t.symbol]??=[]).push(t); });
-         let pnlDay=0;
-
-         Object.entries(bySym).forEach(([sym, arr])=>{
-            let startPos = carry[sym]||0;
-            // queues for positions opened TODAY
-            const longLots=[], shortLots=[];
-            arr.forEach(tr=>{
-               let qty = num(tr.qty);
-               const price = num(tr.price);
-               const buy = isBuy(tr.side);
-               let sign = buy?1:-1;
-
-               // Step 1: consume against startPos (historical)
-               if(startPos!==0 && sign==-Math.sign(startPos)){
-                   const offset = Math.min(abs(startPos), qty);
-                   // Not intraday, just offset historical pos
-                   startPos += sign*offset;   // reduces magnitude towards 0
-                   qty -= offset;
-                   if(qty===0) return;        // trade fully consumed in historical adj
-                   // leftover qty becomes new position within today
-               }
-
-               // Step 2: intraday matching against today's opposite lots
-               if(buy){
-                   // cover shorts opened TODAY first
-                   while(qty>0 && shortLots.length){
-                       const lot = shortLots[0];
-                       const use = Math.min(qty, lot.qty);
-                       pnlDay += (lot.price - price)*use;  // short profit = openPrice - closePrice
-                       lot.qty -= use; qty -= use;
-                       if(lot.qty===0) shortLots.shift();
-                   }
-                   if(qty>0) longLots.push({qty,price});   // open new long TODAY
-               }else{ // sell
-                   while(qty>0 && longLots.length){
-                       const lot = longLots[0];
-                       const use = Math.min(qty, lot.qty);
-                       pnlDay += (price - lot.price)*use;   // long profit = sellPrice - buyPrice
-                       lot.qty -= use; qty -= use;
-                       if(lot.qty===0) longLots.shift();
-                   }
-                   if(qty>0) shortLots.push({qty,price}); // open new short TODAY
-               }
-            });
-            // any remaining longLots/shortLots will roll into next day's carry
-         });
-
-         return pnlDay;
-      };
-
-      tradesSorted.forEach(tr=>{
-         const d = ymd(new Date(tr.date));
-         if(d!==currentDay){ flushDay(); currentDay=d; }
-         dayTrades.push(tr);
-      });
-      flushDay();   // last day
-      return cal;
-  }
-
-  /* ---------- Total Calendar (unchanged) ---------- */
-  function buildTotalCalendar(trades, prices){
-     const cal = {};
-     if(!trades.length) return cal;
-     const byDay={};
-     trades.forEach(t=>{
-        const d = ymd(new Date(t.date));
-        (byDay[d]??=[]).push(t);
-     });
-     const days = Object.keys(byDay).sort();
-     const longLots={}, shortLots={};
-     let prevEquity=0;
-
-     days.forEach(day=>{
-        const list = byDay[day].sort((a,b)=> new Date(a.date)-new Date(b.date));
-        let realised=0;
-        list.forEach(tr=>{
-           const sym=tr.symbol;
-           const price=num(tr.price);
-           const buy=isBuy(tr.side);
-           const qtyInit=abs(num(tr.qty));
-           longLots[sym]??=[]; shortLots[sym]??=[];
-           let qty=qtyInit;
-
-           if(buy){
-              // close shorts first
-              while(qty>0 && shortLots[sym].length){
-                 const lot=shortLots[sym][0];
-                 const use=Math.min(qty, lot.qty);
-                 realised += (lot.price - price)*use;
-                 lot.qty -= use; qty-=use;
-                 if(lot.qty===0) shortLots[sym].shift();
-              }
-              if(qty>0) longLots[sym].push({qty,price});
-           }else{
-              // close longs first
-              while(qty>0 && longLots[sym].length){
-                 const lot=longLots[sym][0];
-                 const use=Math.min(qty, lot.qty);
-                 realised += (price - lot.price)*use;
-                 lot.qty -= use; qty-=use;
-                 if(lot.qty===0) longLots[sym].shift();
-              }
-              if(qty>0) shortLots[sym].push({qty,price});
-           }
-        });
-
-        // mark‑to‑market
-        let equity=0;
-        const syms= new Set([...Object.keys(longLots), ...Object.keys(shortLots)]);
-        syms.forEach(sym=>{
-           const longQty=longLots[sym].reduce((s,l)=>s+l.qty,0);
-           const shortQty=shortLots[sym].reduce((s,l)=>s+l.qty,0);
-           if(longQty===0 && shortQty===0) return;
-           const px = prices?.[sym]?.[day] ?? priceStore.cache?.[sym]?.[day];
-           if(px==null) return;
-           equity += longQty*px - shortQty*px;
-        });
-
-        const floatChange = equity - prevEquity;
-        cal[day]=Number((realised+floatChange).toFixed(2));
-        prevEquity = equity;
-     });
-     return cal;
-  }
-
-  /* ---------- main ---------- */
-  (async function(){
-     const {trades, prices:pricesFromFile} = await loadRecords();
-     if(!trades || !trades.length){ console.error('No trades data'); return; }
-
-     // ensure price cache
-     const pricesCache = await ensurePrices(trades);
-     // merge file prices into cache
-     Object.entries(pricesFromFile).forEach(([sym,obj])=>{
-        pricesCache[sym] = {...(pricesCache[sym]||{}), ...obj};
-     });
-
-     const tradesSorted=[...trades].sort((a,b)=> new Date(a.date)-new Date(b.date));
-     const intraday = buildIntradayCalendar(tradesSorted);
-     const total    = buildTotalCalendar(tradesSorted, pricesCache);
-
-     
-     // ---------- Persist calendars ----------
-     const calCache = (function(){try{return JSON.parse(localStorage.getItem('calendars')||'{}');}catch(e){return {};}})();
-     const updated = { ...calCache, intraday: {...calCache.intraday, ...intraday}, total:{...calCache.total,...total}};
-     localStorage.setItem('calendars', JSON.stringify(updated));
-
-     window.Calendars = {intraday,total};
-     window.dispatchEvent(new Event('CalendarsReady'));
-  })();
+/* ---------- leaderboard ---------- */
+const symMap={};
+trades.forEach(t=>{
+  symMap[t.symbol]= (symMap[t.symbol]||0) + Number(t.pl||0);
+});
+function sortAndSlice(arr,desc){
+  return arr.sort((a,b)=> desc? b[1]-a[1]: a[1]-b[1]).slice(0,10);
+}
+const profitList = sortAndSlice(Object.entries(symMap).filter(([s,v])=>v>0),true);
+const lossList   = sortAndSlice(Object.entries(symMap).filter(([s,v])=>v<0),false);
+const tbl = document.getElementById('leaderboard');
+function renderBoard(list){
+   tbl.innerHTML='<tr><th>#</th><th>代码</th><th>中文</th><th>累计盈亏</th></tr>';
+   list.forEach((item,i)=>{
+       const [sym,pl]=item;
+       const cn = window.SymbolCN && window.SymbolCN[sym]||'';
+       const cls = numberColor(pl);
+       tbl.insertAdjacentHTML('beforeend',`<tr>
+          <td>${i+1}</td><td>${sym}</td><td class="cn">${cn}</td><td class="${cls}">${formatPnL(pl)}</td>
+       </tr>`);
+   });
+}
+renderBoard(profitList);
+document.getElementById('tab-profit').onclick=()=>{
+  document.getElementById('tab-profit').classList.add('active');
+  document.getElementById('tab-loss').classList.remove('active');
+  renderBoard(profitList);
+};
+document.getElementById('tab-loss').onclick=()=>{
+  document.getElementById('tab-loss').classList.add('active');
+  document.getElementById('tab-profit').classList.remove('active');
+  renderBoard(lossList);
+};
 })();

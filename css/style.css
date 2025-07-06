@@ -192,6 +192,6 @@ body{margin:0;}
   white-space: nowrap;   /* 不换行 */
 }
 
-/* v7.7.6 calendar header visibility */
-#totalCalendar .fc-col-header-cell-cushion, #intraCalendar .fc-col-header-cell-cushion{color:#f8fafc;font-weight:600;}
-#totalCalendar .fc-toolbar-title, #intraCalendar .fc-toolbar-title{color:#f8fafc;}
+/* v7.7.5 calendar borderless */
+.fc td,.fc th{border:none !important;}
+.fc-col-header-cell-cushion{color:#e2e8f0;font-weight:600;}
