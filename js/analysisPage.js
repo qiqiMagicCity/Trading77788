@@ -1,5 +1,5 @@
 
-/* Trading777 v7.12 – 分析页脚本
+/* Trading777 v7.13 – 分析页脚本
    更新:
    1. 交易日历新增 日/周/月/年 视图, 上下翻页 & 时间标签
    2. 总账户日历使用 equity_curve 数据; 视图聚合后求和
@@ -7,9 +7,10 @@
 */
 
 (function(){
-  // --- DOM helpers fallback (避免 $$ 未定义导致脚本异常) ---
-  const $  = (sel,root=document)=>root.querySelector(sel);
-  const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+  // --- DOM helpers fallback (single declaration) ---
+  const $  = window.$  || ((sel,root=document)=>root.querySelector(sel));
+  const $$ = window.$$ || ((sel,root=document)=>Array.from(root.querySelectorAll(sel)));
+
 
 
   /* ---------- 常量 & 状态 ---------- */
@@ -20,8 +21,6 @@
   };
 
   /* ---------- 工具函数 ---------- */
-  const $ = sel => document.querySelector(sel);
-  const $$ = sel => Array.from(document.querySelectorAll(sel));
   const pad = n => String(n).padStart(2,'0');
 
   function loadCurve(){

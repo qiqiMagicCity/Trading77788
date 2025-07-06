@@ -1,0 +1,18 @@
+
+Trading777 更新日志
+版本: v7.13
+日期: 2025-07-06 20:29:55
+
+修复:
+ - 修复 analysisPage.js 中重复声明 '$' 与 '$$' 导致的 "Identifier '$' has already been declared" SyntaxError，页面不再空白。
+ - 保留单一 DOM 助手实现并在 window.$/$$ 未存在时提供 fallback，确保与 jQuery 共存。
+ - 全面替换浏览器标签标题与脚本版本注释至 v7.13。
+
+改进:
+ - 代码组织更清晰；DOM 工具函数移动至 IIFE 顶部，避免后续脚本重复声明。
+ - 更新自检脚本，新增对重复常量声明的扫描。
+
+文件:
+ - /js/analysisPage.js
+ - /index.html, /stock.html, /trades.html, /analysis.html
+
