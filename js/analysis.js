@@ -21,24 +21,40 @@
   const symbols = [...new Set(trades.map(t=>t.symbol))];
   
 
+
 /* ---------- Finnhub token ---------- */
 async function fetchFinnhubToken(){
     try{
         const txt = await (await fetch('/KEY.txt', {cache:'no-cache'})).text();
-        // 1) find first line that mentions finnhub, or fallback to any line with token‑like string
-        const lines = txt.split(/\r?\n/).filter(l=>l.trim());
+        const lines = txt.split(/?
+/).filter(l=>l.trim());
+        // 查找包含 finnhub 的行，或回退到任意疑似 token 的行
         for(const line of lines){
             if(/finnhub/i.test(line)){
-                const m = line.match(/[a-z0-9]{20,32}/i);
-                if(m) return m[0].substring(0,20);
+                const m = line.match(/[a-z0-9]{20,40}/i);
+                if(m){
+                    let token = m[0];
+                    // 若 token 为重复串 (前半部分与后半部分相同)，取前半
+                    if(token.length%2===0){
+                        const half = token.length/2;
+                        if(token.slice(0,half)===token.slice(half)){
+                            token = token.slice(0,half);
+                        }
+                    }
+                    return token;
+                }
             }
         }
-        const m = txt.match(/[a-z0-9]{20,32}/i);
-        if(m) return m[0].substring(0,20);
-    }catch(e){ console.warn('读取 KEY.txt 失败',e); }
-    return 'demo'; // fallback limited public token
+        // fallback: 全文搜索
+        const m = txt.match(/[a-z0-9]{20,40}/i);
+        if(m) return m[0];
+    }catch(e){
+        console.warn('读取 KEY.txt 失败',e);
+    }
+    return 'demo'; // fallback 公共演示 token，速率受限
 }
 const token = await fetchFinnhubToken();
+
 
   /* ---------- Fetch daily close price for each symbol ---------- */
   const fromTs = toTimestamp(dates[0]) - 86400;
