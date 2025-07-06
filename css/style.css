@@ -191,3 +191,12 @@ body{margin:0;}
   width: 1%;             /* 最小化列占比，宽度由内容决定 */
   white-space: nowrap;   /* 不换行 */
 }
+
+
+/* v7.7.5 fix: 保持 日期 与 详情 列同一行 */
+#all-trades th:nth-child(5),
+#all-trades td:nth-child(5),
+#all-trades th:nth-child(14),
+#all-trades td:nth-child(14){
+  white-space: nowrap;
+}
