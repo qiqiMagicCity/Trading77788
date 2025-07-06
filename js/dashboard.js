@@ -176,6 +176,12 @@ const floating = positions.reduce((sum,p)=>{
   return sum + pl;
 },0);
 
+const dailyUnrealized = positions.reduce((sum,p)=>{
+  if(p.qty===0 || p.priceOk===false || typeof p.prevClose !== 'number') return sum;
+  const delta = p.qty>0 ? (p.last - p.prevClose)*p.qty : (p.prevClose - p.last)*Math.abs(p.qty);
+  return sum + delta;
+},0);
+
 
   const todayStr = new Date().toISOString().slice(0,10);
   const todayTrades = trades.filter(t=> t.date === todayStr);
@@ -224,6 +230,7 @@ const ytdReal = trades.filter(t=>{
     totalTrades: trades.length,
     histReal,
     intradayReal,
+    dailyUnrealized,
     winRate,
     wtdReal,
     mtdReal,
@@ -247,22 +254,23 @@ function renderStats(){
   const s=stats();
   
 const a=[
-  ['账户总成本',Utils.fmtDollar(s.cost)],
-  ['现有市值',Utils.fmtDollar(s.value)],
-  ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
-  ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
-  ['当日盈亏笔数',Utils.fmtWL(s.wins,s.losses)],
-  ['当日交易次数',Utils.fmtInt(s.todayTrades)],
-  ['累计交易次数',Utils.fmtInt(s.totalTrades)],
-  ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
-  ['日内交易', Utils.fmtDollar(s.intradayReal)],
-  ['WIN','WIN'],
-  ['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
-  ['WTD', Utils.fmtDollar(s.wtdReal)],
-  ['MTD', Utils.fmtDollar(s.mtdReal)],
-  ['YTD', Utils.fmtDollar(s.ytdReal)],
-  ['WIN','WIN'],
-  ['WIN','WIN']
+['账户总成本',Utils.fmtDollar(s.cost)],
+['现有市值',Utils.fmtDollar(s.value)],
+['当前浮动盈亏',Utils.fmtDollar(s.floating)],
+['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
+['日内交易', Utils.fmtDollar(s.intradayReal)],
+['当日浮动盈亏', Utils.fmtDollar(s.dailyUnrealized)],
+['当日交易次数',Utils.fmtInt(s.todayTrades)],
+['累计交易次数',Utils.fmtInt(s.totalTrades)],
+['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
+['WTD', Utils.fmtDollar(s.wtdReal)],
+['MTD', Utils.fmtDollar(s.mtdReal)],
+['YTD', Utils.fmtDollar(s.ytdReal)],
+['WIN','WIN'],
+['WIN','WIN'],
+['WIN','WIN']
+
 ];
   a.forEach((it,i)=>{
     const box=document.getElementById('stat-'+(i+1));
@@ -335,7 +343,7 @@ function addTrade(){
 
 /* Export */
 function exportData(){
-  const data={positions,trades,generated:new Date().toISOString()};
+  const data={positions,trades,equityCurve:loadCurve(),generated:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -359,6 +367,7 @@ function importData(){
         const data=JSON.parse(ev.target.result);
         if(data.trades){ trades=data.trades; }
         if(data.positions){ positions=data.positions; } else { recalcPositions(); }
+        if(data.equityCurve){ saveCurve(data.equityCurve); }
         saveData();
         renderStats();renderPositions();renderPositions();renderTrades();
   renderSymbolsList();
@@ -523,7 +532,7 @@ function updatePrices(){
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
-                   if(q && q.c){ p.last = q.c; p.priceOk = true; } else { p.priceOk = false; }
+                   if(q && q.c){ p.last = q.c; p.prevClose = q.pc; p.priceOk = true; } else { p.priceOk = false; }
                 })
                 .catch(()=>{/* 网络错误忽略 */});
        });
@@ -556,6 +565,25 @@ function renderSymbolsList(){
 updatePrices();
   // 每分钟刷新一次价格
   setInterval(updatePrices, 60000);
+
+/* ---------- Equity Curve EOD capture ---------- */
+function maybeCloseEquity(){
+  const nowNY = luxon.DateTime.now().setZone('America/New_York'); // require luxon in page
+  const tradeDate = nowNY.toFormat('yyyy-LL-dd');
+  // only run if after 16:05 ET
+  if(nowNY.hour > 16 || (nowNY.hour === 16 && nowNY.minute >= 5)){
+    const curve = loadCurve();
+    if(curve.at(-1)?.date === tradeDate) return; // already recorded
+    const s = stats();
+    const delta = s.dailyUnrealized + s.todayReal;
+    const cumulative = (curve.at(-1)?.cumulative ?? 0) + delta;
+    curve.push({date: tradeDate, delta, cumulative});
+    saveCurve(curve);
+  }
+}
+maybeCloseEquity();
+setInterval(maybeCloseEquity, 60_000);
+
 })();
 
 
