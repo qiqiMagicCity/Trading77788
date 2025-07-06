@@ -19,17 +19,27 @@
   /* ---------- Prepare meta ---------- */
   const dates = [...new Set(trades.map(t=>t.date))].sort();
   const symbols = [...new Set(trades.map(t=>t.symbol))];
-  /* ---------- Finnhub token ---------- */
-  async function fetchKey(){
-     try{
-        const txt = await (await fetch('../KEY.txt')).text();
-        const m = txt.match(/finnhub\s*key[：: ]+([a-z0-9]+)/i);
-        if(m) return m[1].trim();
-     }catch(e){}
-     // fallback hard‑coded token (来自 KEY.txt)
-     return 'd19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg';
-  }
-  const token = await fetchKey();
+  
+
+/* ---------- Finnhub token ---------- */
+async function fetchFinnhubToken(){
+    try{
+        const txt = await (await fetch('/KEY.txt', {cache:'no-cache'})).text();
+        // 1) find first line that mentions finnhub, or fallback to any line with token‑like string
+        const lines = txt.split(/\r?\n/).filter(l=>l.trim());
+        for(const line of lines){
+            if(/finnhub/i.test(line)){
+                const m = line.match(/[a-z0-9]{20,32}/i);
+                if(m) return m[0].substring(0,20);
+            }
+        }
+        const m = txt.match(/[a-z0-9]{20,32}/i);
+        if(m) return m[0].substring(0,20);
+    }catch(e){ console.warn('读取 KEY.txt 失败',e); }
+    return 'demo'; // fallback limited public token
+}
+const token = await fetchFinnhubToken();
+
   /* ---------- Fetch daily close price for each symbol ---------- */
   const fromTs = toTimestamp(dates[0]) - 86400;
   const toTs   = toTimestamp(dates[dates.length-1]) + 86400;
