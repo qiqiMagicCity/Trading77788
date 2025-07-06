@@ -1,156 +1,132 @@
-/* Trading777 交易分析 – v7.7.5 */
-/* 功能区1：资金收益曲线（总账户每日收益变化） */
-(async function(){
-  /* ---------- Helper ---------- */
-  function dateStr(ts){return new Date(ts).toISOString().slice(0,10);}
-  function toTimestamp(date){return Math.floor(new Date(date+'T00:00:00').getTime()/1000);}
-  function sum(arr){return arr.reduce((a,b)=>a+b,0);}
-  /* ---------- Load trades ---------- */
-  let trades = JSON.parse(localStorage.getItem('trades')||'[]');
-  if(!trades.length){
-    alert('请先在“全部交易记录”页面导入交易数据！');
-    return;
-  }
-  /* ensure date field */
-  trades.forEach(t=>{ t.date = t.date || t.time || t.datetime; });
-  /* sort chronologically */
-  trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
-  /* ---------- Prepare meta ---------- */
-  const dates = [...new Set(trades.map(t=>t.date))].sort();
-  const symbols = [...new Set(trades.map(t=>t.symbol))];
-  
 
-/* ---------- Finnhub token ---------- */
-async function fetchFinnhubToken(){
-    try{
-        const txt = await (await fetch('/KEY.txt', {cache:'no-cache'})).text();
-        // 这一行是唯一修改的地方：将正则表达式 /? 修正为 /\r?\n/
-        const lines = txt.split(/\r?\n/).filter(l=>l.trim()); 
-        // 查找包含 finnhub 的行，或回退到任意疑似 token 的行
-        for(const line of lines){
-            if(/finnhub/i.test(line)){
-                const m = line.match(/[a-z0-9]{20,40}/i);
-                if(m){
-                    let token = m[0];
-                    // 若 token 为重复串 (前半部分与后半部分相同)，取前半
-                    if(token.length%2===0){
-                        const half = token.length/2;
-                        if(token.slice(0,half)===token.slice(half)){
-                            token = token.slice(0,half);
-                        }
-                    }
-                    return token;
-                }
-            }
-        }
-        // fallback: 全文搜索
-        const m = txt.match(/[a-z0-9]{20,40}/i);
-        if(m) return m[0];
-    }catch(e){
-        console.warn('读取 KEY.txt 失败',e);
-    }
-    return 'demo'; // fallback 公共演示 token，速率受限
+/* Trading777 交易分析 – v7.7.3 */
+(function(){
+/* ---------- utilities ---------- */
+function numberColor(v){
+  if(v>0) return 'green';
+  if(v<0) return 'red';
+  return 'white';
 }
-const token = await fetchFinnhubToken();
+function formatPnL(v){ return (isFinite(v)? v.toFixed(2):''); }
 
-  /* ---------- Fetch daily close price for each symbol ---------- */
-  const fromTs = toTimestamp(dates[0]) - 86400;
-  const toTs   = toTimestamp(dates[dates.length-1]) + 86400;
-  const priceMap = {}; // key: sym|date  value: close
-  async function fetchCandles(sym){
-      const url = `https://finnhub.io/api/v1/stock/candle?symbol=${sym}&resolution=D&from=${fromTs}&to=${toTs}&token=${token}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if(json && json.s==='ok'){
-        json.t.forEach((ts,i)=>{
-           const d = dateStr(ts*1000);
-           priceMap[`${sym}|${d}`] = json.c[i];
-        });
-      }else{
-        console.warn('价格缺失',sym,json);
+/* ---------- clock ---------- */
+function renderClocks(){
+  const fmt = tz => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
+  document.getElementById('clocks').innerHTML =
+      `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
+}
+renderClocks();
+setInterval(renderClocks,1000*30);
+
+/* ---------- load trades ---------- */
+let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+trades.forEach(t=>{ t.date = t.date||t.time||t.datetime; });
+trades = trades.filter(t=>t.date && isFinite(t.pl));
+
+/* ---------- build daily pnl map ---------- */
+const dailyMap = {};
+trades.forEach(t=>{
+  const d = t.date.slice(0,10);
+  const pl = Number(t.pl)||0;
+  dailyMap[d] = (dailyMap[d]||0)+pl;
+});
+const allDates = Object.keys(dailyMap).sort();
+
+/* ---------- line chart (cumulative) ---------- */
+let cum = 0, lineData=[], lastDate='';
+allDates.forEach(d=>{
+   const v = dailyMap[d];
+   cum += v;
+   lineData.push([d,cum.toFixed(2)]);
+   lastDate=d;
+});
+const lineChart = echarts.init(document.getElementById('profit-line'));
+lineChart.setOption({
+  tooltip:{trigger:'axis'},
+  xAxis:{type:'category',data:lineData.map(i=>i[0])},
+  yAxis:{type:'value'},
+  series:[{type:'line',smooth:true,data:lineData.map(i=>i[1])}]
+});
+
+/* ---------- calendar ---------- */
+const calendarWrap = document.getElementById('calendar-wrap');
+let curYearMonth = lastDate? lastDate.slice(0,7): (new Date()).toISOString().slice(0,7);
+function renderCalendar(ym){
+   const [y,m] = ym.split('-').map(n=>parseInt(n,10));
+   const first=new Date(y,m-1,1);
+   const last=new Date(y,m,0);
+   const startDow = (first.getDay()+6)%7; // Monday=0
+   const weeks=Math.ceil((startDow+last.getDate())/7);
+   let html='<table class="calendar"><thead><tr>';
+   ['一','二','三','四','五','六','日'].forEach(d=>{html+=`<th>${d}</th>`});
+   html+='</tr></thead><tbody>';
+   let day=1;
+   for(let w=0;w<weeks;w++){
+      html+='<tr>';
+      for(let dow=0;dow<7;dow++){
+         const cellIndex=w*7+dow;
+         const dateStr=day<=last.getDate()? `${ym}-${String(day).padStart(2,'0')}`:'';
+         if(cellIndex<startDow || day>last.getDate()){
+            html+='<td></td>';
+         }else{
+            const pnl=dailyMap[dateStr]||0;
+            const cls = numberColor(pnl);
+            html+=`<td class="${cls}"><span class="day">${day}</span><span class="pnl">${formatPnL(pnl)}</span></td>`;
+            day++;
+         }
       }
-  }
-  await Promise.all(symbols.map(fetchCandles));
-  /* ---------- Compute account equity by day ---------- */
-  const positions = {}; // sym -> {qty,avg}
-  let cash = 0;
-  const equity = {}; // date -> account value
-  dates.forEach(d=>{
-     // process trades of this date
-     trades.filter(t=>t.date===d).forEach(t=>{
-        const qty = Number(t.qty);
-        const price = Number(t.price);
-        const side = t.side.toUpperCase();
-        const sym  = t.symbol;
-        if(side==='BUY' || side==='COVER'){
-           cash -= qty*price;
-           const pos = positions[sym] || {qty:0,avg:0};
-           const totalCost = pos.avg*pos.qty + qty*price;
-           pos.qty += qty;
-           pos.avg = pos.qty ? totalCost/pos.qty : 0;
-           positions[sym]=pos;
-        }else if(side==='SELL' || side==='SHORT'){
-           cash += qty*price;
-           const pos = positions[sym] || {qty:0,avg:0};
-           pos.qty += (side==='SHORT'?-qty:-qty); // SHORT 开仓为负数量
-           // avg cost we keep unchanged for simplicity
-           positions[sym]=pos;
-        }
-        if(isFinite(t.pl)) cash += Number(t.pl); // 已实现盈亏
-     });
-     // mark-to-market
-     let value = cash;
-     for(const [sym,pos] of Object.entries(positions)){
-        if(!pos.qty) continue;
-        const close = priceMap[`${sym}|${d}`];
-        if(close==null) continue;
-        value += pos.qty * close;
-     }
-     equity[d]=value;
-  });
-  /* ---------- Derive daily net change ---------- */
-  const labels = Object.keys(equity).sort();
-  const dailyDelta = labels.map((d,i)=> i===0? 0 : (equity[d]-equity[labels[i-1]]));
-  /* ---------- Render Chart ---------- */
-  const ctx = document.getElementById('pnlCurve').getContext('2d');
-  new Chart(ctx,{
-    type:'line',
-    data:{
-      labels,
-      datasets:[{
-         label:'每日净变动 ($)',
-         data: dailyDelta,
-         fill:false,
-         tension:0.2,
-         borderWidth:2
-      }]
-    },
-    options:{
-      responsive:true,
-      scales:{
-        x:{ticks:{color:'#94a3b8'}},
-        y:{ticks:{color:'#94a3b8'}}
-      },
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:(c)=>` $${c.parsed.y.toFixed(2)}`}}
-      }
-    }
-  });
-  /* ---------- Calendar heat map (optional) ---------- */
-  if(window.FullCalendar){
-     const calendarEl = document.getElementById('calendar');
-     if(calendarEl){
-        const events = labels.map(d=>({
-           title:`${dailyDelta[labels.indexOf(d)]>0?'+':''}${dailyDelta[labels.indexOf(d)].toFixed(2)}`,
-           start:d,
-           color: dailyDelta[labels.indexOf(d)]>0 ? '#22c55e' : '#ef4444'
-        }));
-        const cal = new FullCalendar.Calendar(calendarEl,{
-           initialView:'dayGridMonth',
-           events
-        });
-        cal.render();
-     }
-  }
+      html+='</tr>';
+   }
+   html+='</tbody></table>';
+   calendarWrap.innerHTML=html;
+   document.getElementById('cur-month').textContent = ym;
+}
+renderCalendar(curYearMonth);
+
+document.getElementById('prev-month').onclick = ()=>{
+  const [y,m]=curYearMonth.split('-').map(Number);
+  const date = new Date(y,m-2,1);
+  curYearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+  renderCalendar(curYearMonth);
+};
+document.getElementById('next-month').onclick = ()=>{
+  const [y,m]=curYearMonth.split('-').map(Number);
+  const date = new Date(y,m,1);
+  curYearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+  renderCalendar(curYearMonth);
+};
+
+/* ---------- leaderboard ---------- */
+const symMap={};
+trades.forEach(t=>{
+  symMap[t.symbol]= (symMap[t.symbol]||0) + Number(t.pl||0);
+});
+function sortAndSlice(arr,desc){
+  return arr.sort((a,b)=> desc? b[1]-a[1]: a[1]-b[1]).slice(0,10);
+}
+const profitList = sortAndSlice(Object.entries(symMap).filter(([s,v])=>v>0),true);
+const lossList   = sortAndSlice(Object.entries(symMap).filter(([s,v])=>v<0),false);
+const tbl = document.getElementById('leaderboard');
+function renderBoard(list){
+   tbl.innerHTML='<tr><th>#</th><th>代码</th><th>中文</th><th>累计盈亏</th></tr>';
+   list.forEach((item,i)=>{
+       const [sym,pl]=item;
+       const cn = window.SymbolCN && window.SymbolCN[sym]||'';
+       const cls = numberColor(pl);
+       tbl.insertAdjacentHTML('beforeend',`<tr>
+          <td>${i+1}</td><td>${sym}</td><td class="cn">${cn}</td><td class="${cls}">${formatPnL(pl)}</td>
+       </tr>`);
+   });
+}
+renderBoard(profitList);
+document.getElementById('tab-profit').onclick=()=>{
+  document.getElementById('tab-profit').classList.add('active');
+  document.getElementById('tab-loss').classList.remove('active');
+  renderBoard(profitList);
+};
+document.getElementById('tab-loss').onclick=()=>{
+  document.getElementById('tab-loss').classList.add('active');
+  document.getElementById('tab-profit').classList.remove('active');
+  renderBoard(lossList);
+};
 })();
