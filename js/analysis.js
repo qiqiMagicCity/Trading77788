@@ -44,6 +44,20 @@
          fetch('/data/trades.json').then(r=>r.ok?r.json():[]).catch(_=>[]),
          fetch('/data/prices.json').then(r=>r.ok?r.json():{}).catch(_=>({}))
       ]);
+
+// fallback to localStorage when no static files present
+if(trades.length===0){
+   try{
+       const lsTrades = JSON.parse(localStorage.getItem('trades')||'[]');
+       trades = lsTrades;
+   }catch(e){}
+}
+if(Object.keys(prices).length===0){
+   try{
+       const lsPrices = JSON.parse(localStorage.getItem('prices')||'{}');
+       prices = lsPrices;
+   }catch(e){}
+}
       return { trades, prices };
   }
 
