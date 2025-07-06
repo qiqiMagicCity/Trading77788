@@ -235,3 +235,19 @@ body{margin:0;}
 .calendar-cell.positive{background:#014e2a;}
 .calendar-cell.negative{background:#5f1a1a;}
 .calendar-cell.zero{background:#2d3748;}
+
+/* --- calendar enhancements --- */
+.calendar-controls{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:10px 0;
+  justify-content:center;
+}
+.calendar-controls .btn{
+  padding:4px 8px;
+}
+.view-btns .active{
+  background:#1b7d4d;
+  color:#fff;
+}

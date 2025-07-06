@@ -189,3 +189,94 @@ function buildCalendar(){
 }
 buildCalendar();
 })();
+
+/* -------- enhanced multi-calendar -------- */
+(function(){
+  const state = {
+    date: new Date(),
+    view: 'month' // day,week,month,year
+  };
+  function isSameDay(a,b){
+    return a.getUTCFullYear()===b.getUTCFullYear() && a.getUTCMonth()===b.getUTCMonth() && a.getUTCDate()===b.getUTCDate();
+  }
+  function getTrades(){
+    let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+    trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
+    return trades;
+  }
+  function isIntradayTrade(t){
+    // Treat as intraday if openDate==closeDate or explicit flag
+    if(t.intraday!==undefined) return t.intraday;
+    return t.closeDate && t.date === t.closeDate;
+  }
+  function buildCalendar(elId, trades){
+    const container = document.getElementById(elId);
+    if(!container) return;
+    container.innerHTML='';
+    const date = state.date;
+    const y = date.getUTCFullYear();
+    const m = date.getUTCMonth()+1;
+    // Build day map
+    const dayMap = {};
+    trades.forEach(t=>{
+      const dkey = t.date;
+      if(!dayMap[dkey]) dayMap[dkey]=0;
+      dayMap[dkey]+= (t.real || t.pnl || 0);
+    });
+    const grid=document.createElement('div');
+    grid.className='calendar-grid';
+    container.appendChild(grid);
+    // blank cells until first weekday
+    const firstWeekDay=new Date(Date.UTC(y, m-1,1)).getUTCDay();
+    for(let i=0;i<firstWeekDay;i++){
+      const cell=document.createElement('div');
+      cell.className='calendar-cell zero';
+      grid.appendChild(cell);
+    }
+    const daysInMonth=new Date(y,m,0).getUTCDate();
+    for(let d=1; d<=daysInMonth; d++){
+      const dateKey = y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const pnl=dayMap[dateKey]||0;
+      const cell=document.createElement('div');
+      cell.className='calendar-cell '+(pnl>0?'positive': pnl<0?'negative':'zero');
+      cell.innerHTML='<div>'+d+'</div><div>'+ (pnl!==0? Math.round(pnl):'') +'</div>';
+      grid.appendChild(cell);
+    }
+  }
+  function renderCalendars(){
+    const trades = getTrades();
+    const total = trades;
+    const intra = trades.filter(isIntradayTrade);
+    buildCalendar('tradeCalendarTotal', total);
+    buildCalendar('tradeCalendarIntraday', intra);
+  }
+  // controls
+  document.getElementById('cal-prev')?.addEventListener('click',()=>{
+    if(state.view==='month'){
+      state.date.setUTCMonth(state.date.getUTCMonth()-1);
+    }else if(state.view==='year'){
+      state.date.setUTCFullYear(state.date.getUTCFullYear()-1);
+    }
+    renderCalendars();
+  });
+  document.getElementById('cal-next')?.addEventListener('click',()=>{
+    if(state.view==='month'){
+      state.date.setUTCMonth(state.date.getUTCMonth()+1);
+    }else if(state.view==='year'){
+      state.date.setUTCFullYear(state.date.getUTCFullYear()+1);
+    }
+    renderCalendars();
+  });
+  document.querySelectorAll('.view-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.view=btn.dataset.view;
+      // For simplicity, we support day/week/month/year; but in this MVP we treat day/week same as month.
+      renderCalendars();
+    });
+  });
+  // initial
+  renderCalendars();
+})();
+

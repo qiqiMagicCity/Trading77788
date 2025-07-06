@@ -16,7 +16,7 @@
     </div>
   </header>
 
-  <h2 class="page-title" style="text-align:center;margin:20px 0 10px;font-size:1.6rem;">交易分析</h2>
+  <h2 class="page-title section-title" style="text-align:center;margin:20px 0 10px;font-size:1.6rem;">📊 交易分析</h2>
   <main style="width:90%;max-width:var(--page-max);margin:20px auto;">
     <!-- 切换按钮 -->
     <section>
@@ -31,8 +31,23 @@
 </section>
 
 <section id="calendar-section">
-  <h3 class="section-title">交易日历</h3>
-  <div id="tradeCalendar" class="calendar-scroll"></div>
+  
+  <h3 class="section-title">交易日历（总账户）</h3>
+  <div class="calendar-controls">
+    <button class="btn" id="cal-prev">‹</button>
+    <button class="btn" id="cal-next">›</button>
+    <div class="btn-group view-btns">
+      <button class="btn view-btn" data-view="day">日</button>
+      <button class="btn view-btn" data-view="week">周</button>
+      <button class="btn view-btn" data-view="month">月</button>
+      <button class="btn view-btn active" data-view="year">年</button>
+    </div>
+  </div>
+  <div id="tradeCalendarTotal" class="calendar-scroll"></div>
+
+  <h3 class="section-title">交易日历（日内交易）</h3>
+  <div id="tradeCalendarIntraday" class="calendar-scroll"></div>
+
 
 
     <section>
