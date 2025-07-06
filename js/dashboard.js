@@ -255,7 +255,7 @@ function renderStats(){
   
 const a=[
 ['账户总成本',Utils.fmtDollar(s.cost)],
-['现有市值',Utils.fmtDollar(s.value)],
+['目前市值',Utils.fmtDollar(s.value)],
 ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
 ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
 ['日内交易', Utils.fmtDollar(s.intradayReal)],
@@ -263,13 +263,10 @@ const a=[
 ['当日交易次数',Utils.fmtInt(s.todayTrades)],
 ['累计交易次数',Utils.fmtInt(s.totalTrades)],
 ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
-['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
+['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
 ['WTD', Utils.fmtDollar(s.wtdReal)],
 ['MTD', Utils.fmtDollar(s.mtdReal)],
 ['YTD', Utils.fmtDollar(s.ytdReal)],
-['WIN','WIN'],
-['WIN','WIN'],
-['WIN','WIN']
 
 ];
   a.forEach((it,i)=>{
