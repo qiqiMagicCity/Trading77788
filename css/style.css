@@ -191,7 +191,3 @@ body{margin:0;}
   width: 1%;             /* 最小化列占比，宽度由内容决定 */
   white-space: nowrap;   /* 不换行 */
 }
-
-/* v7.7.5 calendar borderless */
-.fc td,.fc th{border:none !important;}
-.fc-col-header-cell-cushion{color:#e2e8f0;font-weight:600;}
