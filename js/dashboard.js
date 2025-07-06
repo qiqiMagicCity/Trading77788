@@ -104,6 +104,60 @@ function recalcPositions(){
 
 /* ---------- 4. Statistics ---------- */
 
+
+/* ---------- Calc Intraday Realized P/L (v7.7.5) ---------- */
+function calcIntraday(trades){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const dayTrades = trades.filter(t=> t.date === todayStr);
+  const bySymbol = {};
+  dayTrades.forEach(t=>{
+    if(!bySymbol[t.symbol]) bySymbol[t.symbol]=[];
+    bySymbol[t.symbol].push(t);
+  });
+  let pl = 0;
+  Object.entries(bySymbol).forEach(([sym, ts])=>{
+    // Keep order as recorded
+    const queue=[];
+    ts.forEach(t=>{
+      // Determine signed quantity
+      let signedQty=0;
+      if(t.side==='BUY'||t.side==='COVER'){ signedQty = t.qty; }
+      else if(t.side==='SELL'||t.side==='SHORT'){ signedQty = -t.qty; }
+      else { return; }
+      let price = t.price;
+      if(signedQty>0){
+        // buy side: try to offset earlier shorts within day
+        let remaining = signedQty;
+        while(remaining>0 && queue.length && queue[0].qty<0){
+          let opp = queue[0];
+          const match = Math.min(remaining, -opp.qty);
+          pl += (opp.price - price) * match; // short then cover
+          opp.qty += match; // increase towards 0
+          remaining -= match;
+          if(opp.qty===0) queue.shift();
+        }
+        if(remaining>0){
+          queue.push({qty: remaining, price});
+        }
+      }else if(signedQty<0){
+        // sell side
+        let remaining = -signedQty;
+        while(remaining>0 && queue.length && queue[0].qty>0){
+          let opp = queue[0];
+          const match = Math.min(remaining, opp.qty);
+          pl += (price - opp.price) * match; // buy then sell
+          opp.qty -= match;
+          remaining -= match;
+          if(opp.qty===0) queue.shift();
+        }
+        if(remaining>0){
+          queue.push({qty: -remaining, price});
+        }
+      }
+    });
+  });
+  return pl;
+}
 function stats(){
   // 重新计算账户统计数据，兼容多空仓位显示
   const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
@@ -120,6 +174,8 @@ const floating = positions.reduce((sum,p)=>{
   const todayStr = new Date().toISOString().slice(0,10);
   const todayTrades = trades.filter(t=> t.date === todayStr);
   const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const intradayReal = calcIntraday(trades);
+
   const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
   const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
   const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
@@ -161,6 +217,7 @@ const ytdReal = trades.filter(t=>{
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
     histReal,
+    intradayReal,
     winRate,
     wtdReal,
     mtdReal,
@@ -192,7 +249,7 @@ const a=[
   ['当日交易次数',Utils.fmtInt(s.todayTrades)],
   ['累计交易次数',Utils.fmtInt(s.totalTrades)],
   ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
-  ['WIN','WIN'],
+  ['日内交易', Utils.fmtDollar(s.intradayReal)],
   ['WIN','WIN'],
   ['胜率 Win Rate', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
   ['WTD', Utils.fmtDollar(s.wtdReal)],
