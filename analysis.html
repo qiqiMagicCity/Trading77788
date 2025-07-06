@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading777 v7.8.3 · 交易分析</title>
+  <title>Trading777 v7.10 · 交易分析</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css" />
   <!-- Chart.js -->
@@ -16,23 +16,30 @@
     </div>
   </header>
 
+  <h2 class="page-title" style="text-align:center;margin:20px 0 10px;font-size:1.6rem;">交易分析</h2>
   <main style="width:90%;max-width:var(--page-max);margin:20px auto;">
     <!-- 切换按钮 -->
     <section>
       <h3 class="section-title">资金收益曲线</h3>
       <div class="btn-group" style="margin-bottom:10px;">
-        <button id="btn-day">日</button>
-        <button id="btn-week">周</button>
-        <button id="btn-month">月</button>
+        <button class="btn" <button class="btn" id="btn-day">日</button>
+        <button class="btn" <button class="btn" id="btn-week">周</button>
+        <button class="btn" <button class="btn" id="btn-month">月</button>
       </div>
-      <canvas id="pnlCanvas" height="300"></canvas>
-    </section>
+      <canvas id="pnlCanvas" height="220"></canvas>
+    
+</section>
+
+<section id="calendar-section">
+  <h3 class="section-title">交易日历</h3>
+  <div id="tradeCalendar" class="calendar-scroll"></div>
+
 
     <section>
       <h3 class="section-title">盈亏排行榜</h3>
       <div class="btn-group" style="margin-bottom:10px;">
-        <button id="rank-profit">盈利 TOP 10</button>
-        <button id="rank-loss">亏损 TOP 10</button>
+        <button class="btn" <button class="btn" id="rank-profit">盈利 TOP 10</button>
+        <button class="btn" <button class="btn" id="rank-loss">亏损 TOP 10</button>
       </div>
       <table id="rankTable" class="table"></table>
     </section>

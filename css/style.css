@@ -196,3 +196,42 @@ body{margin:0;}
 #all-trades td,#all-trades th{white-space:nowrap;}
 
 .top .date{margin-right:12px;font-weight:bold;}
+
+
+/* --- v7.10 buttons & calendar --- */
+.btn{
+  background:#014d4d;
+  border:1px solid #05b3b3;
+  color:#fff;
+  padding:6px 14px;
+  margin-right:4px;
+  border-radius:6px;
+  cursor:pointer;
+  transition:background .2s ease;
+}
+.btn:hover{background:#027272}
+.btn.active{
+  background:#05b3b3;
+  color:#002020;
+}
+.calendar-scroll{
+  overflow-x:auto;
+  padding:10px 0;
+}
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(120px,1fr));
+  gap:4px;
+}
+.calendar-cell{
+  background:#013939;
+  border:1px solid #025f5f;
+  border-radius:4px;
+  min-height:80px;
+  padding:4px;
+  box-sizing:border-box;
+  font-size:.8rem;
+}
+.calendar-cell.positive{background:#014e2a;}
+.calendar-cell.negative{background:#5f1a1a;}
+.calendar-cell.zero{background:#2d3748;}

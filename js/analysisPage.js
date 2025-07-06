@@ -94,11 +94,21 @@
   renderChart('day');
 
   // buttons
-  document.getElementById('btn-day').addEventListener('click',()=>renderChart('day'));
-  document.getElementById('btn-week').addEventListener('click',()=>renderChart('week'));
-  document.getElementById('btn-month').addEventListener('click',()=>renderChart('month'));
+  document.getElementById('btn-day').addEventListener('click',()=>{activateButton('btn-day',['btn-day','btn-week','btn-month']);renderChart('day');});
+  document.getElementById('btn-week').addEventListener('click',()=>{activateButton('btn-week',['btn-day','btn-week','btn-month']);renderChart('week');});
+  document.getElementById('btn-month').addEventListener('click',()=>{activateButton('btn-month',['btn-day','btn-week','btn-month']);renderChart('month');});
 
-  /* -------- ranking -------- */
+  
+function activateButton(btnId, group){
+  group.forEach(id=>{
+    const b=document.getElementById(id);
+    if(b){
+      if(id===btnId) b.classList.add('active');
+      else b.classList.remove('active');
+    }
+  });
+}
+/* -------- ranking -------- */
   function renderRanking(type='profit'){
     const map={};
     trades.forEach(tr=>{
@@ -119,11 +129,63 @@
   }
   renderRanking('profit');
 
-  document.getElementById('rank-profit').addEventListener('click',()=>{
+  document.getElementById('rank-profit').addEventListener('click',()=>{activateButton('rank-profit',['rank-profit','rank-loss']);
     renderRanking('profit');
   });
-  document.getElementById('rank-loss').addEventListener('click',()=>{
+  document.getElementById('rank-loss').addEventListener('click',()=>{activateButton('rank-loss',['rank-profit','rank-loss']);
     renderRanking('loss');
   });
 
+
+/* -------- calendar -------- */
+function buildCalendar(){
+  const calDiv = document.getElementById('tradeCalendar');
+  if(!calDiv) return;
+  calDiv.innerHTML='';
+  // group trades by date
+  const dayMap = {};
+  trades.forEach(tr=>{
+    const key = tr.date; // assume yyyy-mm-dd
+    const pl = (typeof tr.pl==='number')? tr.pl : 0;
+    dayMap[key]=(dayMap[key]||0)+pl;
+  });
+  const dates = Object.keys(dayMap).sort();
+  if(dates.length===0){
+    calDiv.innerHTML='<p style="text-align:center;color:#94a3b8">暂无数据</p>';
+    return;
+  }
+  // figure months
+  const months = [...new Set(dates.map(d=>d.slice(0,7)))];
+  months.forEach(month=>{
+    const monthLabel=document.createElement('h4');
+    monthLabel.textContent=month;
+    monthLabel.style.margin='6px 0 4px';
+    calDiv.appendChild(monthLabel);
+
+    const grid=document.createElement('div');
+    grid.className='calendar-grid';
+    // find first day of month
+    const [y,m]=month.split('-').map(Number);
+    const firstDate=new Date(y, m-1, 1);
+    const firstWeekDay=firstDate.getDay(); // 0 Sunday
+    // fill blanks
+    for(let i=0;i<firstWeekDay;i++){
+      const cell=document.createElement('div');
+      cell.className='calendar-cell zero';
+      grid.appendChild(cell);
+    }
+    // days in month
+    const days=new Date(y, m, 0).getDate();
+    for(let d=1; d<=days; d++){
+      const dateKey = month + '-' + String(d).padStart(2,'0');
+      const pnl = dayMap[dateKey]||0;
+      const cell=document.createElement('div');
+      cell.className='calendar-cell ' + (pnl>0?'positive': pnl<0?'negative':'zero');
+      cell.innerHTML = '<div>'+d+'</div><div>'+ (pnl!==0? pnl.toFixed(0):'') +'</div>';
+      grid.appendChild(cell);
+    }
+    calDiv.appendChild(grid);
+  });
+}
+buildCalendar();
 })();
