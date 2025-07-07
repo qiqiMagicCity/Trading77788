@@ -393,7 +393,7 @@ function openTradeForm(editIndex){
   modal=document.createElement('div');
   modal.id='trade-modal';
   modal.className='modal';
-  modal.innerHTML=`<h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
+  modal.innerHTML=`<div class="modal-content"><h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
 <label>是否期权</label><input type="checkbox" id="t-isOption" />
 <div id="stockFields">
   <label>交易时间</label><input type="datetime-local" id="t-date" />
@@ -418,7 +418,7 @@ function openTradeForm(editIndex){
 <label>单价</label><input type="number" step="0.01" id="t-price" />
 <div style="margin-top:14px;text-align:right;">
   <button id="t-cancel">取消</button>
-  <button id="t-save">确定</button>
+  <button id=</div>"t-save">确定</button>
 </div>`;
   document.body.appendChild(modal);
   if(editIndex!=null){
