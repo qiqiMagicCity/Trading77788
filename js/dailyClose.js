@@ -1,11 +1,38 @@
 /**
- * dailyClose.js – v7.27
+ * dailyClose.js – v7.30
  * 手动“导出收盘价格”逻辑
+/* ---- Added in v7.30: lightweight browser-side real‑time price fetch ---- */
+/** 获取 Finnhub API Key（先尝试 KEY.txt，再退回到默认内置 key） */
+async function getFinnhubKey(){
+  try{
+    const txt = await fetch('KEY.txt').then(r=> r.ok ? r.text() : '');
+    const m = txt.match(/Finnhub key：([\w]+)/);
+    return (m?m[1]:'d19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg').trim();
+  }catch(e){
+    console.warn('无法读取 KEY.txt，使用默认内置 key', e);
+    return 'd19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg';
+  }
+}
+
+/** 浏览器环境下按需请求实时价（单次，返回 number 或 null） */
+async function fetchRealtimePrice(symbol){
+  const token = await getFinnhubKey();
+  if(!token) return null;
+  try{
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${token}`);
+    const json = await res.json();
+    return json.c || json.current || null;
+  }catch(err){
+    console.warn('实时价格获取失败', symbol, err);
+    return null;
+  }
+}
+/* ----------------------------------------------------------------------- */
+
  * 1. 仅允许在美东时间 16:00 之后执行
  * 2. 读取当前持仓的实时价格作为当天收盘价写入 IndexedDB
  * 3. 写入完成后立即导出所有收盘价 JSON
  */
-import { fetchRealtimePrice } from './services/priceService.js';
 import { putPrice, exportPrices } from './db/idb.js';
 
 function getTrackedSymbols(){
