@@ -1,5 +1,5 @@
 /**
- * dailyClose.js – v7.30
+ * dailyClose.js – v7.31
  * 手动“导出收盘价格”逻辑
 /* ---- Added in v7.30: lightweight browser-side real‑time price fetch ---- */
 /** 获取 Finnhub API Key（先尝试 KEY.txt，再退回到默认内置 key） */
@@ -53,11 +53,28 @@ function afterMarketCloseNY(){
   return nyDate.getHours() > 16 || (nyDate.getHours() === 16 && nyDate.getMinutes() >= 0);
 }
 
+
+/**
+ * 从当前持仓表格中读取已渲染的实时价格。要求 <tr> 具有 data-symbol，
+ * 实时价单元格带有类名 .col-price
+ */
+function getDomPrice(symbol){
+  const row = document.querySelector(`tr[data-symbol="${symbol}"]`);
+  if(row){
+    const cell = row.querySelector('.col-price');
+    if(cell){
+      const val = parseFloat(cell.textContent.trim().replace(/[^0-9.]/g,''));
+      return isNaN(val) ? null : val;
+    }
+  }
+  return null;
+}
+
 async function snapshotTodayClose(){
   if(!afterMarketCloseNY()){
-    alert('目前还未收盘（纽约时间16:00）。请在收盘后再保存收盘价');
-    return false;
-  }
+  const proceed = confirm('纽约市场尚未收盘，是否仍使用当前价格作为收盘价继续导出？');
+  if(!proceed) return false;
+}
   const symbols = getTrackedSymbols();
   if(!symbols.length){
     alert('没有需要保存收盘价的标的');
@@ -67,7 +84,8 @@ async function snapshotTodayClose(){
   const today = new Date().toISOString().slice(0,10);
   for(const sym of symbols){
     try{
-      const price = await fetchRealtimePrice(sym);
+      let price = await fetchRealtimePrice(sym);
+      if(price == null){ price = getDomPrice(sym); }
       if(price != null){
         await putPrice(sym, today, price, 'snapshot');
         savedCount++;
