@@ -31,10 +31,8 @@ function getWeekIdx(dateStr){
       st.count += 1;
 
       let showPNL = 0;
-      
       const price = t.price;
-      const qty   = t.qty * (t.type==='Option'?100:1); // --- Option qty factor
-
+      const qty   = t.qty;
 
       if(t.side==='BUY' || t.side==='COVER' || t.side==='回补' || t.side==='BOUGHT' || t.side==='买入'){
         if(st.direction==='NONE' || st.direction==='LONG'){

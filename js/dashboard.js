@@ -1,11 +1,4 @@
 
-function buildOptionSymbol(root, dateStr, cp, strike){
-  const d = dayjs(dateStr).format('YYMMDD');
-  const strikeInt = Math.round(strike * 1000).toString().padStart(8,'0');
-  return (root + d + cp + strikeInt).toUpperCase();
-}
-
-
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -387,105 +380,147 @@ function importData(){
 
 
 /* ---------- 7b. Trade modal ---------- */
+
 function openTradeForm(editIndex){
   let modal=document.getElementById('trade-modal');
   if(modal){ modal.remove(); }
   modal=document.createElement('div');
   modal.id='trade-modal';
   modal.className='modal';
-  modal.innerHTML=`<h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
-<label>是否期权</label><input type="checkbox" id="t-isOption" />
-<div id="stockFields">
-  <label>交易时间</label><input type="datetime-local" id="t-date" />
-  <label>股票代码</label><input type="text" id="t-symbol" />
-</div>
-<div id="optionFields" style="display:none;">
-  <label>正股</label><input type="text" id="opt-root" placeholder="AAPL" />
-  <label>到期日</label><input type="date" id="opt-exp" />
-  <label>期权类型</label>
-    <select id="opt-cp"><option value="C">Call</option><option value="P">Put</option></select>
-  <label>行权价</label><input type="number" id="opt-strike" step="0.01" />
-  <label>生成代码</label><input type="text" id="t-symbol" readonly />
-</div>
-<label>交易方向</label>
-  <select id="t-side">
-    <option value="BUY">BUY</option>
-    <option value="SELL">SELL</option>
-    <option value="SHORT">SHORT</option>
-    <option value="COVER">COVER</option>
-  </select>
-<label>数量(张)</label><input type="number" id="t-qty" />
-<label>单价</label><input type="number" step="0.01" id="t-price" />
-<div style="margin-top:14px;text-align:right;">
-  <button id="t-cancel">取消</button>
-  <button id="t-save">确定</button>
-</div>`;
+  modal.innerHTML=`
+    <div class="modal-content">
+      <h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
+      <label>交易时间</label><input type="datetime-local" id="t-date" />
+
+      <label><input type="checkbox" id="t-is-option" /> 期权</label>
+
+      <div id="stock-fields">
+        <label>股票代码</label><input type="text" id="t-symbol" />
+      </div>
+
+      <div id="option-fields" style="display:none;">
+        <label>正股代码</label><input type="text" id="opt-root" placeholder="如 AAPL" />
+
+        <label>到期日</label><input type="date" id="opt-date" />
+
+        <label>类型</label>
+          <select id="opt-cp">
+            <option value="C">Call</option>
+            <option value="P">Put</option>
+          </select>
+
+        <label>行权价</label><input type="number" step="0.01" id="opt-strike" />
+        <div style="margin:6px 0;color:#888;font-size:12px;">系统将自动生成 OCC 标准代码</div>
+      </div>
+
+      <label>交易方向</label>
+        <select id="t-side">
+          <option value="BUY">BUY</option>
+          <option value="SELL">SELL</option>
+          <option value="SHORT">SHORT</option>
+          <option value="COVER">COVER</option>
+        </select>
+      <label>数量</label><input type="number" id="t-qty" />
+      <label>单价</label><input type="number" step="0.01" id="t-price" />
+      <div style="margin-top:14px;text-align:right;">
+        <button id="t-cancel">取消</button>
+        <button id="t-save">确定</button>
+      </div>
+    </div>`;
   document.body.appendChild(modal);
+
+  function buildOptionSymbol(root, dateStr, cp, strike){
+    const d = dateStr.replace(/-/g,'').slice(2); // YYYY-MM-DD -> YYMMDD
+    const strikeInt = Math.round(parseFloat(strike)*1000).toString().padStart(8,'0');
+    return `${root.toUpperCase()}${d}${cp}${strikeInt}`;
+  }
+
+  const chkOption = document.getElementById('t-is-option');
+  const optionFields = document.getElementById('option-fields');
+  const stockFields  = document.getElementById('stock-fields');
+  chkOption.onchange = ()=> {
+      if(chkOption.checked){
+        optionFields.style.display='';
+        stockFields.style.display='none';
+      }else{
+        optionFields.style.display='none';
+        stockFields.style.display='';
+      }
+  };
+
+  // ---- 如果是编辑模式，载入现有数据 ----
   if(editIndex!=null){
      const t=trades[editIndex];
      document.getElementById('t-date').value=t.date+'T00:00:00';
-     document.getElementById('t-symbol').value=t.symbol;
+
+     if(t.type==='Option'){
+        chkOption.checked=true; chkOption.onchange();
+        const m = t.symbol.match(/([A-Z]+)(\d{6})([CP])(\d{8})/);
+        if(m){
+          document.getElementById('opt-root').value=m[1];
+          const d = m[2];
+          document.getElementById('opt-date').value='20'+d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,6);
+          document.getElementById('opt-cp').value=m[3];
+          const strike=parseInt(m[4],10)/1000;
+          document.getElementById('opt-strike').value=strike;
+        }
+     }else{
+        document.getElementById('t-symbol').value=t.symbol;
+     }
      document.getElementById('t-side').value=t.side;
-     document.getElementById('t-qty').value=t.qty;
+     const qty = t.type==='Option' ? t.qty/100 : t.qty;
+     document.getElementById('t-qty').value=qty;
      document.getElementById('t-price').value=t.price;
   }else{
      document.getElementById('t-date').value=new Date().toISOString().slice(0,16);
   }
-  function close(){modal.remove();}
-  
-// --- Option toggle ---
-const chkOpt = modal.querySelector('#t-isOption');
-const stockDiv = modal.querySelector('#stockFields');
-const optDiv = modal.querySelector('#optionFields');
-chkOpt.addEventListener('change',()=>{
-  if(chkOpt.checked){
-    stockDiv.style.display='none';
-    optDiv.style.display='';
-  }else{
-    stockDiv.style.display='';
-    optDiv.style.display='none';
-  }
-});
-// Generate OCC symbol as user types
-['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
-  modal.querySelector(sel)?.addEventListener('input',()=>{
-    const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
-    const exp  = modal.querySelector('#opt-exp').value;
-    const cp   = modal.querySelector('#opt-cp').value;
-    const strike = parseFloat(modal.querySelector('#opt-strike').value);
-    if(root && exp && cp && strike){
-      modal.querySelector('#t-symbol').value = buildOptionSymbol(root,exp,cp,strike);
-    }
-  });
-});
 
-document.getElementById('t-cancel').onclick=close;
-  
-document.getElementById('t-save').onclick=function(){
+  function close(){modal.remove();}
+  document.getElementById('t-cancel').onclick=close;
+
+  /* ---- 保存 ---- */
+  document.getElementById('t-save').onclick=function(){
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
-    const symbol  = document.getElementById('t-symbol').value.trim().toUpperCase();
     const side    = document.getElementById('t-side').value;
-    const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
     const price   = parseFloat(document.getElementById('t-price').value);
-    if(!symbol || !qty || !price){ alert('请完整填写表单'); return; }
+    const isOption = chkOption.checked;
+
+    let symbol ='';
+    let qty = Math.abs(parseInt(document.getElementById('t-qty').value,10));
+    let type='Stock';
+    if(isOption){
+        const root   = document.getElementById('opt-root').value.trim().toUpperCase();
+        const exp    = document.getElementById('opt-date').value;
+        const cp     = document.getElementById('opt-cp').value;
+        const strike = parseFloat(document.getElementById('opt-strike').value);
+        if(!root || !exp || !strike){ alert('请完整填写期权字段'); return; }
+        symbol = buildOptionSymbol(root, exp, cp, strike);
+        qty = qty * 100;   // 一张 = 100 股
+        type='Option';
+    }else{
+        symbol  = document.getElementById('t-symbol').value.trim().toUpperCase();
+        if(!symbol){ alert('请填写股票代码'); return; }
+    }
+
+    if(!qty || !price){ alert('请完整填写数量和单价'); return; }
 
     let pl = 0;
     let closedFlag = false;
     // 计算盈亏并确定是否平仓
-    if(side === 'SELL'){        // 卖出现有多头
+    if(side === 'SELL'){
         const pos = positions.find(p=>p.symbol===symbol && p.qty>0);
         const avg = pos ? pos.avgPrice : price;
         pl = (price - avg) * qty;
         closedFlag = true;
-    }else if(side === 'COVER'){   // 回补空头
+    }else if(side === 'COVER'){
         const pos = positions.find(p=>p.symbol===symbol && p.qty<0);
         const avg = pos ? Math.abs(pos.avgPrice) : price;
         pl = (avg - price) * qty;
         closedFlag = true;
     }
 
-    const trade = {date,symbol,side,qty,price,pl,closed:closedFlag};
+    const trade = {date,symbol,side,qty,price,pl,closed:closedFlag,type};
 
     if(editIndex != null){
         trades[editIndex] = trade;
@@ -495,12 +530,11 @@ document.getElementById('t-save').onclick=function(){
 
     recalcPositions();
     saveData();
-    renderStats();
-    renderPositions();
-    renderTrades();
-  renderSymbolsList();
+    renderStats();renderPositions();renderTrades();renderSymbolsList();
     close();
-};
+  };
+}
+;
 
   
 }
