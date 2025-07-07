@@ -108,3 +108,70 @@ export async function fetchRealtimePrice(symbol) {
     return null;
   }
 }
+
+
+/**
+ * saveDailyClose
+ * Persist today's close price into daily map.
+ * Called by closeRecorder.js after market close.
+ */
+export function saveDailyClose(symbol, price) {
+  const priceHistory = readPriceHistory();
+  const todayStr = new Date().toISOString().substring(0,10);
+  if (!priceHistory[symbol]) priceHistory[symbol] = { daily: {}, realtime: {} };
+  priceHistory[symbol].daily[todayStr] = price;
+  atomicWrite(priceHistory);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////
+// === Finnhub daily candle backfill helpers (added v7.18) ===
+/**
+ * fetchDailyCandles
+ * @param {string} symbol
+ * @param {number} fromEpoch   seconds since 1970‑01‑01
+ * @param {number} toEpoch     seconds
+ * @returns {Promise<{c:number[], t:number[]}>}
+ */
+export async function fetchDailyCandles(symbol, fromEpoch, toEpoch) {
+  const { finnhub } = getApiKeys();
+  const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${fromEpoch}&to=${toEpoch}&token=${finnhub}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if (json.s !== 'ok') {
+    throw new Error(json.s || 'Finnhub candle error');
+  }
+  return json; // includes arrays c (close), t (epoch sec)
+}
+
+/**
+ * saveDailyClosesBulk
+ * Persist bulk close data arrays into price-history.json
+ */
+export function saveDailyClosesBulk(symbol, tArray, cArray) {
+  const priceHistory = readPriceHistory();
+  if (!priceHistory[symbol]) priceHistory[symbol] = { daily: {}, realtime: {} };
+  for (let i = 0; i < tArray.length; i++) {
+    const dateStr = new Date(tArray[i] * 1000).toISOString().substring(0, 10);
+    priceHistory[symbol].daily[dateStr] = cArray[i];
+  }
+  atomicWrite(priceHistory);
+}
+
+/**
+ * getTrackedSymbols
+ * Returned cached list of symbols from localStorage.trades OR keys in price history.
+ */
+export async function getTrackedSymbols() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const trades = JSON.parse(localStorage.getItem('trades') || '[]');
+      const syms = [...new Set(trades.map(t => t.symbol).filter(Boolean))];
+      if (syms.length) return syms;
+    }
+  } catch (e) {
+    console.warn('[getTrackedSymbols] localStorage unavailable', e);
+  }
+  const priceHistory = readPriceHistory();
+  return Object.keys(priceHistory);
+}
