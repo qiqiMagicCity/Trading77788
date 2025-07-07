@@ -1,0 +1,36 @@
+Trading777 v7.20 – 2025‑07‑07
+================================
+
+**新增功能**
+1. **每日收盘价缓存**
+   - 新增 `js/db/idb.js` 基于 IndexedDB 存储 `prices` 对象库，键为 `symbol_date`。
+   - 新增 `js/services/finnhubService.js` 使用队列 + Finnhub API 获取日 K，并写入缓存。
+   - 新增 `js/services/apiQueue.js` Token‑Bucket 实现（60 req/min，超限 429 自动重排队）。
+
+2. **手动更新 + 导出**
+   - `index.html` 顶栏加按钮【更新收盘价】【导出价格】。
+   - 新增 `js/dailyClose.js`：点击时批量抓取今日收盘价并可导出价格 JSON。
+
+3. **浏览器标签版本号同步**  
+   - 所有页面 `<title>` 更新为 **Trading777 v7.20**。
+
+**目录结构变更**
+```
+js/
+ ├─ db/
+ │   └─ idb.js
+ ├─ services/
+ │   ├─ apiQueue.js
+ │   └─ finnhubService.js
+ └─ dailyClose.js
+```
+
+**使用说明**
+1. 进入首页后，先在设置里填入 **FINNHUB_TOKEN**（LocalStorage）。  
+2. 交易完毕后点击【更新收盘价】—系统将对当日出现过的全部股票抓取日线并缓存。  
+3. 点击【导出价格】即可下载 `prices_YYYY-MM-DD.json`，交易导出功能沿用旧版按钮。  
+4. 本版仅支持日线浮动盈亏；若需分钟级请在后续版本提出。
+
+**其他**
+- 保留旧版文件，未动原有 `closeRecorder.js` 逻辑，后续可删除。
+- 已在所有 HTML 页面更新版本号；如自定义子页请跟随修改。
