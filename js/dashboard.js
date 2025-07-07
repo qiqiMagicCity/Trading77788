@@ -9,6 +9,18 @@ async function attachPrevCloses(){
     d.setDate(d.getDate()-1);
   }while(d.getDay()===0 || d.getDay()===6);
   const dateStr = d.toISOString().slice(0,10);
+  // Ensure positions is an array (migration compatibility)
+  if(!Array.isArray(positions)){
+    try{
+      if(typeof recalcPositions==='function'){
+        recalcPositions();
+      }
+    }catch(e){ console.error(e); }
+  }
+  if(!Array.isArray(positions)){
+    console.warn('positions is not iterable, skip prev-close attachment');
+    return;
+  }
   for(const p of positions){
     const rec = await idb.getPrice(p.symbol, dateStr);
     if(rec && typeof rec.close === 'number'){
@@ -56,6 +68,9 @@ const defaultTrades = [
 ];
 
 let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
+if(!Array.isArray(positions)){
+  positions = Object.values(positions||{});
+}
 let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
 recalcPositions();
 
