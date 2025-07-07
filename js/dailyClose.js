@@ -36,27 +36,32 @@ async function snapshotTodayClose(){
     alert('没有需要保存收盘价的标的');
     return false;
   }
+  let savedCount = 0;
   const today = new Date().toISOString().slice(0,10);
   for(const sym of symbols){
     try{
       const price = await fetchRealtimePrice(sym);
       if(price != null){
         await putPrice(sym, today, price, 'snapshot');
+        savedCount++;
       }
     }catch(err){
       console.warn('保存收盘价失败', sym, err);
     }
   }
-  return true;
+  return savedCount;
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
   const btnExport = document.getElementById('exportPrices');
   if(btnExport){
     btnExport.addEventListener('click', async ()=>{
-      const ok = await snapshotTodayClose();
-      if(ok){
+      const saved = await snapshotTodayClose();
+      if(saved > 0){
         await exportPrices();
+        alert(`已保存 ${saved} 条收盘价并导出文件`);
+      }else{
+        alert('未保存任何收盘价（可能重复或未获取到实时价格）');
       }
     });
   }
