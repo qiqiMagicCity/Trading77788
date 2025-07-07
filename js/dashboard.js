@@ -1,4 +1,23 @@
 
+/* ---------- Prev Close attachment (v7.27) ---------- */
+async function attachPrevCloses(){
+  const idb = await import('./db/idb.js');
+  const now = new Date();
+  let d = new Date(now);
+  // 找到上一个交易日（跳过周末）
+  do{
+    d.setDate(d.getDate()-1);
+  }while(d.getDay()===0 || d.getDay()===6);
+  const dateStr = d.toISOString().slice(0,10);
+  for(const p of positions){
+    const rec = await idb.getPrice(p.symbol, dateStr);
+    if(rec && typeof rec.close === 'number'){
+      p.prevClose = rec.close;
+    }
+  }
+}
+
+
 async function getPrevTradingDayClose(symbol){
   const idb = await import('./db/idb.js');
   const now = new Date();
@@ -615,9 +634,11 @@ function renderSymbolsList(){
 }
 /* re-render symbols list whenever trades change */
 /* fetch prices on load */
-updatePrices();
-  // 每分钟刷新一次价格
-  setInterval(updatePrices, 60000);
+attachPrevCloses().then(()=>{
+    updatePrices();
+    // 每分钟刷新一次价格
+    setInterval(updatePrices, 60000);
+  });
 
 /* ---------- Equity Curve EOD capture ---------- */
 function maybeCloseEquity(){
