@@ -196,13 +196,6 @@ const floating = positions.reduce((sum,p)=>{
 },0);
 
 
-// ensure prevClose loaded from DB if still missing
-await Promise.all(positions.map(async p=>{
-  if(typeof p.prevClose !== 'number'){
-    const pc = await getPrevTradingDayClose(p.symbol);
-    if(pc!=null) p.prevClose = pc;
-  }
-}));
 
 const dailyUnrealized = positions.reduce((sum,p)=>{
   if(p.qty===0 || p.priceOk===false || typeof p.prevClose !== 'number') return sum;
@@ -592,7 +585,7 @@ function updatePrices(){
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
-                   if(q && q.c){ p.last = q.c; p.prevClose = p.prevClose ?? q.pc; p.priceOk = true; } else { p.priceOk = false; }
+                   if(q && q.c){ p.last = q.c; if(p.prevClose == null) p.prevClose = q.pc; p.priceOk = true; } else { p.priceOk = false; }
                 })
                 .catch(()=>{/* 网络错误忽略 */});
        });
