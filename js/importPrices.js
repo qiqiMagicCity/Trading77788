@@ -1,6 +1,6 @@
 
 /**
- * importPrices.js v7.22
+ * importPrices.js v7.21
  * UI handler for importing exported price JSON into IndexedDB.
  */
 import { putPrice } from './db/idb.js';
