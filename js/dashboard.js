@@ -1,4 +1,11 @@
 
+function buildOptionSymbol(root, dateStr, cp, strike){
+  const d = dayjs(dateStr).format('YYMMDD');
+  const strikeInt = Math.round(strike * 1000).toString().padStart(8,'0');
+  return (root + d + cp + strikeInt).toUpperCase();
+}
+
+
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -386,30 +393,38 @@ function openTradeForm(editIndex){
   modal=document.createElement('div');
   modal.id='trade-modal';
   modal.className='modal';
-  modal.innerHTML=`
-    <div class="modal-content">
-      <h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
-      <label>交易时间</label><input type="datetime-local" id="t-date" />
-      <label>股票代码</label><input type="text" id="t-symbol" />
-      <label>交易方向</label>
-        <select id="t-side">
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
-          <option value="SHORT">SHORT</option>
-          <option value="COVER">COVER</option>
-        </select>
-      <label>数量</label><input type="number" id="t-qty" />
-      <label>单价</label><input type="number" step="0.01" id="t-price" />
-      <div style="margin-top:14px;text-align:right;">
-        <button id="t-cancel">取消</button>
-        <button id="t-save">确定</button>
-      </div>
-    </div>`;
+  modal.innerHTML=`<h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
+<label>是否期权</label><input type="checkbox" id="t-isOption" />
+<div id="stockFields">
+  <label>交易时间</label><input type="datetime-local" id="t-date" />
+  <label>股票代码</label><input type="text" id="t-symbol" name="symbol" />
+</div>
+<div id="optionFields" style="display:none;">
+  <label>正股</label><input type="text" id="opt-root" placeholder="AAPL" />
+  <label>到期日</label><input type="date" id="opt-exp" />
+  <label>期权类型</label>
+    <select id="opt-cp"><option value="C">Call</option><option value="P">Put</option></select>
+  <label>行权价</label><input type="number" id="opt-strike" step="0.01" />
+  <label>生成代码</label><input type="text" id="opt-symbol" name="symbol" readonly />
+</div>
+<label>交易方向</label>
+  <select id="t-side">
+    <option value="BUY">BUY</option>
+    <option value="SELL">SELL</option>
+    <option value="SHORT">SHORT</option>
+    <option value="COVER">COVER</option>
+  </select>
+<label>数量(张)</label><input type="number" id="t-qty" />
+<label>单价</label><input type="number" step="0.01" id="t-price" />
+<div style="margin-top:14px;text-align:right;">
+  <button id="t-cancel">取消</button>
+  <button id="t-save">确定</button>
+</div>`;
   document.body.appendChild(modal);
   if(editIndex!=null){
      const t=trades[editIndex];
      document.getElementById('t-date').value=t.date+'T00:00:00';
-     document.getElementById('t-symbol').value=t.symbol;
+     modal.querySelector('input[name="symbol"]').value = t.symbol;
      document.getElementById('t-side').value=t.side;
      document.getElementById('t-qty').value=t.qty;
      document.getElementById('t-price').value=t.price;
@@ -417,12 +432,39 @@ function openTradeForm(editIndex){
      document.getElementById('t-date').value=new Date().toISOString().slice(0,16);
   }
   function close(){modal.remove();}
-  document.getElementById('t-cancel').onclick=close;
+  
+// --- Option toggle ---
+const chkOpt = modal.querySelector('#t-isOption');
+const stockDiv = modal.querySelector('#stockFields');
+const optDiv = modal.querySelector('#optionFields');
+chkOpt.addEventListener('change',()=>{
+  if(chkOpt.checked){
+    stockDiv.style.display='none';
+    optDiv.style.display='';
+  }else{
+    stockDiv.style.display='';
+    optDiv.style.display='none';
+  }
+});
+// Generate OCC symbol as user types
+['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
+  modal.querySelector(sel)?.addEventListener('input',()=>{
+    const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
+    const exp  = modal.querySelector('#opt-exp').value;
+    const cp   = modal.querySelector('#opt-cp').value;
+    const strike = parseFloat(modal.querySelector('#opt-strike').value);
+    if(root && exp && cp && strike){
+      modal.querySelector('#opt-symbol').value = buildOptionSymbol(root,exp,cp,strike);
+    }
+  });
+});
+
+document.getElementById('t-cancel').onclick=close;
   
 document.getElementById('t-save').onclick=function(){
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
-    const symbol  = document.getElementById('t-symbol').value.trim().toUpperCase();
+    const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
     const side    = document.getElementById('t-side').value;
     const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
     const price   = parseFloat(document.getElementById('t-price').value);

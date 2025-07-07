@@ -11,7 +11,7 @@ const API_BASE = 'https://finnhub.io/api/v1';
  * Get stored token from localStorage.
  */
 function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || '';
+  return localStorage.getItem(TOKEN_KEY) || 'd19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg';
 }
 
 /**
