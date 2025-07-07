@@ -1,4 +1,16 @@
 
+async function getPrevTradingDayClose(symbol){
+  const idb = await import('./db/idb.js');
+  const now = new Date();
+  let d = new Date(now);
+  d.setDate(d.getDate()-1);
+  while(d.getDay()===0 || d.getDay()===6){ d.setDate(d.getDate()-1); }
+  const dateStr = d.toISOString().slice(0,10);
+  const rec = await idb.getPrice(symbol, dateStr);
+  return rec ? rec.close : null;
+}
+
+
 function buildOptionSymbol(root, dateStr, cp, strike){
   const d = dayjs(dateStr).format('YYMMDD');
   const strikeInt = Math.round(strike * 1000).toString().padStart(8,'0');
@@ -182,6 +194,15 @@ const floating = positions.reduce((sum,p)=>{
   const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
   return sum + pl;
 },0);
+
+
+// ensure prevClose loaded from DB if still missing
+await Promise.all(positions.map(async p=>{
+  if(typeof p.prevClose !== 'number'){
+    const pc = await getPrevTradingDayClose(p.symbol);
+    if(pc!=null) p.prevClose = pc;
+  }
+}));
 
 const dailyUnrealized = positions.reduce((sum,p)=>{
   if(p.qty===0 || p.priceOk===false || typeof p.prevClose !== 'number') return sum;
@@ -571,7 +592,7 @@ function updatePrices(){
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
-                   if(q && q.c){ p.last = q.c; p.prevClose = q.pc; p.priceOk = true; } else { p.priceOk = false; }
+                   if(q && q.c){ p.last = q.c; p.prevClose = p.prevClose ?? q.pc; p.priceOk = true; } else { p.priceOk = false; }
                 })
                 .catch(()=>{/* 网络错误忽略 */});
        });
