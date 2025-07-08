@@ -425,7 +425,55 @@ renderStats();
 window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
   recalcPositions();
-  renderStats();renderPositions();renderPositions();renderTrades();
+
+/* ---------- Positions & Trades Renderers ---------- */
+function renderPositions(){
+  const F = window.Utils;
+  const tbl = document.getElementById('positions');
+  if(!tbl) return;
+  const head = ['代码','数量','均价','现价','浮动盈亏','历史盈亏','总盈亏'];
+  tbl.innerHTML = '<tr>' + head.map(h=>`<th>${h}</th>`).join('') + '</tr>';
+  positions.forEach(p=>{
+    const pl = (p.last - p.avgPrice) * p.qty;
+    const realized = trades.filter(t=>t.symbol===p.symbol && t.closed).reduce((s,t)=>s+(t.pl||0),0);
+    const total = pl + realized;
+    const plCls = pl>0?'green':pl<0?'red':'white';
+    const totalCls = total>0?'green':total<0?'red':'white';
+    tbl.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${p.symbol}</td>
+        <td>${F.fmtInt(p.qty)}</td>
+        <td>${p.avgPrice.toFixed(2)}</td>
+        <td id="rt-${p.symbol}">${p.last?.toFixed(2)??'--'}</td>
+        <td id="pl-${p.symbol}" class="${plCls}">${p.last?pl.toFixed(2):'--'}</td>
+        <td>${realized===0?'--':realized.toFixed(2)}</td>
+        <td id="total-${p.symbol}" class="${totalCls}">${p.last?total.toFixed(2):'--'}</td>
+      </tr>`);
+  });
+}
+
+function renderTrades(){
+  const F = window.Utils;
+  const tbl = document.getElementById('trades');
+  if(!tbl) return;
+  const head = ['日期','代码','方向','数量','价格','盈亏'];
+  tbl.innerHTML = '<tr>' + head.map(h=>`<th>${h}</th>`).join('') + '</tr>';
+  const recent = trades.slice().sort((a,b)=> new Date(b.date) - new Date(a.date)).slice(0,10);
+  recent.forEach(t=>{
+    const sideCls = (t.side==='BUY'||t.side==='COVER')?'green':(t.side==='SELL'||t.side==='SHORT')?'red':'white';
+    const plCls = t.pl>0?'green':t.pl<0?'red':'white';
+    tbl.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${t.date}</td>
+        <td>${t.symbol}</td>
+        <td class="${sideCls}">${t.side}</td>
+        <td>${F.fmtInt(t.qty)}</td>
+        <td>${t.price.toFixed(2)}</td>
+        <td class="${plCls}">${isFinite(t.pl)?t.pl.toFixed(2):'--'}</td>
+      </tr>`);
+  });
+}
+  renderStats();renderPositions();renderTrades();
   renderSymbolsList();
   updateClocks();
   setInterval(updateClocks,1000);
