@@ -1,5 +1,5 @@
 
-/* ===== 手动价格覆盖 (v7.64) ===== */
+/* ===== 手动价格覆盖 (v7.65) ===== */
 const overridePrices = JSON.parse(localStorage.getItem('overridePrices') || '{}');
 function saveOverride(symbol, price){
   overridePrices[symbol] = Number(price);
@@ -175,10 +175,10 @@ function recalcPositions(){
               qty: qty,
               avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
               last: lots.length ? lots[lots.length-1].price : 0,
-              priceOk: false};
+              priceOk: null};
   }).filter(p=> p.qty !== 0);
 
-  // <<< v7.64 手动覆盖价格 >>>
+  // <<< v7.65 手动覆盖价格 >>>
   positions.forEach(p=>{
       if(overridePrices[p.symbol]){
           p.last = Number(overridePrices[p.symbol]);
@@ -723,7 +723,7 @@ function updatePrices(){
                 .then(q=>{
                    if(q && q.c){ p.last = q.c; if(p.prevClose == null) p.prevClose = q.pc; p.priceOk = true; } else { p.priceOk = false; }
                 })
-                .catch(()=>{/* 网络错误忽略 */});
+                .catch(()=>{ p.priceOk = false; /* 网络错误忽略 */});
        });
 
        Promise.all(reqs).then(()=>{
