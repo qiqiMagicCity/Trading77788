@@ -1,5 +1,5 @@
 /**
- * dailyClose.js – v7.34
+ * dailyClose.js – v7.35
  * 简化版收盘价导出：页面获取到实时价格后，可一键导出到本地 JSON 文件
  * 依赖：页面中“导出收盘价格”按钮 id="exportPrices"，价格列 class="col-price"，每行持仓 tr[data-symbol]
  */
