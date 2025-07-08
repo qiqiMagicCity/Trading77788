@@ -232,74 +232,29 @@ const floating = positions.reduce((sum,p)=>{
 
 
 const posArr = (typeof positions !== 'undefined' && Array.isArray(positions)) ? positions : [];
-const dailyUnrealized = posArr.reduce((sum,p)=>{
+const todayStr = new Date().toISOString().slice(0,10);
+const newSymbolsToday = new Set(
+  trades
+    .filter(t=> t.date === todayStr && (t.side==='BUY' || t.side==='SHORT'))
+    .map(t=> t.symbol)
+);
+
+const dailyUnrealized = positions.reduce((sum,p)=>{
   if(p.qty===0 || p.priceOk===false) return sum;
-  let delta = 0;
-  if(typeof p.prevClose === 'number'){
-    delta = p.qty>0 ? (p.last - p.prevClose) * p.qty
-                    : (p.prevClose - p.last) * Math.abs(p.qty);
-  }else{
-    delta = p.qty>0 ? (p.last - p.avgPrice) * p.qty
-                    : (p.avgPrice - p.last) * Math.abs(p.qty);
-  }
+
+  // 判断是否为当日新建仓，若是则用当日均价，否则用昨日收盘价
+  const isNewToday = newSymbolsToday.has(p.symbol);
+  const ref = isNewToday
+              ? p.avgPrice
+              : (typeof p.prevClose === 'number' ? p.prevClose : p.avgPrice);
+
+  const delta = p.qty>0
+                ? (p.last - ref) * p.qty
+                : (ref - p.last) * Math.abs(p.qty);
+
   return sum + delta;
 },0);
 
-
-  const todayStr = new Date().toISOString().slice(0,10);
-  const todayTrades = trades.filter(t=> t.date === todayStr);
-  const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
-  const intradayReal = calcIntraday(trades);
-
-  const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
-  const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
-  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
-const closedTrades = trades.filter(t=> t.closed);
-const winsTotal = closedTrades.filter(t=> (t.pl||0) > 0).length;
-const lossesTotal = closedTrades.filter(t=> (t.pl||0) < 0).length;
-const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
-
-const now = new Date();
-const monday = new Date(now);
-monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-monday.setHours(0,0,0,0);
-
-const wtdReal = trades.filter(t=>{
-  const d = new Date(t.date) + dailyUnrealized;
-  return d >= monday && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
-
-const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-firstOfMonth.setHours(0,0,0,0);
-const mtdReal = trades.filter(t=>{
-  const d = new Date(t.date) + dailyUnrealized;
-  return d >= firstOfMonth && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
-
-const firstOfYear = new Date(now.getFullYear(), 0, 1);
-firstOfYear.setHours(0,0,0,0);
-const ytdReal = trades.filter(t=>{
-  const d = new Date(t.date) + dailyUnrealized;
-  return d >= firstOfYear && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
-
-  return {
-    cost,
-    value,
-    floating,
-    todayReal,
-    wins,
-    losses,
-    todayTrades: todayTrades.length,
-    totalTrades: trades.length,
-    histReal,
-    intradayReal,
-    dailyUnrealized,
-    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
-  };
 }
 
 
