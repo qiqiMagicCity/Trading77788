@@ -290,31 +290,24 @@ const monday = new Date(now);
 monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
 monday.setHours(0,0,0,0);
 
-let wtdRealCalc = trades.filter(t=>{
+const wtdReal = trades.filter(t=>{
   const d = new Date(t.date);
   return d >= monday && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 
-
-// 将历史+当日浮动盈亏合并
-const wtdReal = wtdRealCalc + dailyUnrealized;
 const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 firstOfMonth.setHours(0,0,0,0);
-let mtdRealCalc = trades.filter(t=>{
+const mtdReal = trades.filter(t=>{
   const d = new Date(t.date);
   return d >= firstOfMonth && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
-// 叠加当日浮动盈亏
-const mtdReal = mtdRealCalc + dailyUnrealized;
 
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
-let ytdRealCalc = trades.filter(t=>{
+const ytdReal = trades.filter(t=>{
   const d = new Date(t.date);
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
-// 叠加当日浮动盈亏
-const ytdReal = ytdRealCalc + dailyUnrealized;
 
   return {
     cost,
@@ -544,7 +537,6 @@ chkOpt.addEventListener('change',()=>{
     const strike = parseFloat(modal.querySelector('#opt-strike').value);
     if(root && exp && cp && strike){
       modal.querySelector('#opt-symbol').value = buildOptionSymbol(root,exp,cp,strike);
-      modal.querySelector('#t-symbol').value = modal.querySelector('#opt-symbol').value;
     }else{
       modal.querySelector('#opt-symbol').value = '';
     }
@@ -569,7 +561,6 @@ document.getElementById('t-save').onclick=function(){
             const strike = parseFloat(modal.querySelector('#opt-strike').value);
             if(root && exp && cp && strike){
                 symField.value = buildOptionSymbol(root,exp,cp,strike);
-            modal.querySelector('#t-symbol').value = symField.value;
             }
         }
     }
