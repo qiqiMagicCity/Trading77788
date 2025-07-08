@@ -1,0 +1,26 @@
+
+Trading777 v7.62 更新日志 (2025‑07‑08)
+
+【修复】
+- 彻底解决实时价格获取失败、页面崩溃问题  
+  • 将 js/services/priceService.js 中对 Node.js fs/path 依赖改为 **自动检测环境**：  
+    - 桌面端 (Electron/NW.js) 继续使用文件系统 price-history.json 缓存  
+    - 浏览器端无 fs 时自动退回 **localStorage** 读写，不再抛异常  
+  • getApiKeys() 在浏览器端默认读取 localStorage.FINNHUB_TOKEN，可由用户设置；若无则使用 KEY.txt / 默认 demo token  
+  • 新增浏览器安全的 readPriceHistoryLocal / atomicWriteLocal 方法，确保缓存持久化  
+
+【改进】
+- 统一在所有页面标题中反映版本号：  
+  index.html、analysis.html、stock.html、trades.html 均更新为 **Trading777 v7.62**。  
+
+【未改动的内容】
+- UI 布局、样式文件、交易算法逻辑（calc.js 等）  
+- IndexedDB 数据结构 (js/db/idb.js)  
+- 其他服务模块 (apiQueue.js、finnhubService.js 等)  
+- 历史日志文件与数据文件保持原样  
+
+请自查：
+1. 浏览器打开 index.html 无报错、可正常获取并刷新实时价格  
+2. 在 Electron/NW.js 环境下仍能使用本地 price-history.json 缓存  
+
+—— End of v7.62 Log ——
