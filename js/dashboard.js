@@ -1,18 +1,18 @@
 
-/* ===== 手动价格覆盖 (v7.65) ===== */
+/* ===== 手动价格覆盖 (v7.66) ===== */
 const overridePrices = JSON.parse(localStorage.getItem('overridePrices') || '{}');
 function saveOverride(symbol, price){
   overridePrices[symbol] = Number(price);
   localStorage.setItem('overridePrices', JSON.stringify(overridePrices));
 }
-/* ----- helper: local date time string (v7.58) ----- */
+/* ----- helper: local date time string (v7.66) ----- */
 function getLocalDateTimeStr(){
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,16);
 }
 
-/* ---------- Prev Close attachment (v7.27) ---------- */
+/* ---------- Prev Close attachment (v7.66) ---------- */
 async function attachPrevCloses(){
   const idb = await import('./db/idb.js');
   const now = new Date();
@@ -178,7 +178,7 @@ function recalcPositions(){
               priceOk: null};
   }).filter(p=> p.qty !== 0);
 
-  // <<< v7.65 手动覆盖价格 >>>
+  // <<< v7.66 手动覆盖价格 >>>
   positions.forEach(p=>{
       if(overridePrices[p.symbol]){
           p.last = Number(overridePrices[p.symbol]);
@@ -264,7 +264,7 @@ const floating = positions.reduce((sum,p)=>{
   const latestTradeDate = trades.reduce((d,t)=> t.date>d ? t.date : d, '');
   const todayStr = latestTradeDate || new Date().toLocaleDateString('en-CA', { timeZone:'America/New_York' });
   const todayTrades = trades.filter(t=> t.date === todayStr);
-// --- v7.53 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
+// --- v7.66 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
 // 构建今日净买卖映射
 const dayNetMap = {};
 todayTrades.forEach(t=>{
@@ -331,7 +331,7 @@ const ytdReal = trades.filter(t=>{
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 
-// ----- v7.60 修复：WTD/MTD/YTD 计算口径 -----
+// ----- v7.66 修复：WTD/MTD/YTD 计算口径 -----
 const wtd = wtdReal + dailyUnrealized;
 const mtd = mtdReal + dailyUnrealized;
 const ytd = ytdReal + dailyUnrealized;
@@ -596,7 +596,7 @@ document.getElementById('t-save').onclick=function(){
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
 
-    // ----- v7.61 修复：根据“是否期权”选择正确的 symbol 输入框 -----
+    // ----- v7.66 修复：根据“是否期权”选择正确的 symbol 输入框 -----
     let symbol;
     if(chkOpt && chkOpt.checked){
         symbol = modal.querySelector('#opt-symbol').value.trim().toUpperCase();
@@ -684,7 +684,13 @@ window.addEventListener('load',()=>{
 function updatePriceCells(){
   positions.forEach(p=>{
     const priceCell = document.getElementById(`rt-${p.symbol}`);
-    if(priceCell) priceCell.textContent = (p.priceOk===true ? p.last.toFixed(2) : p.priceOk===null ? '获取中…' : '--');
+    if(priceCell) if(priceCell){
+        if(p.manual && p.apiLast){
+          priceCell.innerHTML = `<span title="API: ${p.apiLast.toFixed(2)}">*${p.last.toFixed(2)}</span>`;
+        }else{
+          priceCell.textContent = (p.priceOk===true ? p.last.toFixed(2) : p.priceOk===null ? '获取中…' : '--');
+        }
+      }
 
     const pl = (p.last - p.avgPrice) * p.qty;
     const cls = pl>0?'green':pl<0?'red':'white';
@@ -705,7 +711,7 @@ function updatePriceCells(){
 
 function updatePrices(){
   // Reset state to 'loading' before each API call
-  positions.forEach(p => { if(!p.manual) p.priceOk = null; });
+  positions.forEach(p => { p.priceOk = null; });
   // 尝试读取 KEY.txt 里的 Finnhub key；如果读取失败就回退到内置 key
   fetch('KEY.txt')
     .then(r=> r.ok ? r.text() : '')
@@ -717,7 +723,6 @@ function updatePrices(){
 
        // 为当前所有持仓并行请求价格，全部返回后再统一刷新界面
        const reqs = positions.map(p=>{
-         if(p.manual) return Promise.resolve();
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
