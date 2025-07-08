@@ -13,12 +13,7 @@ async function attachPrevCloses(){
   if(!Array.isArray(positions)){
     try{
       if(typeof recalcPositions==='function'){
-        if(!positions || positions.length===0){
-  recalcPositions();
-
-  // after attaching prev close, refresh stats
-  if(typeof refreshAll==="function") refreshAll();
-}
+        recalcPositions();
       }
     }catch(e){ console.error(e); }
   }
@@ -222,258 +217,348 @@ function calcIntraday(trades){
   });
   return pl;
 }
-
-/* ========== Enhanced Statistics Module v7.46 ========== */
-function getTodayNY(){
-  return luxon.DateTime.now().setZone('America/New_York').toFormat('yyyy-LL-dd');
-}
-
-/* Main statistics calc – returns an object with 13 fields */
 function stats(){
-  /* ---------- Pre‑flight: ensure positions & trades ---------- */
-  if(!Array.isArray(window.positions)){
-    if(typeof recalcPositions==='function') recalcPositions();
-    if(!Array.isArray(window.positions)) window.positions = [];
-  }
-  const positions = window.positions;
-  const tradesRaw = JSON.parse(localStorage.getItem('trades')||'[]');
-  // normalise numeric
-  const trades = tradesRaw.map(t=>({...t, qty:Number(t.qty), price:Number(t.price)}));
+  // 重新计算账户统计数据，兼容多空仓位显示
+  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
+  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
+  
+const floating = positions.reduce((sum,p)=>{
+  if(p.qty===0||p.priceOk===false) return sum;
+  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
+  return sum + pl;
+},0);
 
-  const today = getTodayNY();
 
-  /* 1‑3. Cost / Value / Floating P&L (all open) */
-  const cost = positions.reduce((s,p)=> s + Math.abs(p.qty * p.avgPrice), 0);
-  const value = positions.reduce((s,p)=> p.priceOk===false ? s : s + Math.abs(p.qty)*p.last, 0);
-  const floating = positions.reduce((s,p)=>{
-      if(p.qty===0 || p.priceOk===false) return s;
-      const pl = p.qty>0
-               ? (p.last - p.avgPrice) * p.qty
-               : (p.avgPrice - p.last) * Math.abs(p.qty);
-      return s + pl;
-  },0);
 
-  /* ---------- Helper: build pre‑today lots snapshot ---------- */
-  const preLots = {};   // {symbol: [{qty, price}] } – qty sign long+: short- 
-  trades
-    .filter(t=> t.date < today)
-    .sort((a,b)=> new Date(a.date) - new Date(b.date))
-    .forEach(t=>{
-      const sign = (t.side==='BUY'||t.side==='COVER'||t.side==='BOUGHT'||t.side==='买入') ? +1 : -1;
-      const qty  = sign * t.qty;
-      const lot  = {qty, price:t.price};
-      preLots[t.symbol] = preLots[t.symbol] || [];
-      if(qty>0){ // long buy
-        preLots[t.symbol].push(lot);
-      }else{     // sell / short
-        let remaining = -qty;
-        while(remaining>0 && preLots[t.symbol].length && preLots[t.symbol][0].qty>0){
-          const opp = preLots[t.symbol][0];
-          const c = Math.min(remaining, opp.qty);
-          opp.qty -= c;
-          if(opp.qty===0) preLots[t.symbol].shift();
-          remaining -= c;
-        }
-        if(remaining>0){
-          preLots[t.symbol].push({qty:-remaining, price:t.price});
-        }
-      }
-    });
+const dailyUnrealized = positions.reduce((sum,p)=>{
+  if(p.qty===0 || p.priceOk===false || typeof p.prevClose !== 'number') return sum;
+  const delta = p.qty>0 ? (p.last - p.prevClose)*p.qty : (p.prevClose - p.last)*Math.abs(p.qty);
+  return sum + delta;
+},0);
 
-  /* ---------- Today’s realized P/L & intraday P/L ---------- */
-  let totalRealizedToday = 0;   // module 4 + 5 combined
-  let intraDayPL = 0;           // module 5
-  let todayTradeCount = 0;
 
-  // per‑symbol intraday queue
-  const dayQueue = {};
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayTrades = trades.filter(t=> t.date === todayStr);
+  const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const intradayReal = calcIntraday(trades);
 
-  trades
-    .filter(t=> t.date === today)
-    .sort((a,b)=> new Date(a.time||a.date) - new Date(b.time||b.date))
-    .forEach(t=>{
-      const sign = (t.side==='BUY'||t.side==='COVER'||t.side==='BOUGHT'||t.side==='买入') ? +1 : -1;
-      let qty = sign * t.qty;
-      const price = t.price;
-      todayTradeCount += 1;
+  const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
+  const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
+  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
+const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
+const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
+const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
 
-      // 1) first try to offset historical lots
-      const lots = preLots[t.symbol] || [];
-      while(qty!==0 && lots.length && qty*lots[0].qty<0){
-        const lot = lots[0];
-        const match = Math.min(Math.abs(qty), Math.abs(lot.qty));
-        const pl = lot.qty>0
-                  ? (price - lot.price) * match    // closing long
-                  : (lot.price - price) * match;   // closing short
-        totalRealizedToday += pl;
-        lot.qty += (lot.qty>0 ? -match : match);   // reduce towards 0
-        if(Math.abs(lot.qty) < 1e-6) lots.shift();
-        qty += (qty>0 ? -match : match);
-      }
+const now = new Date();
+const monday = new Date(now);
+monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+monday.setHours(0,0,0,0);
 
-      // 2) then match within‑day queue
-      dayQueue[t.symbol] = dayQueue[t.symbol] || [];
-      const dq = dayQueue[t.symbol];
-      while(qty!==0 && dq.length && qty*dq[0].qty<0){
-        const lot = dq[0];
-        const match = Math.min(Math.abs(qty), Math.abs(lot.qty));
-        const pl = lot.qty>0
-                  ? (price - lot.price) * match
-                  : (lot.price - price) * match;
-        intraDayPL += pl;
-        totalRealizedToday += pl;
-        lot.qty += (lot.qty>0 ? -match : match);
-        if(Math.abs(lot.qty) < 1e-6) dq.shift();
-        qty += (qty>0 ? -match : match);
-      }
+const wtdReal = trades.filter(t=>{
+  const d = new Date(t.date);
+  return d >= monday && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
 
-      // 3) whatever remains becomes an intraday open lot
-      if(qty!==0){
-        dq.push({qty, price});
-      }
-    });
+const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+firstOfMonth.setHours(0,0,0,0);
+const mtdReal = trades.filter(t=>{
+  const d = new Date(t.date);
+  return d >= firstOfMonth && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
 
-  const todayReal = totalRealizedToday - intraDayPL;  // module 4
-
-  /* 6. Daily unrealised P/L (based on prevClose vs last / avgPrice) */
-  const dailyUnrealized = positions.reduce((s,p)=>{
-      if(p.qty===0 || p.priceOk===false) return s;
-      let base = typeof p.prevClose==='number' ? p.prevClose : p.avgPrice;
-      const delta = p.qty>0
-                  ? (p.last - base) * p.qty
-                  : (base - p.last) * Math.abs(p.qty);
-      return s + delta;
-  },0);
-
-  /* 8. cumulative trade count & 10. winRate */
-  const allTradesCopy = trades.map(t=>({...t}));
-  if(window.FIFO && typeof window.FIFO.computeFIFO==='function'){
-    window.FIFO.computeFIFO(allTradesCopy);
-  }
-  const closedTrades = allTradesCopy.filter(t=>t.closed);
-  const histReal = closedTrades.reduce((s,t)=> s + (t.pl||0), 0);
-  const wins = closedTrades.filter(t=>(t.pl||0)>0).length;
-  const winRate = closedTrades.length? (wins/closedTrades.length*100):0;
-
-  /* 11‑13. WTD / MTD / YTD using equity curve + today delta */
-  const curve = (typeof loadCurve==='function') ? loadCurve() : [];
-  const todayDelta = dailyUnrealized + todayReal;
-  const dtToday = luxon.DateTime.fromFormat(today,'yyyy-LL-dd');
-  const weekStart = dtToday.startOf('week').minus({days: dtToday.weekday===7?6:0}).plus({days:1}); // Monday
-  const monthStart = dtToday.startOf('month');
-  const yearStart = dtToday.startOf('year');
-
-  function sumSince(startDT){
-    const startStr = startDT.toFormat('yyyy-LL-dd');
-    return curve.filter(p=> p.date >= startStr).reduce((s,e)=> s + (e.delta||0), 0) + todayDelta;
-  }
-  const wtd = sumSince(weekStart);
-  const mtd = sumSince(monthStart);
-  const ytd = sumSince(yearStart);
+const firstOfYear = new Date(now.getFullYear(), 0, 1);
+firstOfYear.setHours(0,0,0,0);
+const ytdReal = trades.filter(t=>{
+  const d = new Date(t.date);
+  return d >= firstOfYear && d <= now;
+}).reduce((s,t)=> s + (t.pl||0), 0);
 
   return {
-    cost,value,floating,
-    todayReal,intraDayPL,
-    dailyUnrealized,
-    todayTradeCount,
+    cost,
+    value,
+    floating,
+    todayReal,
+    wins,
+    losses,
+    todayTrades: todayTrades.length,
     totalTrades: trades.length,
     histReal,
+    intradayReal,
+    dailyUnrealized,
     winRate,
-    wtd,mtd,ytd
+    wtdReal,
+    mtdReal,
+    ytdReal
   };
 }
 
-/* ---------- Render stats boxes ---------- */
+
+/* ---------- 5. Render helpers ---------- */
+
+
+function updateClocks(){
+  const fmt = tz => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
+  document.getElementById('clocks').innerHTML =
+      `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
+}
+
+
+/* Stats boxes */
 function renderStats(){
-  const S = stats();   // compute
-  const $ = (id)=> document.getElementById(id);
+  const s=stats();
+  
+const a=[
+['账户总成本',Utils.fmtDollar(s.cost)],
+['目前市值',Utils.fmtDollar(s.value)],
+['当前浮动盈亏',Utils.fmtDollar(s.floating)],
+['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
+['日内交易', Utils.fmtDollar(s.intradayReal)],
+['当日浮动盈亏', Utils.fmtDollar(s.dailyUnrealized)],
+['当日交易次数',Utils.fmtInt(s.todayTrades)],
+['累计交易次数',Utils.fmtInt(s.totalTrades)],
+['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
+['WTD', Utils.fmtDollar(s.wtdReal)],
+['MTD', Utils.fmtDollar(s.mtdReal)],
+['YTD', Utils.fmtDollar(s.ytdReal)],
 
-  if(!window.Utils){
-    console.warn('Utils not loaded');
-    return;
-  }
-  const F = window.Utils;  // helpers
-
-  const mapping = [
-    ['stat-1' ,'账户总成本',     F.fmtDollar(S.cost)],
-    ['stat-2' ,'目前市值',       F.fmtDollar(S.value)],
-    ['stat-3' ,'当前浮动盈亏',   F.fmtDollar(S.floating)],
-    ['stat-4' ,'当日已实现盈亏', F.fmtDollar(S.todayReal)],
-    ['stat-5' ,'日内交易',       F.fmtDollar(S.intraDayPL)],
-    ['stat-6' ,'当日浮动盈亏',   F.fmtDollar(S.dailyUnrealized)],
-    ['stat-7' ,'当日交易次数',   F.fmtInt(S.todayTradeCount)],
-    ['stat-8' ,'累计交易次数',   F.fmtInt(S.totalTrades)],
-    ['stat-9' ,'历史已实现盈亏', F.fmtDollar(S.histReal)],
-    ['stat-10','胜率',          `<span class="white">${S.winRate.toFixed(1)}%</span>`],
-    ['stat-11','WTD',           F.fmtDollar(S.wtd)],
-    ['stat-12','MTD',           F.fmtDollar(S.mtd)],
-    ['stat-13','YTD',           F.fmtDollar(S.ytd)],
-  ];
-
-  mapping.forEach(([id,label,val])=>{
-    const el = $(id);
-    if(!el) return;
-    el.innerHTML = `<div class="box-title">${label}</div><div class="box-value">${val}</div>`;
+];
+  a.forEach((it,i)=>{
+    const box=document.getElementById('stat-'+(i+1));
+    if(!box) return;
+    box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;
   });
 }
-/* auto-render on load & whenever positions/trades refresh */
-renderStats();
 
+/* Positions table */
+function renderPositions(){
+  const tbl=document.getElementById('positions');
+  if(!tbl) return;
+  const head=['logo','代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
+  positions.forEach(p=>{
+    const amt=Math.abs(p.qty*p.avgPrice);
+    const pl=(p.last-p.avgPrice)*p.qty;
+    const cls=pl>0?'green':pl<0?'red':'white';
+    const times=trades.filter(t=>t.symbol===p.symbol).length;
+    
+const realized=trades.filter(t=>t.symbol===p.symbol&&t.closed).reduce((s,t)=>s+t.pl,0);
+const totalPNL=pl+realized;
+tbl.insertAdjacentHTML('beforeend',`
+  <tr data-symbol="${p.symbol}">
+    <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
+    <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
+    <td id="rt-${p.symbol}" class="col-price">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
+    <td>${p.qty}</td>
+    <td>${p.avgPrice.toFixed(2)}</td>
+    <td>${amt.toFixed(2)}</td>
+    <td>${(p.avgPrice).toFixed(2)}</td>
+    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
+    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
+    <td>${times}</td>
+    <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
+  </tr>`);
+  });
+}
+
+/* Trades table */
+function renderTrades(){
+  renderSymbolsList();
+  const tbl=document.getElementById('trades');
+  if(!tbl) return;
+  const head=['日期','星期','图标','代码','中文','方向','单价','数量','订单金额','详情'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
+  trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
+    const amt=(t.qty*t.price).toFixed(2);
+    const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
+    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ getWeekIdx(t.date) ];
+    tbl.insertAdjacentHTML('beforeend',`
+      <tr>
+        <td>${t.date}</td>
+        <td>${wkAbbr}</td><td><img src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
+        <td>${window.SymbolCN[t.symbol]||""}</td>
+<td class="${sideCls}">${t.side}</td>
+        <td>${t.price.toFixed(2)}</td>
+        <td class="${sideCls}">${t.qty}</td>
+        <td>${amt}</td>
+        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
+      </tr>`);
+  });
+}
+
+/* ---------- 6. Actions ---------- */
+
+function addTrade(){
+  openTradeForm();
+}
+
+/* Export */
+function exportData(){
+  const data={positions,trades,equityCurve:loadCurve(),generated:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='trading777_backup_'+Date.now()+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* Import */
+function importData(){
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='.json,application/json';
+  input.onchange=e=>{
+    const file=e.target.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(data.trades){ trades=data.trades; }
+        if(data.positions){ positions=data.positions; } else { recalcPositions(); }
+        if(data.equityCurve){ saveCurve(data.equityCurve); }
+        saveData();
+        renderStats();renderPositions();renderPositions();renderTrades();
+  renderSymbolsList();
+        alert('导入成功!');
+      }catch(err){
+        alert('导入失败: '+err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+
+/* ---------- 7b. Trade modal ---------- */
+function openTradeForm(editIndex){
+  let modal=document.getElementById('trade-modal');
+  if(modal){ modal.remove(); }
+  modal=document.createElement('div');
+  modal.id='trade-modal';
+  modal.className='modal';
+  modal.innerHTML=`<div class="modal-content"><h3>${editIndex==null?'添加交易':'编辑交易'}</h3>
+<label>是否期权</label><input type="checkbox" id="t-isOption" />
+<div id="stockFields">
+  <label>交易时间</label><input type="datetime-local" id="t-date" />
+  <label>股票代码</label><input type="text" id="t-symbol" name="symbol" />
+</div>
+<div id="optionFields" style="display:none;">
+  <label>正股</label><input type="text" id="opt-root" placeholder="AAPL" />
+  <label>到期日</label><input type="date" id="opt-exp" />
+  <label>期权类型</label>
+    <select id="opt-cp"><option value="C">Call</option><option value="P">Put</option></select>
+  <label>行权价</label><input type="number" id="opt-strike" step="0.01" />
+  <label>生成代码</label><input type="text" id="opt-symbol" name="symbol" readonly />
+</div>
+<label>交易方向</label>
+  <select id="t-side">
+    <option value="BUY">BUY</option>
+    <option value="SELL">SELL</option>
+    <option value="SHORT">SHORT</option>
+    <option value="COVER">COVER</option>
+  </select>
+<label>数量(张)</label><input type="number" id="t-qty" />
+<label>单价</label><input type="number" step="0.01" id="t-price" />
+<div style="margin-top:14px;text-align:right;">
+  <button id="t-cancel">取消</button>
+  <button id=</div>"t-save">确定</button>
+</div>`;
+  document.body.appendChild(modal);
+  if(editIndex!=null){
+     const t=trades[editIndex];
+     document.getElementById('t-date').value=t.date+'T00:00:00';
+     modal.querySelector('input[name="symbol"]').value = t.symbol;
+     document.getElementById('t-side').value=t.side;
+     document.getElementById('t-qty').value=t.qty;
+     document.getElementById('t-price').value=t.price;
+  }else{
+     document.getElementById('t-date').value=new Date().toISOString().slice(0,16);
+  }
+  function close(){modal.remove();}
+  
+// --- Option toggle ---
+const chkOpt = modal.querySelector('#t-isOption');
+const stockDiv = modal.querySelector('#stockFields');
+const optDiv = modal.querySelector('#optionFields');
+chkOpt.addEventListener('change',()=>{
+  if(chkOpt.checked){
+    stockDiv.style.display='none';
+    optDiv.style.display='';
+  }else{
+    stockDiv.style.display='';
+    optDiv.style.display='none';
+  }
+});
+// Generate OCC symbol as user types
+['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
+  modal.querySelector(sel)?.addEventListener('input',()=>{
+    const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
+    const exp  = modal.querySelector('#opt-exp').value;
+    const cp   = modal.querySelector('#opt-cp').value;
+    const strike = parseFloat(modal.querySelector('#opt-strike').value);
+    if(root && exp && cp && strike){
+      modal.querySelector('#opt-symbol').value = buildOptionSymbol(root,exp,cp,strike);
+    }
+  });
+});
+
+document.getElementById('t-cancel').onclick=close;
+  
+document.getElementById('t-save').onclick=function(){
+    const dateInput = document.getElementById('t-date').value;
+    const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
+    const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
+    const side    = document.getElementById('t-side').value;
+    const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
+    const price   = parseFloat(document.getElementById('t-price').value);
+    if(!symbol || !qty || !price){ alert('请完整填写表单'); return; }
+
+    let pl = 0;
+    let closedFlag = false;
+    // 计算盈亏并确定是否平仓
+    if(side === 'SELL'){        // 卖出现有多头
+        const pos = positions.find(p=>p.symbol===symbol && p.qty>0);
+        const avg = pos ? pos.avgPrice : price;
+        pl = (price - avg) * qty;
+        closedFlag = true;
+    }else if(side === 'COVER'){   // 回补空头
+        const pos = positions.find(p=>p.symbol===symbol && p.qty<0);
+        const avg = pos ? Math.abs(pos.avgPrice) : price;
+        pl = (avg - price) * qty;
+        closedFlag = true;
+    }
+
+    const trade = {date,symbol,side,qty,price,pl,closed:closedFlag};
+
+    if(editIndex != null){
+        trades[editIndex] = trade;
+    }else{
+        trades.unshift(trade);
+    }
+
+    recalcPositions();
+    saveData();
+    renderStats();
+    renderPositions();
+    renderTrades();
+  renderSymbolsList();
+    close();
+};
+
+  
+}
 
 
 /* ---------- 7. Wire up ---------- */
 window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
   recalcPositions();
-
-/* ---------- Positions & Trades Renderers ---------- */
-function renderPositions(){
-  const F = window.Utils;
-  const tbl = document.getElementById('positions');
-  if(!tbl) return;
-  const head = ['代码','数量','均价','现价','浮动盈亏','历史盈亏','总盈亏'];
-  tbl.innerHTML = '<tr>' + head.map(h=>`<th>${h}</th>`).join('') + '</tr>';
-  positions.forEach(p=>{
-    const pl = (p.last - p.avgPrice) * p.qty;
-    const realized = trades.filter(t=>t.symbol===p.symbol && t.closed).reduce((s,t)=>s+(t.pl||0),0);
-    const total = pl + realized;
-    const plCls = pl>0?'green':pl<0?'red':'white';
-    const totalCls = total>0?'green':total<0?'red':'white';
-    tbl.insertAdjacentHTML('beforeend', `
-      <tr>
-        <td>${p.symbol}</td>
-        <td>${F.fmtInt(p.qty)}</td>
-        <td>${p.avgPrice.toFixed(2)}</td>
-        <td id="rt-${p.symbol}">${p.last?.toFixed(2)??'--'}</td>
-        <td id="pl-${p.symbol}" class="${plCls}">${p.last?pl.toFixed(2):'--'}</td>
-        <td>${realized===0?'--':realized.toFixed(2)}</td>
-        <td id="total-${p.symbol}" class="${totalCls}">${p.last?total.toFixed(2):'--'}</td>
-      </tr>`);
-  });
-}
-
-function renderTrades(){
-  const F = window.Utils;
-  const tbl = document.getElementById('trades');
-  if(!tbl) return;
-  const head = ['日期','代码','方向','数量','价格','盈亏'];
-  tbl.innerHTML = '<tr>' + head.map(h=>`<th>${h}</th>`).join('') + '</tr>';
-  const recent = trades.slice().sort((a,b)=> new Date(b.date) - new Date(a.date)).slice(0,10);
-  recent.forEach(t=>{
-    const sideCls = (t.side==='BUY'||t.side==='COVER')?'green':(t.side==='SELL'||t.side==='SHORT')?'red':'white';
-    const plCls = t.pl>0?'green':t.pl<0?'red':'white';
-    tbl.insertAdjacentHTML('beforeend', `
-      <tr>
-        <td>${t.date}</td>
-        <td>${t.symbol}</td>
-        <td class="${sideCls}">${t.side}</td>
-        <td>${F.fmtInt(t.qty)}</td>
-        <td>${t.price.toFixed(2)}</td>
-        <td class="${plCls}">${isFinite(t.pl)?t.pl.toFixed(2):'--'}</td>
-      </tr>`);
-  });
-}
-  renderStats();renderPositions();renderTrades();
+  renderStats();renderPositions();renderPositions();renderTrades();
   renderSymbolsList();
   updateClocks();
   setInterval(updateClocks,1000);
@@ -565,7 +650,6 @@ function renderSymbolsList(){
 /* re-render symbols list whenever trades change */
 /* fetch prices on load */
 attachPrevCloses().then(()=>{
-    refreshAll();
     updatePrices();
     // 每分钟刷新一次价格
     setInterval(updatePrices, 60000);
