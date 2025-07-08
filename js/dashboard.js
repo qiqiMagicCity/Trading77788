@@ -1,3 +1,10 @@
+
+/* ===== 手动价格覆盖 (v7.62) ===== */
+const overridePrices = JSON.parse(localStorage.getItem('overridePrices') || '{}');
+function saveOverride(symbol, price){
+  overridePrices[symbol] = Number(price);
+  localStorage.setItem('overridePrices', JSON.stringify(overridePrices));
+}
 /* ----- helper: local date time string (v7.58) ----- */
 function getLocalDateTimeStr(){
   const d = new Date();
@@ -170,6 +177,15 @@ function recalcPositions(){
               last: lots.length ? lots[lots.length-1].price : 0,
               priceOk: false};
   }).filter(p=> p.qty !== 0);
+
+  // <<< v7.62 手动覆盖价格 >>>
+  positions.forEach(p=>{
+      if(overridePrices[p.symbol]){
+          p.last = Number(overridePrices[p.symbol]);
+          p.priceOk = true;
+          p.manual = true;
+      }
+  });
 }
 
 
@@ -395,7 +411,7 @@ tbl.insertAdjacentHTML('beforeend',`
   <tr data-symbol="${p.symbol}">
     <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
     <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
-    <td id="rt-${p.symbol}" class="col-price">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
+    <td id="rt-${p.symbol}" class="col-price">${p.priceOk===false ? `<button class="edit-price" data-symbol="${p.symbol}"` + (p.manual? ` disabled` : ``) + `>手动输入</button>` : (p.manual ? `<span class="edit-price manual" data-symbol="${p.symbol}">*${p.last.toFixed(2)}</span>` : p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
@@ -579,7 +595,14 @@ document.getElementById('t-save').onclick=function(){
     }
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
-    const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
+
+    // ----- v7.61 修复：根据“是否期权”选择正确的 symbol 输入框 -----
+    let symbol;
+    if(chkOpt && chkOpt.checked){
+        symbol = modal.querySelector('#opt-symbol').value.trim().toUpperCase();
+    }else{
+        symbol = modal.querySelector('#t-symbol').value.trim().toUpperCase();
+    }
     const side    = document.getElementById('t-side').value;
     const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
     const price   = parseFloat(document.getElementById('t-price').value);
@@ -692,6 +715,7 @@ function updatePrices(){
 
        // 为当前所有持仓并行请求价格，全部返回后再统一刷新界面
        const reqs = positions.map(p=>{
+         if(p.manual) return Promise.resolve();
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
@@ -749,6 +773,27 @@ function maybeCloseEquity(){
 maybeCloseEquity();
 setInterval(maybeCloseEquity, 60_000);
 
+
+/* ===== 手动输入现价按钮 ===== */
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.edit-price');
+  if(!btn) return;
+  const sym = btn.dataset.symbol;
+  const cur = overridePrices[sym] || '';
+  const input = prompt('手动输入当前价格 ('+sym+')', cur);
+  if(input===null) return;
+  const val = Number(input);
+  if(isNaN(val)){ alert('请输入数字'); return; }
+  saveOverride(sym, val);
+  const pos = positions.find(p=>p.symbol===sym);
+  if(pos){
+      pos.last = val;
+      pos.priceOk = true;
+      pos.manual = true;
+  }
+  renderPositions();
+  renderStats();
+});
 })();
 
 
