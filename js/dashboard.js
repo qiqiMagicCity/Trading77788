@@ -45,6 +45,14 @@ async function getPrevTradingDayClose(symbol){
 function buildOptionSymbol(root, dateStr, cp, strike){
   // OCC option code: ROOT + YYMMDD + C/P + strike*1000 (8 digits)
   if(!root || !dateStr || !cp){ return ''; }
+
+
+// ---- Helper: get local datetime string YYYY-MM-DDTHH:mm in local timezone ----
+function getLocalDateTimeStr(){
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().slice(0,16);
+}
   const dObj = new Date(dateStr.includes('/') ? dateStr.replace(/\//g,'-') : dateStr);
   if(isNaN(dObj)){ return ''; }
   const yy = String(dObj.getFullYear()).slice(-2);
@@ -512,7 +520,7 @@ function openTradeForm(editIndex){
      document.getElementById('t-qty').value=t.qty;
      document.getElementById('t-price').value=t.price;
   }else{
-     document.getElementById('t-date').value=new Date().toISOString().slice(0,16);
+     document.getElementById('t-date').value=getLocalDateTimeStr();
   }
   function close(){modal.remove();}
   
@@ -566,7 +574,9 @@ document.getElementById('t-save').onclick=function(){
     }
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
-    const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
+    const symbol = (chkOpt && chkOpt.checked)
+  ? modal.querySelector('#opt-symbol').value.trim().toUpperCase()
+  : modal.querySelector('#t-symbol').value.trim().toUpperCase();
     const side    = document.getElementById('t-side').value;
     const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
     const price   = parseFloat(document.getElementById('t-price').value);
