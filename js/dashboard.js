@@ -1,4 +1,109 @@
 
+function stats(){
+  /* 兼容多空仓位 */
+  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
+
+  /* 当前浮动盈亏（全部未平仓）*/
+  const floating = positions.reduce((sum,p)=>{
+    if(p.qty===0||p.priceOk===false) return sum;
+    const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty
+                       : (p.avgPrice - p.last)*Math.abs(p.qty);
+    return sum + pl;
+  },0);
+
+  /* 当日浮动盈亏 */
+  const dailyUnrealized = positions.reduce((sum,p)=>{
+    if(p.qty===0 || p.priceOk===false) return sum;
+    /* prevClose 存在 ⇒ 历史仓，否则视作当日新仓 */
+    const ref = (typeof p.prevClose === 'number') ? p.prevClose : p.avgPrice;
+    const delta = p.qty>0
+                    ? (p.last - ref) * p.qty              // 多头
+                    : (ref - p.last) * Math.abs(p.qty);   // 空头
+    return sum + delta;
+  },0);
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayTrades = trades.filter(t=> t.date === todayStr);
+  const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const intradayReal = calcIntraday(trades);
+
+  /* 胜率使用已平仓（t.closed） */
+  const closedTrades = trades.filter(t=> t.closed);
+  const winsTotal = closedTrades.filter(t=> (t.pl||0) > 0).length;
+  const lossesTotal = closedTrades.filter(t=> (t.pl||0) < 0).length;
+  const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
+
+  const now = new Date();
+
+  /* WTD */
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  monday.setHours(0,0,0,0);
+  const wtdReal = trades.filter(t=>{
+    const d = new Date(t.date);
+    return d >= monday && d <= now;
+  }).reduce((s,t)=> s + (t.pl||0), 0) + dailyUnrealized;
+
+  /* MTD */
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  firstOfMonth.setHours(0,0,0,0);
+  const mtdReal = trades.filter(t=>{
+    const d = new Date(t.date);
+    return d >= firstOfMonth && d <= now;
+  }).reduce((s,t)=> s + (t.pl||0), 0) + dailyUnrealized;
+
+  /* YTD */
+  const firstOfYear = new Date(now.getFullYear(), 0, 1);
+  firstOfYear.setHours(0,0,0,0);
+  const ytdReal = trades.filter(t=>{
+    const d = new Date(t.date);
+    return d >= firstOfYear && d <= now;
+  }).reduce((s,t)=> s + (t.pl||0), 0) + dailyUnrealized;
+
+  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
+
+  return {
+    cost,
+    value,
+    floating,
+    todayReal,
+    intradayReal,
+    dailyUnrealized,
+    todayTrades: todayTrades.length,
+    totalTrades: trades.length,
+    histReal,
+    winRate,
+    wtdReal,
+    mtdReal,
+    ytdReal
+  };
+}
+
+function renderStats(){
+  const s = stats();
+  const a = [
+    ['账户总成本', Utils.fmtDollar(s.cost)],
+    ['目前市值', Utils.fmtDollar(s.value)],
+    ['当前浮动盈亏', Utils.fmtDollar(s.floating)],
+    ['当日已实现盈亏', Utils.fmtDollar(s.todayReal)],
+    ['日内交易', Utils.fmtDollar(s.intradayReal)],
+    ['当日浮动盈亏', Utils.fmtDollar(s.dailyUnrealized)],
+    ['当日交易次数', Utils.fmtInt(s.todayTrades)],
+    ['累计交易次数', Utils.fmtInt(s.totalTrades)],
+    ['历史已实现盈亏', Utils.fmtDollar(s.histReal)],
+    ['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
+    ['WTD', Utils.fmtDollar(s.wtdReal)],
+    ['MTD', Utils.fmtDollar(s.mtdReal)],
+    ['YTD', Utils.fmtDollar(s.ytdReal)]
+  ];
+  a.forEach((it,i)=>{
+    const box = document.getElementById('stat-' + (i+1));
+    if(!box) return;
+    box.innerHTML = `<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;
+  });
+}
+
 /* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
   const idb = await import('./db/idb.js');
@@ -216,38 +321,6 @@ function calcIntraday(trades){
     });
   });
   return pl;
-}
-function stats(){
-  // 重新计算账户统计数据，兼容多空仓位显示
-  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
-  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
-  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
-  
-const floating = positions.reduce((sum,p)=>{
-  if(p.qty===0||p.priceOk===false) return sum;
-  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
-  return sum + pl;
-},0);
-
-
-
-const posArr = (typeof positions !== 'undefined' && Array.isArray(positions)) ? positions : [];
-const todayStr = new Date().toISOString().slice(0,10);
-
-const dailyUnrealized = positions.reduce((sum,p)=>{
-  if(!p || typeof p.qty!=='number' || p.qty===0 || p.priceOk===false) return sum;
-
-  // 依据规则：有 prevClose → 历史仓；否则视为当日新仓
-  const ref = (typeof p.prevClose === 'number') ? p.prevClose : p.avgPrice;
-
-  const delta = p.qty > 0
-        ? (p.last - ref) * p.qty          // 多头
-        : (ref - p.last) * Math.abs(p.qty); // 空头
-
-  return sum + delta;
-},0);
-
-  
 }
 
 
