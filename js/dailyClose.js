@@ -1,5 +1,5 @@
 /**
- * dailyClose.js – v7.31
+ * dailyClose.js – v7.32
  * 手动“导出收盘价格”逻辑
 /* ---- Added in v7.30: lightweight browser-side real‑time price fetch ---- */
 /** 获取 Finnhub API Key（先尝试 KEY.txt，再退回到默认内置 key） */
@@ -111,3 +111,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 });
+
+// v7.32 added stable export handler
+const btnExport = document.getElementById('exportPrices');
+if (btnExport) {
+  btnExport.addEventListener('click', async () => {
+    try {
+      const saved = await snapshotTodayClose();
+      // 无论是否有新增记录，均尝试导出，避免“无反应”体验
+      await exportPrices();
+      alert(`已导出收盘价文件，新增 ${saved} 条记录（可能为 0）`);
+    } catch (err) {
+      console.error('导出收盘价失败', err);
+      alert('导出收盘价失败：' + err.message);
+    }
+  });
+}
