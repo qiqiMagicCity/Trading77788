@@ -43,9 +43,15 @@ async function getPrevTradingDayClose(symbol){
 
 
 function buildOptionSymbol(root, dateStr, cp, strike){
-  const d = dayjs(dateStr).format('YYMMDD');
-  const strikeInt = Math.round(strike * 1000).toString().padStart(8,'0');
-  return (root + d + cp + strikeInt).toUpperCase();
+  // OCC option code: ROOT + YYMMDD + C/P + strike*1000 (8 digits)
+  if(!root || !dateStr || !cp){ return ''; }
+  const dObj = new Date(dateStr.includes('/') ? dateStr.replace(/\//g,'-') : dateStr);
+  if(isNaN(dObj)){ return ''; }
+  const yy = String(dObj.getFullYear()).slice(-2);
+  const mm = String(dObj.getMonth()+1).padStart(2,'0');
+  const dd = String(dObj.getDate()).padStart(2,'0');
+  const strikeInt = Math.round(parseFloat(strike) * 1000).toString().padStart(8,'0');
+  return (root.toUpperCase() + yy + mm + dd + cp + strikeInt);
 }
 
 
@@ -523,18 +529,23 @@ chkOpt.addEventListener('change',()=>{
     optDiv.style.display='none';
   }
 });
-// Generate OCC symbol as user types
-['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
-  modal.querySelector(sel)?.addEventListener('input',()=>{
+// Generate OCC symbol automatically as user fills the option form
+  const updateSymbol = ()=>{
     const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
     const exp  = modal.querySelector('#opt-exp').value;
     const cp   = modal.querySelector('#opt-cp').value;
     const strike = parseFloat(modal.querySelector('#opt-strike').value);
     if(root && exp && cp && strike){
       modal.querySelector('#opt-symbol').value = buildOptionSymbol(root,exp,cp,strike);
+    }else{
+      modal.querySelector('#opt-symbol').value = '';
     }
+  };
+  ['input','change'].forEach(evt=>{
+    ['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
+      modal.querySelector(sel)?.addEventListener(evt, updateSymbol);
+    });
   });
-});
 
 document.getElementById('t-cancel').onclick=close;
   
