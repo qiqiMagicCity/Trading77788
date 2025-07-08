@@ -13,7 +13,12 @@ async function attachPrevCloses(){
   if(!Array.isArray(positions)){
     try{
       if(typeof recalcPositions==='function'){
-        recalcPositions();
+        if(!positions || positions.length===0){
+  recalcPositions();
+
+  // after attaching prev close, refresh stats
+  if(typeof refreshAll==="function") refreshAll();
+}
       }
     }catch(e){ console.error(e); }
   }
@@ -512,6 +517,7 @@ function renderSymbolsList(){
 /* re-render symbols list whenever trades change */
 /* fetch prices on load */
 attachPrevCloses().then(()=>{
+    refreshAll();
     updatePrices();
     // 每分钟刷新一次价格
     setInterval(updatePrices, 60000);
