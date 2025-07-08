@@ -1,5 +1,5 @@
 
-/* ===== 手动价格覆盖 (v7.62) ===== */
+/* ===== 手动价格覆盖 (v7.64) ===== */
 const overridePrices = JSON.parse(localStorage.getItem('overridePrices') || '{}');
 function saveOverride(symbol, price){
   overridePrices[symbol] = Number(price);
@@ -178,7 +178,7 @@ function recalcPositions(){
               priceOk: false};
   }).filter(p=> p.qty !== 0);
 
-  // <<< v7.62 手动覆盖价格 >>>
+  // <<< v7.64 手动覆盖价格 >>>
   positions.forEach(p=>{
       if(overridePrices[p.symbol]){
           p.last = Number(overridePrices[p.symbol]);
@@ -411,13 +411,13 @@ tbl.insertAdjacentHTML('beforeend',`
   <tr data-symbol="${p.symbol}">
     <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
     <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
-    <td id="rt-${p.symbol}" class="col-price">${p.priceOk===false ? `<button class="edit-price" data-symbol="${p.symbol}"` + (p.manual? ` disabled` : ``) + `>手动输入</button>` : (p.manual ? `<span class="edit-price manual" data-symbol="${p.symbol}">*${p.last.toFixed(2)}</span>` : p.last.toFixed(2))}</td>
+    <td id="rt-${p.symbol}" class="col-price">${p.priceOk===null ? '获取中…' : p.priceOk===false ? `<button class="edit-price" data-symbol="${p.symbol}"` + (p.manual? ` disabled` : ``) + `>手动输入</button>` : (p.manual ? `<span class="edit-price manual" data-symbol="${p.symbol}">*${p.last.toFixed(2)}</span>` : p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
     <td>${(p.avgPrice).toFixed(2)}</td>
-    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
-    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
+    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk!==true?'--':pl.toFixed(2))}</td>
+    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk!==true?'--':totalPNL.toFixed(2))}</td>
     <td>${times}</td>
     <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
   </tr>`);
@@ -684,26 +684,28 @@ window.addEventListener('load',()=>{
 function updatePriceCells(){
   positions.forEach(p=>{
     const priceCell = document.getElementById(`rt-${p.symbol}`);
-    if(priceCell) priceCell.textContent = (p.priceOk===false?'--':p.last.toFixed(2));
+    if(priceCell) priceCell.textContent = (p.priceOk===true ? p.last.toFixed(2) : p.priceOk===null ? '获取中…' : '--');
 
     const pl = (p.last - p.avgPrice) * p.qty;
     const cls = pl>0?'green':pl<0?'red':'white';
     const plCell = document.getElementById(`pl-${p.symbol}`);
     if(plCell){
-      plCell.textContent = (p.priceOk===false?'--':pl.toFixed(2));
+      plCell.textContent = (p.priceOk!==true?'--':pl.toFixed(2));
       plCell.className = cls;
     }
     const realized = trades.filter(t=>t.symbol===p.symbol && t.closed).reduce((s,t)=>s+t.pl,0);
     const totalPNL = pl + realized;
     const totalCell = document.getElementById(`total-${p.symbol}`);
     if(totalCell){
-      totalCell.textContent = (p.priceOk===false?'--':totalPNL.toFixed(2));
+      totalCell.textContent = (p.priceOk!==true?'--':totalPNL.toFixed(2));
       totalCell.className = totalPNL>0?'green':totalPNL<0?'red':'white';
     }
   });
 }
 
 function updatePrices(){
+  // Reset state to 'loading' before each API call
+  positions.forEach(p => { if(!p.manual) p.priceOk = null; });
   // 尝试读取 KEY.txt 里的 Finnhub key；如果读取失败就回退到内置 key
   fetch('KEY.txt')
     .then(r=> r.ok ? r.text() : '')

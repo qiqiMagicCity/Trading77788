@@ -1,0 +1,12 @@
+Trading777 v7.64 更新日志
+日期: 2025-07-08
+
+[修复] 实时报价获取流程
+- 新增“获取中…”加载状态；首次加载优先调用 Finnhub 实时报价 API。
+- 如果 API 返回失败或无网络，priceOk 设为 false，界面显示“手动输入”按钮。
+- 手动输入成功后 priceOk 置为 true，并以 * 号标记覆盖值。
+- updatePriceCells / renderPositions 兼容新的三态 priceOk (null / true / false)。
+
+[改进]
+- dashboard.js 版本号更新到 v7.64。
+- 条件判断统一使用 priceOk!==true，确保加载和失败状态下隐藏 P/L 数字，避免闪烁。
