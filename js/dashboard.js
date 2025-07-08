@@ -710,8 +710,6 @@ function updatePriceCells(){
 }
 
 function updatePrices(){
-  // Reset state to 'loading' before each API call
-  positions.forEach(p => { p.priceOk = null; });
   // 尝试读取 KEY.txt 里的 Finnhub key；如果读取失败就回退到内置 key
   fetch('KEY.txt')
     .then(r=> r.ok ? r.text() : '')
@@ -726,9 +724,9 @@ function updatePrices(){
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
-                   if(q && q.c){ p.last = q.c; if(p.prevClose == null) p.prevClose = q.pc; p.priceOk = true; } else { p.priceOk = false; }
+                   if(q && q.c){ if(overridePrices[p.symbol]===undefined){ p.last = q.c; }else{ p.apiLast = q.c; } if(p.prevClose == null) p.prevClose = q.pc; p.priceOk = true;
                 })
-                .catch(()=>{ p.priceOk = false; /* 网络错误忽略 */});
+                .catch(()=>{/* 网络错误忽略 */});
        });
 
        Promise.all(reqs).then(()=>{
@@ -736,6 +734,7 @@ function updatePrices(){
           renderStats();
        });
     });
+}
 }
 
 
