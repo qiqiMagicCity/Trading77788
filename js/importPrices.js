@@ -1,39 +1,36 @@
-
 /**
- * importPrices.js v7.21
- * UI handler for importing exported price JSON into IndexedDB.
+ * importPrices.js v7.34
+ * 支持导入通过 dailyClose.js 导出的简化 JSON 文件到 IndexedDB
  */
 import { putPrice } from './db/idb.js';
 
-function importPrices(){
+function importPrices() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json,application/json';
   input.onchange = async (e) => {
     const file = e.target.files[0];
-    if(!file) return;
-    try{
+    if (!file) return;
+    try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      if(!Array.isArray(data)){
-        alert('文件格式不正确，应为价格 JSON 数组');
-        return;
-      }
+      const json = JSON.parse(text);
+      const list = Array.isArray(json) ? json : (json.prices || []);
+      if (!Array.isArray(list)) throw new Error('文件格式不正确，未找到价格数组');
       let imported = 0;
-      for(const item of data){
-        if(item && item.symbol && item.date && typeof item.close === 'number'){
-          await putPrice(item.symbol, item.date, item.close, item.source || 'import');
+      for (const r of list) {
+        if (r && r.symbol && r.date && typeof r.close === 'number') {
+          await putPrice(r.symbol, r.date, r.close, 'import');
           imported++;
         }
       }
       alert(`成功导入 ${imported} 条收盘价`);
-    }catch(err){
-      alert('导入失败: '+err.message);
+    } catch (err) {
+      alert('导入失败: ' + err.message);
     }
   };
   input.click();
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('importPrices')?.addEventListener('click', importPrices);
 });
