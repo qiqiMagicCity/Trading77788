@@ -408,7 +408,7 @@ function renderStats(){
   mapping.forEach(([id,label,val])=>{
     const el = $(id);
     if(!el) return;
-    el.innerHTML = `<div class="label">${label}</div><div class="value">${val}</div>`;
+    el.innerHTML = `<div class="box-title">${label}</div><div class="box-value">${val}</div>`;
   });
 }
 /* auto-render on load & whenever positions/trades refresh */
