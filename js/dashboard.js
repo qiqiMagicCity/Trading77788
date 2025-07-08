@@ -537,6 +537,7 @@ chkOpt.addEventListener('change',()=>{
     const strike = parseFloat(modal.querySelector('#opt-strike').value);
     if(root && exp && cp && strike){
       modal.querySelector('#opt-symbol').value = buildOptionSymbol(root,exp,cp,strike);
+      modal.querySelector('#t-symbol').value = modal.querySelector('#opt-symbol').value;
     }else{
       modal.querySelector('#opt-symbol').value = '';
     }
@@ -561,6 +562,7 @@ document.getElementById('t-save').onclick=function(){
             const strike = parseFloat(modal.querySelector('#opt-strike').value);
             if(root && exp && cp && strike){
                 symField.value = buildOptionSymbol(root,exp,cp,strike);
+            modal.querySelector('#t-symbol').value = symField.value;
             }
         }
     }
