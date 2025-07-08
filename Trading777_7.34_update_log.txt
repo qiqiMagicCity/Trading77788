@@ -1,0 +1,10 @@
+版本号: Trading777_7.34
+更新时间: 2025-07-08 00:20:33
+
+修改内容:
+1. 重写 js/dailyClose.js —— 采用纯前端逻辑，直接从页面表格读取最新实时价格，导出简化 JSON 文件 (symbol, date, close)。
+2. 重写 js/importPrices.js —— 兼容新的 JSON 结构，导入后写入 IndexedDB，供后续计算使用。
+3. index.html —— 仅更新 <title> 为 Trading777 v7.34，其余布局与逻辑完全保持不变。
+
+未改动的内容:
+- 交易逻辑、自动记录、统计卡片、样式文件及其他 JS 模块均保持与 v7.33 一致。
