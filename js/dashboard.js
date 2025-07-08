@@ -217,45 +217,101 @@ function calcIntraday(trades){
   });
   return pl;
 }
+
 function stats(){
-  // 重新计算账户统计数据，兼容多空仓位显示
-  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
-  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
-  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
-  
-const floating = positions.reduce((sum,p)=>{
-  if(p.qty===0||p.priceOk===false) return sum;
-  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
-  return sum + pl;
-},0);
+  // ---基础守护---
+  const posArr   = (typeof positions !== 'undefined' && Array.isArray(positions)) ? positions : [];
+  const tradesArr= (typeof trades    !== 'undefined' && Array.isArray(trades))    ? trades    : [];
 
+  // 1) 账户总成本（多空均为正额度）
+  const cost = posArr.reduce((sum,p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
 
+  // 2) 目前市值（忽略失联价格）
+  const value = posArr.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
 
-const posArr = (typeof positions !== 'undefined' && Array.isArray(positions)) ? positions : [];
-const todayStr = new Date().toISOString().slice(0,10);
-const newSymbolsToday = new Set(
-  trades
-    .filter(t=> t.date === todayStr && (t.side==='BUY' || t.side==='SHORT'))
-    .map(t=> t.symbol)
-);
+  // 3) 当前浮动盈亏（对已持仓：多 = (last-avg)*qty；空 = (avg-last)*qty）
+  const floating = posArr.reduce((sum,p)=>{
+      if(p.qty===0||p.priceOk===false) return sum;
+      const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty
+                         : (p.avgPrice - p.last)*Math.abs(p.qty);
+      return sum + pl;
+  },0);
 
-const dailyUnrealized = positions.reduce((sum,p)=>{
-  if(p.qty===0 || p.priceOk===false) return sum;
+  // -------- 当日浮动盈亏 dailyUnrealized --------
+  const todayStr = new Date().toISOString().slice(0,10);
+  const newSymbolsToday = new Set(
+      tradesArr
+        .filter(t=> t.date === todayStr && (t.side==='BUY' || t.side==='SHORT'))
+        .map(t=> t.symbol)
+  );
 
-  // 判断是否为当日新建仓，若是则用当日均价，否则用昨日收盘价
-  const isNewToday = newSymbolsToday.has(p.symbol);
-  const ref = isNewToday
-              ? p.avgPrice
-              : (typeof p.prevClose === 'number' ? p.prevClose : p.avgPrice);
+  const dailyUnrealized = posArr.reduce((sum,p)=>{
+      if(p.qty===0 || p.priceOk===false) return sum;
 
-  const delta = p.qty>0
-                ? (p.last - ref) * p.qty
-                : (ref - p.last) * Math.abs(p.qty);
+      const isNewToday = newSymbolsToday.has(p.symbol);
+      const ref = isNewToday
+                  ? p.avgPrice                                          // 当日新仓
+                  : (typeof p.prevClose==='number' ? p.prevClose        // 历史仓
+                                                   : p.avgPrice);       // 兜底
 
-  return sum + delta;
-},0);
+      const delta = p.qty>0
+                    ? (p.last - ref) * p.qty
+                    : (ref - p.last) * Math.abs(p.qty);
 
+      return sum + delta;
+  },0);
+
+  // -------- 当日交易、已实现盈亏、日内盈亏 --------
+  const todayTrades   = tradesArr.filter(t=> t.date === todayStr);
+  const todayReal     = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const intradayReal  = calcIntraday(tradesArr);
+
+  // -------- 胜率 / 历史已实现 --------
+  const closedTrades  = tradesArr.filter(t=> t.closed);
+  const winsTotal     = closedTrades.filter(t=> (t.pl||0) > 0).length;
+  const lossesTotal   = closedTrades.filter(t=> (t.pl||0) < 0).length;
+  const winRate       = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) : null;
+  const histReal      = tradesArr.reduce((s,t)=> s + (t.pl||0), 0);
+
+  // -------- WTD / MTD / YTD --------
+  const now           = new Date();
+  // 周一 00:00
+  const monday        = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  monday.setHours(0,0,0,0);
+  const firstOfMonth  = new Date(now.getFullYear(), now.getMonth(), 1);
+  firstOfMonth.setHours(0,0,0,0);
+  const firstOfYear   = new Date(now.getFullYear(), 0, 1);
+  firstOfYear.setHours(0,0,0,0);
+
+  const sumPlBetween = (fromDate) => tradesArr
+        .filter(t=> {
+            const d = new Date(t.date);
+            return d >= fromDate && d <= now;
+        })
+        .reduce((s,t)=> s + (t.pl||0), 0);
+
+  const wtdReal = sumPlBetween(monday) + dailyUnrealized;
+  const mtdReal = sumPlBetween(firstOfMonth) + dailyUnrealized;
+  const ytdReal = sumPlBetween(firstOfYear) + dailyUnrealized;
+
+  return {
+      cost,
+      value,
+      floating,
+      todayReal,
+      intradayReal,
+      dailyUnrealized,
+      todayTrades: todayTrades.length,
+      totalTrades: tradesArr.length,
+      histReal,
+      winRate,
+      wtdReal,
+      mtdReal,
+      ytdReal
+  };
 }
+
 
 
 /* ---------- 5. Render helpers ---------- */
