@@ -495,7 +495,7 @@ function openTradeForm(editIndex){
 <label>单价</label><input type="number" step="0.01" id="t-price" />
 <div style="margin-top:14px;text-align:right;">
   <button id="t-cancel">取消</button>
-  <button id=</div>"t-save">确定</button>
+  <button id="t-save" class="primary">确定</button>
 </div>`;
   document.body.appendChild(modal);
   if(editIndex!=null){
@@ -539,6 +539,20 @@ chkOpt.addEventListener('change',()=>{
 document.getElementById('t-cancel').onclick=close;
   
 document.getElementById('t-save').onclick=function(){
+    
+    const chkOpt = modal.querySelector('#t-isOption');
+    if(chkOpt && chkOpt.checked){
+        let symField = modal.querySelector('#opt-symbol');
+        if(symField && !symField.value){
+            const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
+            const exp  = modal.querySelector('#opt-exp').value;
+            const cp   = modal.querySelector('#opt-cp').value;
+            const strike = parseFloat(modal.querySelector('#opt-strike').value);
+            if(root && exp && cp && strike){
+                symField.value = buildOptionSymbol(root,exp,cp,strike);
+            }
+        }
+    }
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
     const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
