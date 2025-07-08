@@ -166,46 +166,109 @@ function recalcPositions(){
 
 /* ---------- Calc Intraday Realized P/L (v7.7.5) ---------- */
 function calcIntraday(trades){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const dayTrades = trades.filter(t=> t.date === todayStr);
+  const bySymbol = {};
+  dayTrades.forEach(t=>{
+    if(!bySymbol[t.symbol]) bySymbol[t.symbol]=[];
+    bySymbol[t.symbol].push(t);
+  });
+  let pl = 0;
+  Object.entries(bySymbol).forEach(([sym, ts])=>{
+    // Keep order as recorded
+    const queue=[];
+    ts.forEach(t=>{
+      // Determine signed quantity
+      let signedQty=0;
+      if(t.side==='BUY'||t.side==='COVER'){ signedQty = t.qty; }
+      else if(t.side==='SELL'||t.side==='SHORT'){ signedQty = -t.qty; }
+      else { return; }
+      let price = t.price;
+      if(signedQty>0){
+        // buy side: try to offset earlier shorts within day
+        let remaining = signedQty;
+        while(remaining>0 && queue.length && queue[0].qty<0){
+          let opp = queue[0];
+          const match = Math.min(remaining, -opp.qty);
+          pl += (opp.price - price) * match; // short then cover
+          opp.qty += match; // increase towards 0
+          remaining -= match;
+          if(opp.qty===0) queue.shift();
+        }
+        if(remaining>0){
+          queue.push({qty: remaining, price});
+        }
+      }else if(signedQty<0){
+        // sell side
+        let remaining = -signedQty;
+        while(remaining>0 && queue.length && queue[0].qty>0){
+          let opp = queue[0];
+          const match = Math.min(remaining, opp.qty);
+          pl += (price - opp.price) * match; // buy then sell
+          opp.qty -= match;
+          remaining -= match;
+          if(opp.qty===0) queue.shift();
+        }
+        if(remaining>0){
+          queue.push({qty: -remaining, price});
+        }
+      }
+    });
+  });
+  return pl;
+}
+function stats(){
+  // 重新计算账户统计数据，兼容多空仓位显示
+  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
+  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
   
-// 建立今日净买卖映射：{ symbol: { qty, cost } }
-const dayNetMap = {};
-todayTrades.forEach(t=>{
-  const rec = dayNetMap[t.symbol] ?? (dayNetMap[t.symbol] = { qty:0, cost:0 });
-  const signedQty = (t.side === 'BUY' || t.side === 'COVER') ? t.qty : -t.qty;
-  rec.qty  += signedQty;
-  rec.cost += signedQty * t.price;
-});
-
-const dailyUnrealized = positions.reduce((sum, p)=>{
-  if(p.qty === 0 || p.priceOk === false || typeof p.prevClose !== 'number') return sum;
-
-  const net = dayNetMap[p.symbol] || { qty:0, cost:0 };
-  const newQty = net.qty;
-  const avgCostToday = newQty ? net.cost / newQty : 0;
-  const carryQty = p.qty - newQty;        // 昨收基准的数量
-
-  let delta = 0;
-  // 昨夜持仓部分
-  if(carryQty){
-    delta += carryQty > 0
-      ? (p.last - p.prevClose) * carryQty                   // 多头
-      : (p.prevClose - p.last) * Math.abs(carryQty);        // 空头
-  }
-  // 今日新仓部分
-  if(newQty){
-    delta += newQty > 0
-      ? (p.last - avgCostToday) * newQty                    // 多头
-      : (avgCostToday - p.last) * Math.abs(newQty);         // 空头
-  }
-  return sum + delta;
-}, 0);
-  const delta = p.qty>0 ? (p.last - p.prevClose)*p.qty : (p.prevClose - p.last)*Math.abs(p.qty);
-  return sum + delta;
+const floating = positions.reduce((sum,p)=>{
+  if(p.qty===0||p.priceOk===false) return sum;
+  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
+  return sum + pl;
 },0);
+
+
+
 
 
   const todayStr = new Date().toISOString().slice(0,10);
   const todayTrades = trades.filter(t=> t.date === todayStr);
+
+// --- v7.53 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
+// 构建今日净买卖映射
+const dayNetMap = {};
+todayTrades.forEach(t=>{
+  const rec = dayNetMap[t.symbol] || (dayNetMap[t.symbol] = { qty:0, cost:0 });
+  const signedQty = (t.side==='BUY' || t.side==='COVER') ? t.qty : -t.qty;
+  rec.qty  += signedQty;
+  rec.cost += signedQty * t.price;
+});
+
+const dailyUnrealized = positions.reduce((sum, p) => {
+  if (p.qty === 0 || p.priceOk === false || typeof p.prevClose !== 'number') return sum;
+
+  const net = dayNetMap[p.symbol] || { qty:0, cost:0 };
+  const newQty = net.qty;
+  const carryQty = p.qty - newQty;                // 昨收基准
+  const avgCostToday = newQty ? net.cost / newQty : 0;
+
+  let delta = 0;
+  // 历史仓部分
+  if (carryQty) {
+    delta += carryQty > 0
+      ? (p.last - p.prevClose) * carryQty         // 多头
+      : (p.prevClose - p.last) * Math.abs(carryQty); // 空头
+  }
+  // 今日仓部分
+  if (newQty) {
+    delta += newQty > 0
+      ? (p.last - avgCostToday) * newQty          // 多头
+      : (avgCostToday - p.last) * Math.abs(newQty); // 空头
+  }
+  return sum + delta;
+}, 0);
   const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
   const intradayReal = calcIntraday(trades);
 
