@@ -1,3 +1,9 @@
+/* ----- helper: local date time string (v7.58) ----- */
+function getLocalDateTimeStr(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
 
 /* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
@@ -45,14 +51,6 @@ async function getPrevTradingDayClose(symbol){
 function buildOptionSymbol(root, dateStr, cp, strike){
   // OCC option code: ROOT + YYMMDD + C/P + strike*1000 (8 digits)
   if(!root || !dateStr || !cp){ return ''; }
-
-
-// ---- Helper: get local datetime string YYYY-MM-DDTHH:mm in local timezone ----
-function getLocalDateTimeStr(){
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  return now.toISOString().slice(0,16);
-}
   const dObj = new Date(dateStr.includes('/') ? dateStr.replace(/\//g,'-') : dateStr);
   if(isNaN(dObj)){ return ''; }
   const yy = String(dObj.getFullYear()).slice(-2);
@@ -558,6 +556,8 @@ chkOpt.addEventListener('change',()=>{
 document.getElementById('t-cancel').onclick=close;
   
 document.getElementById('t-save').onclick=function(){
+    updateSymbol();
+
     
     const chkOpt = modal.querySelector('#t-isOption');
     if(chkOpt && chkOpt.checked){
@@ -574,9 +574,7 @@ document.getElementById('t-save').onclick=function(){
     }
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
-    const symbol = (chkOpt && chkOpt.checked)
-  ? modal.querySelector('#opt-symbol').value.trim().toUpperCase()
-  : modal.querySelector('#t-symbol').value.trim().toUpperCase();
+    const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
     const side    = document.getElementById('t-side').value;
     const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
     const price   = parseFloat(document.getElementById('t-price').value);
@@ -598,6 +596,15 @@ document.getElementById('t-save').onclick=function(){
     }
 
     const trade = {date,symbol,side,qty,price,pl,closed:closedFlag};
+
+if(chkOpt && chkOpt.checked){
+    trade.isOption = true;
+    trade.underlying = modal.querySelector('#opt-root').value.trim().toUpperCase();
+    trade.expiry = modal.querySelector('#opt-exp').value;
+    trade.cp = modal.querySelector('#opt-cp').value;
+    trade.strike = parseFloat(modal.querySelector('#opt-strike').value);
+}
+
 
     if(editIndex != null){
         trades[editIndex] = trade;
