@@ -290,24 +290,31 @@ const monday = new Date(now);
 monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
 monday.setHours(0,0,0,0);
 
-const wtdReal = trades.filter(t=>{
+let wtdRealCalc = trades.filter(t=>{
   const d = new Date(t.date);
   return d >= monday && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 
+
+// 将历史+当日浮动盈亏合并
+const wtdReal = wtdRealCalc + dailyUnrealized;
 const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 firstOfMonth.setHours(0,0,0,0);
-const mtdReal = trades.filter(t=>{
+let mtdRealCalc = trades.filter(t=>{
   const d = new Date(t.date);
   return d >= firstOfMonth && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
+// 叠加当日浮动盈亏
+const mtdReal = mtdRealCalc + dailyUnrealized;
 
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
-const ytdReal = trades.filter(t=>{
+let ytdRealCalc = trades.filter(t=>{
   const d = new Date(t.date);
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
+// 叠加当日浮动盈亏
+const ytdReal = ytdRealCalc + dailyUnrealized;
 
   return {
     cost,
