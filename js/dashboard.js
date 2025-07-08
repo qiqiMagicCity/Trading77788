@@ -310,8 +310,13 @@ const mtdReal = trades.filter(t=>{
 
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
-const ytdReal = trades.filter(t=>{
+const ytd = trades.filter(t=>{
   const d = new Date(t.date);
+// ----- v7.59 修复：WTD/MTD/YTD 应含浮动盈亏 ----- 
+const wtd = wtdReal + dailyUnrealized;
+const mtd = mtdReal + dailyUnrealized;
+const ytd = ytd + dailyUnrealized;
+
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 
@@ -328,9 +333,9 @@ const ytdReal = trades.filter(t=>{
     intradayReal,
     dailyUnrealized,
     winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
+    wtd,
+    mtd,
+    ytd
   };
 }
 
@@ -360,9 +365,9 @@ const a=[
 ['累计交易次数',Utils.fmtInt(s.totalTrades)],
 ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
 ['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
-['WTD', Utils.fmtDollar(s.wtdReal)],
-['MTD', Utils.fmtDollar(s.mtdReal)],
-['YTD', Utils.fmtDollar(s.ytdReal)],
+['WTD', Utils.fmtDollar(s.wtd)],
+['MTD', Utils.fmtDollar(s.mtd)],
+['YTD', Utils.fmtDollar(s.ytd)],
 
 ];
   a.forEach((it,i)=>{
