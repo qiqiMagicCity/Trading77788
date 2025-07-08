@@ -1,0 +1,26 @@
+
+Trading777 v7.10 – 2025-07-06
+
+### 🔄 Calendar overhaul
+* **Dual calendars** under *交易日历*:
+  * **交易日历（总账户）** – aggregates all trades.
+  * **交易日历（日内交易）** – filters trades closed the same day (or `intraday:true` flag).
+* **Navigation & view selectors**
+  * Added ‹ › arrows to step through months/years.
+  * Toggle buttons for 日 / 周 / 月 / 年 views (initial implementation pairs week/day with month for MVP).
+* **Styling** – new `.calendar-controls`, active‐state highlight for view buttons.
+
+### ✨ UI polish
+* **Main analysis title** now adopts `.section-title` green and gets a friendly emoji → `📊 交易分析`.
+* Version string *v7.10* verified on **all** HTML documents.
+
+### 🛠 Internal
+* Refactored `analysisPage.js`
+  * Added self‑contained IIFE managing calendar state & rendering both calendars.
+  * Introduced helper `isIntradayTrade` for future extensibility.
+* Appended calendar styles to `css/style.css`.
+
+### ✅ Unaffected
+* Existing stats, charts, ranking tables, FIFO calculations remain unchanged.
+* Dashboard, stock screener, trade table, and all other pages function as in v7.9.x.
+
