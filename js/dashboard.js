@@ -26,7 +26,7 @@ const tradesArr= Array.isArray(typeof tradesArr!=='undefined'? tradesArr : []) ?
     return sum + delta;
   },0);
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = luxon.DateTime.now().setZone('America/New_York').toISODate();
   const todayTrades = tradesArr.filter(t=> t.date === todayStr);
   const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
   const intradayReal = calcIntraday(tradesArr);
@@ -37,7 +37,7 @@ const tradesArr= Array.isArray(typeof tradesArr!=='undefined'? tradesArr : []) ?
   const lossesTotal = closedTrades.filter(t=> (t.pl||0) < 0).length;
   const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
 
-  const now = new Date();
+  const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
 
   /* WTD */
   const monday = new Date(now);
@@ -111,7 +111,7 @@ function renderStats(){
 async function attachPrevCloses(){
   if(!Array.isArray(positions)){console.warn('positions not array'); return;}
   const idb = await import('./db/idb.js');
-  const now = new Date();
+  const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
   let d = new Date(now);
   // 找到上一个交易日（跳过周末）
   do{
@@ -141,7 +141,7 @@ async function attachPrevCloses(){
 
 async function getPrevTradingDayClose(symbol){
   const idb = await import('./db/idb.js');
-  const now = new Date();
+  const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
   let d = new Date(now);
   d.setDate(d.getDate()-1);
   while(d.getDay()===0 || d.getDay()===6){ d.setDate(d.getDate()-1); }
@@ -209,7 +209,7 @@ const Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
 function recalcPositions(){
   /* 以 FIFO 原则重构持仓与平仓盈亏 */
   const symbolLots = {};   // {SYM: [{qty, price}] }
-  const dayStr = new Date().toISOString().slice(0,10);
+  const dayStr = luxon.DateTime.now().setZone('America/New_York').toISODate();
 
   tradesArr.sort((a,b)=> new Date(a.date) - new Date(b.date));   // 确保按时间先后
 
@@ -275,7 +275,7 @@ function recalcPositions(){
 
 /* ---------- Calc Intraday Realized P/L (v7.7.5) ---------- */
 function calcIntraday(tradesArr){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = luxon.DateTime.now().setZone('America/New_York').toISODate();
   const dayTrades = tradesArr.filter(t=> t.date === todayStr);
   const bySymbol = {};
   dayTrades.forEach(t=>{
