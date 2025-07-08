@@ -1,18 +1,11 @@
-
-/* ===== 手动价格覆盖 (v7.66) ===== */
-const overridePrices = JSON.parse(localStorage.getItem('overridePrices') || '{}');
-function saveOverride(symbol, price){
-  overridePrices[symbol] = Number(price);
-  localStorage.setItem('overridePrices', JSON.stringify(overridePrices));
-}
-/* ----- helper: local date time string (v7.66) ----- */
+/* ----- helper: local date time string (v7.58) ----- */
 function getLocalDateTimeStr(){
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0,16);
 }
 
-/* ---------- Prev Close attachment (v7.66) ---------- */
+/* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
   const idb = await import('./db/idb.js');
   const now = new Date();
@@ -175,17 +168,8 @@ function recalcPositions(){
               qty: qty,
               avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0,
               last: lots.length ? lots[lots.length-1].price : 0,
-              priceOk: null};
+              priceOk: false};
   }).filter(p=> p.qty !== 0);
-
-  // <<< v7.66 手动覆盖价格 >>>
-  positions.forEach(p=>{
-      if(overridePrices[p.symbol]){
-          p.last = Number(overridePrices[p.symbol]);
-          p.priceOk = true;
-          p.manual = true;
-      }
-  });
 }
 
 
@@ -264,7 +248,7 @@ const floating = positions.reduce((sum,p)=>{
   const latestTradeDate = trades.reduce((d,t)=> t.date>d ? t.date : d, '');
   const todayStr = latestTradeDate || new Date().toLocaleDateString('en-CA', { timeZone:'America/New_York' });
   const todayTrades = trades.filter(t=> t.date === todayStr);
-// --- v7.66 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
+// --- v7.53 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
 // 构建今日净买卖映射
 const dayNetMap = {};
 todayTrades.forEach(t=>{
@@ -331,7 +315,7 @@ const ytdReal = trades.filter(t=>{
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 
-// ----- v7.66 修复：WTD/MTD/YTD 计算口径 -----
+// ----- v7.60 修复：WTD/MTD/YTD 计算口径 -----
 const wtd = wtdReal + dailyUnrealized;
 const mtd = mtdReal + dailyUnrealized;
 const ytd = ytdReal + dailyUnrealized;
@@ -411,13 +395,13 @@ tbl.insertAdjacentHTML('beforeend',`
   <tr data-symbol="${p.symbol}">
     <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
     <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
-    <td id="rt-${p.symbol}" class="col-price">${p.priceOk===null ? '获取中…' : p.priceOk===false ? `<button class="edit-price" data-symbol="${p.symbol}"` + (p.manual? ` disabled` : ``) + `>手动输入</button>` : (p.manual ? `<span class="edit-price manual" data-symbol="${p.symbol}">*${p.last.toFixed(2)}</span>` : p.last.toFixed(2))}</td>
+    <td id="rt-${p.symbol}" class="col-price">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
     <td>${(p.avgPrice).toFixed(2)}</td>
-    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk!==true?'--':pl.toFixed(2))}</td>
-    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk!==true?'--':totalPNL.toFixed(2))}</td>
+    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
+    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
     <td>${times}</td>
     <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
   </tr>`);
@@ -595,14 +579,7 @@ document.getElementById('t-save').onclick=function(){
     }
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
-
-    // ----- v7.66 修复：根据“是否期权”选择正确的 symbol 输入框 -----
-    let symbol;
-    if(chkOpt && chkOpt.checked){
-        symbol = modal.querySelector('#opt-symbol').value.trim().toUpperCase();
-    }else{
-        symbol = modal.querySelector('#t-symbol').value.trim().toUpperCase();
-    }
+    const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
     const side    = document.getElementById('t-side').value;
     const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
     const price   = parseFloat(document.getElementById('t-price').value);
@@ -684,26 +661,20 @@ window.addEventListener('load',()=>{
 function updatePriceCells(){
   positions.forEach(p=>{
     const priceCell = document.getElementById(`rt-${p.symbol}`);
-    if(priceCell) if(priceCell){
-        if(p.manual && p.apiLast){
-          priceCell.innerHTML = `<span title="API: ${p.apiLast.toFixed(2)}">*${p.last.toFixed(2)}</span>`;
-        }else{
-          priceCell.textContent = (p.priceOk===true ? p.last.toFixed(2) : p.priceOk===null ? '获取中…' : '--');
-        }
-      }
+    if(priceCell) priceCell.textContent = (p.priceOk===false?'--':p.last.toFixed(2));
 
     const pl = (p.last - p.avgPrice) * p.qty;
     const cls = pl>0?'green':pl<0?'red':'white';
     const plCell = document.getElementById(`pl-${p.symbol}`);
     if(plCell){
-      plCell.textContent = (p.priceOk!==true?'--':pl.toFixed(2));
+      plCell.textContent = (p.priceOk===false?'--':pl.toFixed(2));
       plCell.className = cls;
     }
     const realized = trades.filter(t=>t.symbol===p.symbol && t.closed).reduce((s,t)=>s+t.pl,0);
     const totalPNL = pl + realized;
     const totalCell = document.getElementById(`total-${p.symbol}`);
     if(totalCell){
-      totalCell.textContent = (p.priceOk!==true?'--':totalPNL.toFixed(2));
+      totalCell.textContent = (p.priceOk===false?'--':totalPNL.toFixed(2));
       totalCell.className = totalPNL>0?'green':totalPNL<0?'red':'white';
     }
   });
@@ -724,7 +695,7 @@ function updatePrices(){
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
-                   if(q && q.c){ if(overridePrices[p.symbol]===undefined){ p.last = q.c; }else{ p.apiLast = q.c; } if(p.prevClose == null) p.prevClose = q.pc; p.priceOk = true;
+                   if(q && q.c){ p.last = q.c; if(p.prevClose == null) p.prevClose = q.pc; p.priceOk = true; } else { p.priceOk = false; }
                 })
                 .catch(()=>{/* 网络错误忽略 */});
        });
@@ -734,7 +705,6 @@ function updatePrices(){
           renderStats();
        });
     });
-}
 }
 
 
@@ -779,27 +749,6 @@ function maybeCloseEquity(){
 maybeCloseEquity();
 setInterval(maybeCloseEquity, 60_000);
 
-
-/* ===== 手动输入现价按钮 ===== */
-document.addEventListener('click', function(e){
-  const btn = e.target.closest('.edit-price');
-  if(!btn) return;
-  const sym = btn.dataset.symbol;
-  const cur = overridePrices[sym] || '';
-  const input = prompt('手动输入当前价格 ('+sym+')', cur);
-  if(input===null) return;
-  const val = Number(input);
-  if(isNaN(val)){ alert('请输入数字'); return; }
-  saveOverride(sym, val);
-  const pos = positions.find(p=>p.symbol===sym);
-  if(pos){
-      pos.last = val;
-      pos.priceOk = true;
-      pos.manual = true;
-  }
-  renderPositions();
-  renderStats();
-});
 })();
 
 
