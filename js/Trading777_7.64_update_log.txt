@@ -1,0 +1,24 @@
+Trading777_7.64_update_log.txt
+日期: 2025-07-08
+
+【本次更新内容】
+1. 新增 / 修复「手动输入现价」功能
+   - 在「目前持仓」表格的“实时价格”列中，当标的未能获取到 API 价格 (priceOk===false) 时，显示绿色按钮「手动输入」。
+   - 点击按钮弹出浏览器 prompt，输入数字后立即刷新全部统计数据。
+   - 若价格被手动覆盖，将在价格前自动加上“*”前缀，并将 data-symbol 写入 <td> 方便再次编辑。
+   - 新增逻辑：当价格已被手动覆盖后，用户可直接点击带“*”的价格单元格再次修改，无需额外按钮。
+   - 覆盖价格统一存储于 localStorage.overridePrices，页面刷新或重开浏览器均可保留。
+
+2. 代码调整
+   - /js/dashboard.js
+     * 重写 <td id="rt-${p.symbol}> 模板，加入 data‑symbol 属性并内嵌 edit‑price 按钮 HTML 片段。
+     * 新增 handleManualInput() 辅助函数，合并按钮及单元格点击两种入口。
+     * click 事件统一调用 refreshAll()，保持统计、表格同步刷新。
+   - index.html 版本号更新至 v7.64。
+
+【未动功能】
+- 计算模块算法、样式及其它页面（stock.html、analysis.html、trades.html 等）均保持 v7.63 行为不变。
+- 所有历史数据处理、Finnhub API 拉取逻辑、IDB 本地数据库等模块保持原样。
+
+【版本号】
+Trading777_7.64

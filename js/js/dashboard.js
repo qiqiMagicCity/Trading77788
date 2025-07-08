@@ -411,7 +411,7 @@ tbl.insertAdjacentHTML('beforeend',`
   <tr data-symbol="${p.symbol}">
     <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
     <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
-    <td id="rt-${p.symbol}" class="col-price">${p.priceOk===false ? `<button class="edit-price" data-symbol="${p.symbol}"` + (p.manual? ` disabled` : ``) + `>手动输入</button>` : (p.manual ? ("*"+p.last.toFixed(2)) : p.last.toFixed(2))}</td>
+    <td id="rt-${p.symbol}" class="col-price" data-symbol="${p.symbol}">${p.priceOk===false ? `<button class="edit-price" data-symbol="${p.symbol}">手动输入</button>` : (p.manual ? ("*"+p.last.toFixed(2)) : p.last.toFixed(2))}</td>
     <td>${p.qty}</td>
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
@@ -775,10 +775,23 @@ setInterval(maybeCloseEquity, 60_000);
 
 
 /* ===== 手动输入现价按钮 ===== */
+/* ===== 手动输入现价功能 (v7.64) ===== */
 document.addEventListener('click', function(e){
+  // 1) click on the green '手动输入' button when no price data
   const btn = e.target.closest('.edit-price');
-  if(!btn) return;
-  const sym = btn.dataset.symbol;
+  if(btn){
+    handleManualInput(btn.dataset.symbol);
+    return;
+  }
+  // 2) click on an already manually‑overridden price cell (prefixed with *) to modify
+  const cell = e.target.closest('.col-price');
+  if(cell && cell.textContent.trim().startsWith('*')){
+    const sym = cell.dataset.symbol || cell.id.replace('rt-','');
+    handleManualInput(sym);
+  }
+});
+
+function handleManualInput(sym){
   const cur = overridePrices[sym] || '';
   const input = prompt('手动输入当前价格 ('+sym+')', cur);
   if(input===null) return;
@@ -787,13 +800,12 @@ document.addEventListener('click', function(e){
   saveOverride(sym, val);
   const pos = positions.find(p=>p.symbol===sym);
   if(pos){
-      pos.last = val;
-      pos.priceOk = true;
-      pos.manual = true;
+    pos.last = val;
+    pos.priceOk = true;
+    pos.manual = true;
   }
-  renderPositions();
-  renderStats();
-});
+  refreshAll();
+}
 })();
 
 
