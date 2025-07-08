@@ -1,17 +1,17 @@
 
 function stats(){
   // Ensure global arrays exist
-  const positions = Array.isArray(window.positions) ? window.positions : [];
+  const window.positions = Array.isArray(window.window.positions) ? window.window.positions : [];
   const trades    = Array.isArray(window.trades) ? window.trades : [];
 
   /* 1. 账户总成本 */
-  const cost = positions.reduce((sum,p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
+  const cost = window.positions.reduce((sum,p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
 
   /* 2. 目前市值 */
-  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty) * p.last : sum, 0);
+  const value = window.positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty) * p.last : sum, 0);
 
   /* 3. 当前浮动盈亏（全部未平仓） */
-  const floating = positions.reduce((sum,p)=>{
+  const floating = window.positions.reduce((sum,p)=>{
       if(p.qty===0 || p.priceOk===false) return sum;
       const pl = p.qty > 0
                ? (p.last - p.avgPrice) * p.qty         // 多头
@@ -42,7 +42,7 @@ function stats(){
          netChange[t.symbol] = (netChange[t.symbol]||0) + signedQty(t);
       });
       const baselineQty = {};
-      positions.forEach(p=>{
+      window.positions.forEach(p=>{
          baselineQty[p.symbol] = (baselineQty[p.symbol]||0) + p.qty - (netChange[p.symbol]||0);
       });
 
@@ -104,7 +104,7 @@ function stats(){
   const intradayReal = calcIntraday(trades);
 
   /* 6. 当日浮动盈亏 */
-  const dailyUnrealized = positions.reduce((sum,p)=>{
+  const dailyUnrealized = window.positions.reduce((sum,p)=>{
       if(p.qty===0 || p.priceOk===false) return sum;
       const ref = (typeof p.prevClose === 'number') ? p.prevClose : p.avgPrice;
       const delta = p.qty>0 ? (p.last - ref) * p.qty : (ref - p.last) * Math.abs(p.qty);
@@ -196,7 +196,7 @@ function renderStats(){
 
 /* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
-  if(!Array.isArray(positions)){console.warn('positions not array'); return;}
+  if(!Array.isArray(window.positions)){console.warn('window.positions not array'); return;}
   const idb = await import('./db/idb.js');
   const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
   let d = new Date(now);
@@ -205,19 +205,19 @@ async function attachPrevCloses(){
     d.setDate(d.getDate()-1);
   }while(d.getDay()===0 || d.getDay()===6);
   const dateStr = d.toISOString().slice(0,10);
-  // Ensure positions is an array (migration compatibility)
-  if(!Array.isArray(positions)){
+  // Ensure window.positions is an array (migration compatibility)
+  if(!Array.isArray(window.positions)){
     try{
       if(typeof recalcPositions==='function'){
         recalcPositions();
       }
     }catch(e){ console.error(e); }
   }
-  if(!Array.isArray(positions)){
-    console.warn('positions is not iterable, skip prev-close attachment');
+  if(!Array.isArray(window.positions)){
+    console.warn('window.positions is not iterable, skip prev-close attachment');
     return;
   }
-  for(const p of positions){
+  for(const p of window.positions){
     const rec = await idb.getPrice(p.symbol, dateStr);
     if(rec && typeof rec.close === 'number'){
       p.prevClose = rec.close;
@@ -251,7 +251,7 @@ function getWeekIdx(dateStr){
   return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
 }
 
-/* Trading777 v5.3.2 dashboard – implements import / export, dynamic positions, add‑trade */
+/* Trading777 v5.3.2 dashboard – implements import / export, dynamic window.positions, add‑trade */
 
 (function(){
 
@@ -263,17 +263,19 @@ const defaultTrades = [
  {date:'2025-06-29',symbol:'TSLA',side:'SELL',qty:50,price:210,pl:500,closed:true}
 ];
 
-let positions = JSON.parse(localStorage.getItem('positions') || localStorage.getItem('posArr')||'null') || defaultPositions.slice();
-if(!Array.isArray(positions)){
-  positions = Object.values(positions||{});
+window.window.positions = JSON.parse(localStorage.getItem('window.positions') || localStorage.getItem('posArr') || 'null') || defaultPositions.slice();
+let positions = window.positions;
+if(!Array.isArray(window.positions)){
+  window.positions = Object.values(window.positions||{});
 }
-let trades    = JSON.parse(localStorage.getItem('trades') || localStorage.getItem('tradesArr')||'null')    || defaultTrades.slice();
+window.trades    = JSON.parse(localStorage.getItem('trades') || localStorage.getItem('tradesArr') || 'null') || defaultTrades.slice();
+let trades = window.trades;
 recalcPositions();
 
 
 /* Save helper */
 function saveData(){
-  localStorage.setItem('positions',JSON.stringify(positions));
+  localStorage.setItem('window.positions',JSON.stringify(window.positions));
   localStorage.setItem('trades',JSON.stringify(trades));
 }
 
@@ -289,9 +291,65 @@ function fmtWL(w,l){return `<span class="green">W${w}</span>/<span class="red">L
 function fmtPct(p){return `<span class="white">${Number(p).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span>`;}
 const Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
 
+function renderPositions(){
+  const tbl=document.getElementById('positions');
+  if(!tbl) return;
+  const head=['logo','代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
+  positions.forEach(p=>{
+    const amt=Math.abs(p.qty*p.avgPrice);
+    const pl=(p.last-p.avgPrice)*p.qty;
+    const cls=pl>0?'green':pl<0?'red':'white';
+    const times=trades.filter(t=>t.symbol===p.symbol).length;
+    
+const realized=trades.filter(t=>t.symbol===p.symbol&&t.closed).reduce((s,t)=>s+t.pl,0);
+const totalPNL=pl+realized;
+tbl.insertAdjacentHTML('beforeend',`
+  <tr data-symbol="${p.symbol}">
+    <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
+    <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
+    <td id="rt-${p.symbol}" class="col-price">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
+    <td>${p.qty}</td>
+    <td>${p.avgPrice.toFixed(2)}</td>
+    <td>${amt.toFixed(2)}</td>
+    <td>${(p.avgPrice).toFixed(2)}</td>
+    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
+    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
+    <td>${times}</td>
+    <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
+  </tr>`);
+  });
+}
+
+function renderTrades(){
+  renderSymbolsList();
+  const tbl=document.getElementById('trades');
+  if(!tbl) return;
+  const head=['日期','星期','图标','代码','中文','方向','单价','数量','订单金额','详情'];
+  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
+  trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
+    const amt=(t.qty*t.price).toFixed(2);
+    const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
+    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ getWeekIdx(t.date) ];
+    tbl.insertAdjacentHTML('beforeend',`
+      <tr>
+        <td>${t.date}</td>
+        <td>${wkAbbr}</td><td><img src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
+        <td>${window.SymbolCN[t.symbol]||""}</td>
+<td class="${sideCls}">${t.side}</td>
+        <td>${t.price.toFixed(2)}</td>
+        <td class="${sideCls}">${t.qty}</td>
+        <td>${amt}</td>
+        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
+      </tr>`);
+  });
+}
+
+
+
 /* ---------- 3. Derived data ---------- */
 
-/* Re‑calc positions by applying trades on top of existing positions */
+/* Re‑calc window.positions by applying trades on top of existing window.positions */
 
 function recalcPositions(){
   /* 以 FIFO 原则重构持仓与平仓盈亏 */
@@ -345,7 +403,7 @@ function recalcPositions(){
   });
 
   /* 汇总成持仓数组 */
-  positions = Object.entries(symbolLots).map(([sym, lots])=>{
+  window.positions = Object.entries(symbolLots).map(([sym, lots])=>{
       const qty = lots.reduce((s,l)=> s + l.qty, 0);
       const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
       return {symbol: sym,
@@ -417,7 +475,7 @@ function calcIntraday(trades){
 
 /* ---------- 7. Wire up ---------- */
 window.addEventListener('load',()=>{
-  // recalc positions in case only trades exist
+  // recalc window.positions in case only trades exist
   recalcPositions();
   renderStats();renderPositions();renderPositions();renderTrades();
   renderSymbolsList();
@@ -444,7 +502,7 @@ window.addEventListener('load',()=>{
 
 /* ---------- Price cell updater to avoid full re-render ---------- */
 function updatePriceCells(){
-  positions.forEach(p=>{
+  window.positions.forEach(p=>{
     const priceCell = document.getElementById(`rt-${p.symbol}`);
     if(priceCell) priceCell.textContent = (p.priceOk===false?'--':p.last.toFixed(2));
 
@@ -476,7 +534,7 @@ function updatePrices(){
        if(!apiKey) return;
 
        // 为当前所有持仓并行请求价格，全部返回后再统一刷新界面
-       const reqs = positions.map(p=>{
+       const reqs = window.positions.map(p=>{
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
