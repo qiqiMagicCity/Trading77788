@@ -233,9 +233,9 @@ const floating = positions.reduce((sum,p)=>{
 
 
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const latestTradeDate = trades.reduce((d,t)=> t.date>d ? t.date : d, '');
+  const todayStr = latestTradeDate || new Date().toLocaleDateString('en-CA', { timeZone:'America/New_York' });
   const todayTrades = trades.filter(t=> t.date === todayStr);
-
 // --- v7.53 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
 // 构建今日净买卖映射
 const dayNetMap = {};
