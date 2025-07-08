@@ -1,5 +1,5 @@
 /**
- * dailyClose.js – v7.32
+ * dailyClose.js – v7.33
  * 手动“导出收盘价格”逻辑
 /* ---- Added in v7.30: lightweight browser-side real‑time price fetch ---- */
 /** 获取 Finnhub API Key（先尝试 KEY.txt，再退回到默认内置 key） */
@@ -53,7 +53,6 @@ function afterMarketCloseNY(){
   return nyDate.getHours() > 16 || (nyDate.getHours() === 16 && nyDate.getMinutes() >= 0);
 }
 
-
 /**
  * 从当前持仓表格中读取已渲染的实时价格。要求 <tr> 具有 data-symbol，
  * 实时价单元格带有类名 .col-price
@@ -70,7 +69,7 @@ function getDomPrice(symbol){
   return null;
 }
 
-async function snapshotTodayClose(){
+async async function snapshotTodayClose(){
   if(!afterMarketCloseNY()){
   const proceed = confirm('纽约市场尚未收盘，是否仍使用当前价格作为收盘价继续导出？');
   if(!proceed) return false;
@@ -96,21 +95,6 @@ async function snapshotTodayClose(){
   }
   return savedCount;
 }
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  const btnExport = document.getElementById('exportPrices');
-  if(btnExport){
-    btnExport.addEventListener('click', async ()=>{
-      const saved = await snapshotTodayClose();
-      if(saved > 0){
-        await exportPrices();
-        alert(`已保存 ${saved} 条收盘价并导出文件`);
-      }else{
-        alert('未保存任何收盘价（可能重复或未获取到实时价格）');
-      }
-    });
-  }
-});
 
 // v7.32 added stable export handler
 const btnExport = document.getElementById('exportPrices');
