@@ -1,223 +1,27 @@
 
-function stats(){
-  // Ensure global arrays exist
-  const window.positions = Array.isArray(window.window.positions) ? window.window.positions : [];
-  const trades    = Array.isArray(window.trades) ? window.trades : [];
-
-  /* 1. 账户总成本 */
-  const cost = window.positions.reduce((sum,p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
-
-  /* 2. 目前市值 */
-  const value = window.positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty) * p.last : sum, 0);
-
-  /* 3. 当前浮动盈亏（全部未平仓） */
-  const floating = window.positions.reduce((sum,p)=>{
-      if(p.qty===0 || p.priceOk===false) return sum;
-      const pl = p.qty > 0
-               ? (p.last - p.avgPrice) * p.qty         // 多头
-               : (p.avgPrice - p.last) * Math.abs(p.qty); // 空头
-      return sum + pl;
-  },0);
-
-  /* Helper: convert side/qty to signed qty */
-  function signedQty(t){
-     if(t.side==='BUY' || t.side==='COVER') return  t.qty;
-     if(t.side==='SELL' || t.side==='SHORT') return -t.qty;
-     return 0;
-  }
-
-  const todayStr = luxon.DateTime.now().setZone('America/New_York').toISODate();
-
-  /* 4. 当日已实现盈亏 */
-  const todayReal = trades
-        .filter(t=> t.date === todayStr && t.closed)
-        .reduce((s,t)=> s + (t.pl || 0), 0);
-
-  /* ----- 5. 日内交易盈亏 ----- */
-  function calcIntraday(trades){
-      const dayTrades = trades.filter(t=> t.date === todayStr);
-      // Determine baseline qty per symbol at开盘
-      const netChange = {};
-      dayTrades.forEach(t=>{
-         netChange[t.symbol] = (netChange[t.symbol]||0) + signedQty(t);
-      });
-      const baselineQty = {};
-      window.positions.forEach(p=>{
-         baselineQty[p.symbol] = (baselineQty[p.symbol]||0) + p.qty - (netChange[p.symbol]||0);
-      });
-
-      let pl = 0;
-      const queues = {};    // symbol => FIFO lots opened intraday [{qty, price, dir}]
-      dayTrades.forEach(t=>{
-          const dir = signedQty(t);      // +qty for buy/cover, -qty for sell/short
-          if(dir===0) return;
-
-          let sym = t.symbol;
-          if(!(sym in queues)) queues[sym] = [];
-          let blRem = baselineQty[sym] || 0;
-
-          let remaining = dir;
-
-          // Step‑A: first interact with baseline to adjust, not counted as intraday
-          if(blRem !== 0 && remaining !== 0 && Math.sign(blRem) !== Math.sign(remaining)){
-              const offset = Math.min(Math.abs(blRem), Math.abs(remaining));
-              baselineQty[sym] = blRem + Math.sign(blRem)*(-offset); // reduce towards 0
-              remaining += Math.sign(remaining)*(-offset);
-              if(remaining === 0) return; // entire trade consumed by historical position
-          }
-
-          // Step‑B: true intraday processing
-          const q = queues[sym];
-          if(remaining > 0){   // buy / cover
-              let need = remaining;
-              while(need > 0 && q.length && q[0].qty < 0){
-                  const lot = q[0];
-                  const match = Math.min(need, -lot.qty);
-                  // For short then cover: profit = openSellPrice - coverBuyPrice
-                  pl += (lot.price - t.price) * match;
-                  lot.qty += match;
-                  need -= match;
-                  if(lot.qty === 0) q.shift();
-              }
-              if(need > 0){
-                  q.push({qty: need, price: t.price});
-              }
-          }else if(remaining < 0){ // sell / short
-              let need = -remaining;
-              while(need > 0 && q.length && q[0].qty > 0){
-                  const lot = q[0];
-                  const match = Math.min(need, lot.qty);
-                  // For buy then sell: profit = sellPrice - buyPrice
-                  pl += (t.price - lot.price) * match;
-                  lot.qty -= match;
-                  need -= match;
-                  if(lot.qty === 0) q.shift();
-              }
-              if(need > 0){
-                  q.push({qty: -need, price: t.price});
-              }
-          }
-      });
-      return pl;
-  }
-
-  const intradayReal = calcIntraday(trades);
-
-  /* 6. 当日浮动盈亏 */
-  const dailyUnrealized = window.positions.reduce((sum,p)=>{
-      if(p.qty===0 || p.priceOk===false) return sum;
-      const ref = (typeof p.prevClose === 'number') ? p.prevClose : p.avgPrice;
-      const delta = p.qty>0 ? (p.last - ref) * p.qty : (ref - p.last) * Math.abs(p.qty);
-      return sum + delta;
-  },0);
-
-  /* 7. 当日交易次数 */
-  const todayTradesCnt = trades.filter(t=> t.date === todayStr).length;
-
-  /* 8. 累计交易次数 */
-  const totalTradesCnt = trades.length;
-
-  /* 9. 历史已实现盈亏 */
-  const histReal = trades.filter(t=> t.closed).reduce((s,t)=> s + (t.pl||0), 0);
-
-  /* 10. 胜率 */
-  const closedTrades = trades.filter(t=> t.closed);
-  const wins = closedTrades.filter(t=> (t.pl||0) > 0).length;
-  const losses = closedTrades.filter(t=> (t.pl||0) < 0).length;
-  const winRate = (wins+losses) ? wins / (wins+losses) * 100 : null;
-
-  /* 11‑13. WTD, MTD, YTD */
-  const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
-  function periodStart(freq){
-      const d = new Date(now);
-      if(freq==='week'){
-          d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday
-      }else if(freq==='month'){
-          d.setDate(1);
-      }else if(freq==='year'){
-          d.setMonth(0); d.setDate(1);
-      }
-      d.setHours(0,0,0,0);
-      return d;
-  }
-
-  function realizedSince(date){
-      return trades
-        .filter(t=> new Date(t.date) >= date && t.closed)
-        .reduce((s,t)=> s + (t.pl||0), 0);
-  }
-
-  const wtdReal = realizedSince(periodStart('week')) + dailyUnrealized;
-  const mtdReal = realizedSince(periodStart('month')) + dailyUnrealized;
-  const ytdReal = realizedSince(periodStart('year')) + dailyUnrealized;
-
-  return {
-      cost,
-      value,
-      floating,
-      todayReal,
-      intradayReal,
-      dailyUnrealized,
-      todayTrades: todayTradesCnt,
-      totalTrades: totalTradesCnt,
-      histReal,
-      winRate,
-      wtdReal,
-      mtdReal,
-      ytdReal
-  };
-}
-
-
-
-function renderStats(){
-  const s = stats();
-  const a = [
-    ['账户总成本', Utils.fmtDollar(s.cost)],
-    ['目前市值', Utils.fmtDollar(s.value)],
-    ['当前浮动盈亏', Utils.fmtDollar(s.floating)],
-    ['当日已实现盈亏', Utils.fmtDollar(s.todayReal)],
-    ['日内交易', Utils.fmtDollar(s.intradayReal)],
-    ['当日浮动盈亏', Utils.fmtDollar(s.dailyUnrealized)],
-    ['当日交易次数', Utils.fmtInt(s.todayTrades)],
-    ['累计交易次数', Utils.fmtInt(s.totalTrades)],
-    ['历史已实现盈亏', Utils.fmtDollar(s.histReal)],
-    ['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
-    ['WTD', Utils.fmtDollar(s.wtdReal)],
-    ['MTD', Utils.fmtDollar(s.mtdReal)],
-    ['YTD', Utils.fmtDollar(s.ytdReal)]
-  ];
-  a.forEach((it,i)=>{
-    const box = document.getElementById('stat-' + (i+1));
-    if(!box) return;
-    box.innerHTML = `<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;
-  });
-}
-
 /* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
-  if(!Array.isArray(window.positions)){console.warn('window.positions not array'); return;}
   const idb = await import('./db/idb.js');
-  const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
+  const now = new Date();
   let d = new Date(now);
   // 找到上一个交易日（跳过周末）
   do{
     d.setDate(d.getDate()-1);
   }while(d.getDay()===0 || d.getDay()===6);
   const dateStr = d.toISOString().slice(0,10);
-  // Ensure window.positions is an array (migration compatibility)
-  if(!Array.isArray(window.positions)){
+  // Ensure positions is an array (migration compatibility)
+  if(!Array.isArray(positions)){
     try{
       if(typeof recalcPositions==='function'){
         recalcPositions();
       }
     }catch(e){ console.error(e); }
   }
-  if(!Array.isArray(window.positions)){
-    console.warn('window.positions is not iterable, skip prev-close attachment');
+  if(!Array.isArray(positions)){
+    console.warn('positions is not iterable, skip prev-close attachment');
     return;
   }
-  for(const p of window.positions){
+  for(const p of positions){
     const rec = await idb.getPrice(p.symbol, dateStr);
     if(rec && typeof rec.close === 'number'){
       p.prevClose = rec.close;
@@ -228,7 +32,7 @@ async function attachPrevCloses(){
 
 async function getPrevTradingDayClose(symbol){
   const idb = await import('./db/idb.js');
-  const now = luxon.DateTime.now().setZone('America/New_York').toJSDate();
+  const now = new Date();
   let d = new Date(now);
   d.setDate(d.getDate()-1);
   while(d.getDay()===0 || d.getDay()===6){ d.setDate(d.getDate()-1); }
@@ -251,7 +55,7 @@ function getWeekIdx(dateStr){
   return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
 }
 
-/* Trading777 v5.3.2 dashboard – implements import / export, dynamic window.positions, add‑trade */
+/* Trading777 v5.3.2 dashboard – implements import / export, dynamic positions, add‑trade */
 
 (function(){
 
@@ -263,19 +67,17 @@ const defaultTrades = [
  {date:'2025-06-29',symbol:'TSLA',side:'SELL',qty:50,price:210,pl:500,closed:true}
 ];
 
-window.window.positions = JSON.parse(localStorage.getItem('window.positions') || localStorage.getItem('posArr') || 'null') || defaultPositions.slice();
-let positions = window.positions;
-if(!Array.isArray(window.positions)){
-  window.positions = Object.values(window.positions||{});
+let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
+if(!Array.isArray(positions)){
+  positions = Object.values(positions||{});
 }
-window.trades    = JSON.parse(localStorage.getItem('trades') || localStorage.getItem('tradesArr') || 'null') || defaultTrades.slice();
-let trades = window.trades;
+let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
 recalcPositions();
 
 
 /* Save helper */
 function saveData(){
-  localStorage.setItem('window.positions',JSON.stringify(window.positions));
+  localStorage.setItem('positions',JSON.stringify(positions));
   localStorage.setItem('trades',JSON.stringify(trades));
 }
 
@@ -291,70 +93,14 @@ function fmtWL(w,l){return `<span class="green">W${w}</span>/<span class="red">L
 function fmtPct(p){return `<span class="white">${Number(p).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span>`;}
 const Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
 
-function renderPositions(){
-  const tbl=document.getElementById('positions');
-  if(!tbl) return;
-  const head=['logo','代码','中文','实时价格','目前持仓','持仓单价','持仓金额','盈亏平衡点','当前浮盈亏','标的盈亏','历史交易次数','详情'];
-  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
-  positions.forEach(p=>{
-    const amt=Math.abs(p.qty*p.avgPrice);
-    const pl=(p.last-p.avgPrice)*p.qty;
-    const cls=pl>0?'green':pl<0?'red':'white';
-    const times=trades.filter(t=>t.symbol===p.symbol).length;
-    
-const realized=trades.filter(t=>t.symbol===p.symbol&&t.closed).reduce((s,t)=>s+t.pl,0);
-const totalPNL=pl+realized;
-tbl.insertAdjacentHTML('beforeend',`
-  <tr data-symbol="${p.symbol}">
-    <td><img loading="lazy" src="logos/${p.symbol}.png" class="logo" alt="${p.symbol}" onerror="this.style.visibility='hidden';"></td><td>${p.symbol}</td>
-    <td class="cn">${window.SymbolCN[p.symbol]||""}</td>
-    <td id="rt-${p.symbol}" class="col-price">${(p.priceOk===false?'稍后获取':p.last.toFixed(2))}</td>
-    <td>${p.qty}</td>
-    <td>${p.avgPrice.toFixed(2)}</td>
-    <td>${amt.toFixed(2)}</td>
-    <td>${(p.avgPrice).toFixed(2)}</td>
-    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
-    <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
-    <td>${times}</td>
-    <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
-  </tr>`);
-  });
-}
-
-function renderTrades(){
-  renderSymbolsList();
-  const tbl=document.getElementById('trades');
-  if(!tbl) return;
-  const head=['日期','星期','图标','代码','中文','方向','单价','数量','订单金额','详情'];
-  tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
-  trades.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(t=>{
-    const amt=(t.qty*t.price).toFixed(2);
-    const sideCls = t.side==='BUY' ? 'green' : t.side==='SELL' ? 'red' : t.side==='SHORT' ? 'purple' : 'blue';
-    const wkAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ getWeekIdx(t.date) ];
-    tbl.insertAdjacentHTML('beforeend',`
-      <tr>
-        <td>${t.date}</td>
-        <td>${wkAbbr}</td><td><img src="logos/${t.symbol}.png" class="logo" alt="${t.symbol}" onerror="this.style.visibility='hidden';"></td><td>${t.symbol}</td>
-        <td>${window.SymbolCN[t.symbol]||""}</td>
-<td class="${sideCls}">${t.side}</td>
-        <td>${t.price.toFixed(2)}</td>
-        <td class="${sideCls}">${t.qty}</td>
-        <td>${amt}</td>
-        <td><a href="stock.html?symbol=${t.symbol}" class="details">详情</a></td>
-      </tr>`);
-  });
-}
-
-
-
 /* ---------- 3. Derived data ---------- */
 
-/* Re‑calc window.positions by applying trades on top of existing window.positions */
+/* Re‑calc positions by applying trades on top of existing positions */
 
 function recalcPositions(){
   /* 以 FIFO 原则重构持仓与平仓盈亏 */
   const symbolLots = {};   // {SYM: [{qty, price}] }
-  const dayStr = luxon.DateTime.now().setZone('America/New_York').toISODate();
+  const dayStr = new Date().toISOString().slice(0,10);
 
   trades.sort((a,b)=> new Date(a.date) - new Date(b.date));   // 确保按时间先后
 
@@ -403,7 +149,7 @@ function recalcPositions(){
   });
 
   /* 汇总成持仓数组 */
-  window.positions = Object.entries(symbolLots).map(([sym, lots])=>{
+  positions = Object.entries(symbolLots).map(([sym, lots])=>{
       const qty = lots.reduce((s,l)=> s + l.qty, 0);
       const cost = lots.reduce((s,l)=> s + l.qty * l.price, 0);
       return {symbol: sym,
@@ -420,7 +166,7 @@ function recalcPositions(){
 
 /* ---------- Calc Intraday Realized P/L (v7.7.5) ---------- */
 function calcIntraday(trades){
-  const todayStr = luxon.DateTime.now().setZone('America/New_York').toISODate();
+  const todayStr = new Date().toISOString().slice(0,10);
   const dayTrades = trades.filter(t=> t.date === todayStr);
   const bySymbol = {};
   dayTrades.forEach(t=>{
@@ -472,10 +218,207 @@ function calcIntraday(trades){
   return pl;
 }
 
+/* ========== Enhanced Statistics Module v7.46 ========== */
+function getTodayNY(){
+  return luxon.DateTime.now().setZone('America/New_York').toFormat('yyyy-LL-dd');
+}
+
+/* Main statistics calc – returns an object with 13 fields */
+function stats(){
+  /* ---------- Pre‑flight: ensure positions & trades ---------- */
+  if(!Array.isArray(window.positions)){
+    if(typeof recalcPositions==='function') recalcPositions();
+    if(!Array.isArray(window.positions)) window.positions = [];
+  }
+  const positions = window.positions;
+  const tradesRaw = JSON.parse(localStorage.getItem('trades')||'[]');
+  // normalise numeric
+  const trades = tradesRaw.map(t=>({...t, qty:Number(t.qty), price:Number(t.price)}));
+
+  const today = getTodayNY();
+
+  /* 1‑3. Cost / Value / Floating P&L (all open) */
+  const cost = positions.reduce((s,p)=> s + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((s,p)=> p.priceOk===false ? s : s + Math.abs(p.qty)*p.last, 0);
+  const floating = positions.reduce((s,p)=>{
+      if(p.qty===0 || p.priceOk===false) return s;
+      const pl = p.qty>0
+               ? (p.last - p.avgPrice) * p.qty
+               : (p.avgPrice - p.last) * Math.abs(p.qty);
+      return s + pl;
+  },0);
+
+  /* ---------- Helper: build pre‑today lots snapshot ---------- */
+  const preLots = {};   // {symbol: [{qty, price}] } – qty sign long+: short- 
+  trades
+    .filter(t=> t.date < today)
+    .sort((a,b)=> new Date(a.date) - new Date(b.date))
+    .forEach(t=>{
+      const sign = (t.side==='BUY'||t.side==='COVER'||t.side==='BOUGHT'||t.side==='买入') ? +1 : -1;
+      const qty  = sign * t.qty;
+      const lot  = {qty, price:t.price};
+      preLots[t.symbol] = preLots[t.symbol] || [];
+      if(qty>0){ // long buy
+        preLots[t.symbol].push(lot);
+      }else{     // sell / short
+        let remaining = -qty;
+        while(remaining>0 && preLots[t.symbol].length && preLots[t.symbol][0].qty>0){
+          const opp = preLots[t.symbol][0];
+          const c = Math.min(remaining, opp.qty);
+          opp.qty -= c;
+          if(opp.qty===0) preLots[t.symbol].shift();
+          remaining -= c;
+        }
+        if(remaining>0){
+          preLots[t.symbol].push({qty:-remaining, price:t.price});
+        }
+      }
+    });
+
+  /* ---------- Today’s realized P/L & intraday P/L ---------- */
+  let totalRealizedToday = 0;   // module 4 + 5 combined
+  let intraDayPL = 0;           // module 5
+  let todayTradeCount = 0;
+
+  // per‑symbol intraday queue
+  const dayQueue = {};
+
+  trades
+    .filter(t=> t.date === today)
+    .sort((a,b)=> new Date(a.time||a.date) - new Date(b.time||b.date))
+    .forEach(t=>{
+      const sign = (t.side==='BUY'||t.side==='COVER'||t.side==='BOUGHT'||t.side==='买入') ? +1 : -1;
+      let qty = sign * t.qty;
+      const price = t.price;
+      todayTradeCount += 1;
+
+      // 1) first try to offset historical lots
+      const lots = preLots[t.symbol] || [];
+      while(qty!==0 && lots.length && qty*lots[0].qty<0){
+        const lot = lots[0];
+        const match = Math.min(Math.abs(qty), Math.abs(lot.qty));
+        const pl = lot.qty>0
+                  ? (price - lot.price) * match    // closing long
+                  : (lot.price - price) * match;   // closing short
+        totalRealizedToday += pl;
+        lot.qty += (lot.qty>0 ? -match : match);   // reduce towards 0
+        if(Math.abs(lot.qty) < 1e-6) lots.shift();
+        qty += (qty>0 ? -match : match);
+      }
+
+      // 2) then match within‑day queue
+      dayQueue[t.symbol] = dayQueue[t.symbol] || [];
+      const dq = dayQueue[t.symbol];
+      while(qty!==0 && dq.length && qty*dq[0].qty<0){
+        const lot = dq[0];
+        const match = Math.min(Math.abs(qty), Math.abs(lot.qty));
+        const pl = lot.qty>0
+                  ? (price - lot.price) * match
+                  : (lot.price - price) * match;
+        intraDayPL += pl;
+        totalRealizedToday += pl;
+        lot.qty += (lot.qty>0 ? -match : match);
+        if(Math.abs(lot.qty) < 1e-6) dq.shift();
+        qty += (qty>0 ? -match : match);
+      }
+
+      // 3) whatever remains becomes an intraday open lot
+      if(qty!==0){
+        dq.push({qty, price});
+      }
+    });
+
+  const todayReal = totalRealizedToday - intraDayPL;  // module 4
+
+  /* 6. Daily unrealised P/L (based on prevClose vs last / avgPrice) */
+  const dailyUnrealized = positions.reduce((s,p)=>{
+      if(p.qty===0 || p.priceOk===false) return s;
+      let base = typeof p.prevClose==='number' ? p.prevClose : p.avgPrice;
+      const delta = p.qty>0
+                  ? (p.last - base) * p.qty
+                  : (base - p.last) * Math.abs(p.qty);
+      return s + delta;
+  },0);
+
+  /* 8. cumulative trade count & 10. winRate */
+  const allTradesCopy = trades.map(t=>({...t}));
+  if(window.FIFO && typeof window.FIFO.computeFIFO==='function'){
+    window.FIFO.computeFIFO(allTradesCopy);
+  }
+  const closedTrades = allTradesCopy.filter(t=>t.closed);
+  const histReal = closedTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const wins = closedTrades.filter(t=>(t.pl||0)>0).length;
+  const winRate = closedTrades.length? (wins/closedTrades.length*100):0;
+
+  /* 11‑13. WTD / MTD / YTD using equity curve + today delta */
+  const curve = (typeof loadCurve==='function') ? loadCurve() : [];
+  const todayDelta = dailyUnrealized + todayReal;
+  const dtToday = luxon.DateTime.fromFormat(today,'yyyy-LL-dd');
+  const weekStart = dtToday.startOf('week').minus({days: dtToday.weekday===7?6:0}).plus({days:1}); // Monday
+  const monthStart = dtToday.startOf('month');
+  const yearStart = dtToday.startOf('year');
+
+  function sumSince(startDT){
+    const startStr = startDT.toFormat('yyyy-LL-dd');
+    return curve.filter(p=> p.date >= startStr).reduce((s,e)=> s + (e.delta||0), 0) + todayDelta;
+  }
+  const wtd = sumSince(weekStart);
+  const mtd = sumSince(monthStart);
+  const ytd = sumSince(yearStart);
+
+  return {
+    cost,value,floating,
+    todayReal,intraDayPL,
+    dailyUnrealized,
+    todayTradeCount,
+    totalTrades: trades.length,
+    histReal,
+    winRate,
+    wtd,mtd,ytd
+  };
+}
+
+/* ---------- Render stats boxes ---------- */
+function renderStats(){
+  const S = stats();   // compute
+  const $ = (id)=> document.getElementById(id);
+
+  if(!window.Utils){
+    console.warn('Utils not loaded');
+    return;
+  }
+  const F = window.Utils;  // helpers
+
+  const mapping = [
+    ['stat-1' ,'账户总成本',     F.fmtDollar(S.cost)],
+    ['stat-2' ,'目前市值',       F.fmtDollar(S.value)],
+    ['stat-3' ,'当前浮动盈亏',   F.fmtDollar(S.floating)],
+    ['stat-4' ,'当日已实现盈亏', F.fmtDollar(S.todayReal)],
+    ['stat-5' ,'日内交易',       F.fmtDollar(S.intraDayPL)],
+    ['stat-6' ,'当日浮动盈亏',   F.fmtDollar(S.dailyUnrealized)],
+    ['stat-7' ,'当日交易次数',   F.fmtInt(S.todayTradeCount)],
+    ['stat-8' ,'累计交易次数',   F.fmtInt(S.totalTrades)],
+    ['stat-9' ,'历史已实现盈亏', F.fmtDollar(S.histReal)],
+    ['stat-10','胜率',          `<span class="white">${S.winRate.toFixed(1)}%</span>`],
+    ['stat-11','WTD',           F.fmtDollar(S.wtd)],
+    ['stat-12','MTD',           F.fmtDollar(S.mtd)],
+    ['stat-13','YTD',           F.fmtDollar(S.ytd)],
+  ];
+
+  mapping.forEach(([id,label,val])=>{
+    const el = $(id);
+    if(!el) return;
+    el.innerHTML = `<div class="label">${label}</div><div class="value">${val}</div>`;
+  });
+}
+/* auto-render on load & whenever positions/trades refresh */
+renderStats();
+
+
 
 /* ---------- 7. Wire up ---------- */
 window.addEventListener('load',()=>{
-  // recalc window.positions in case only trades exist
+  // recalc positions in case only trades exist
   recalcPositions();
   renderStats();renderPositions();renderPositions();renderTrades();
   renderSymbolsList();
@@ -502,7 +445,7 @@ window.addEventListener('load',()=>{
 
 /* ---------- Price cell updater to avoid full re-render ---------- */
 function updatePriceCells(){
-  window.positions.forEach(p=>{
+  positions.forEach(p=>{
     const priceCell = document.getElementById(`rt-${p.symbol}`);
     if(priceCell) priceCell.textContent = (p.priceOk===false?'--':p.last.toFixed(2));
 
@@ -534,7 +477,7 @@ function updatePrices(){
        if(!apiKey) return;
 
        // 为当前所有持仓并行请求价格，全部返回后再统一刷新界面
-       const reqs = window.positions.map(p=>{
+       const reqs = positions.map(p=>{
          return fetch(`https://finnhub.io/api/v1/quote?symbol=${p.symbol}&token=${apiKey}`)
                 .then(r=>r.json())
                 .then(q=>{
