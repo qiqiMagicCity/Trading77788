@@ -29,6 +29,7 @@ function getApiKeys() {
       }
     });
   } catch (e) { console.error('Cannot read KEY.txt', e); }
+    if(!finnhub) finnhub = 'd19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg';
   return { alpha, finnhub };
 }
 
