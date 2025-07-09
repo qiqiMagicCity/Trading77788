@@ -70,7 +70,7 @@ function render(){
        localStorage.setItem('trades',JSON.stringify(trades));
        localStorage.setItem('trades_sync', Math.random()); // 触发 storage 广播
        render();
-       if(window.refreshAll) window.refreshAll();  // ★ 同页面强制刷新
+       if(window.refreshAll) window.refreshAll();  // ★ 删除后刷新
      };
   });
   tbl.querySelectorAll('button[data-edit]').forEach(btn=>{
@@ -78,9 +78,23 @@ function render(){
        const idx=parseInt(btn.getAttribute('data-edit'),10);
        localStorage.setItem('editIndex',idx);
        location.href='index.html#edit';
-       // 建议在编辑保存时也加 setItem('trades_sync', Math.random())
      };
   });
 }
+
+// 用于新增或编辑交易时的保存（推荐在 trade 保存逻辑中调用）
+window.saveTradeAndRefresh = function(trade, editIndex) {
+  let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  if(editIndex !== undefined && editIndex !== null){
+    trades[editIndex] = trade;
+  }else{
+    trades.unshift(trade);
+  }
+  localStorage.setItem('trades',JSON.stringify(trades));
+  localStorage.setItem('trades_sync', Math.random());
+  if(window.refreshAll) window.refreshAll(); // ★ 新增/编辑后刷新
+  render();
+};
+
 render();
 })();

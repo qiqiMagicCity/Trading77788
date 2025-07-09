@@ -642,6 +642,7 @@ document.getElementById('t-save').onclick=function(){
     renderPositions();
     renderTrades();
   renderSymbolsList();
+  if(window.refreshAll) window.refreshAll();
     close();
 };
 
