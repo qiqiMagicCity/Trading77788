@@ -14,11 +14,6 @@ const PRICE_PATH = path ? path.join(process.cwd(), 'data', 'price-history.json')
 const KEY_PATH = path ? path.join(process.cwd(), 'KEY.txt') : '/KEY.txt';
 
 function getApiKeys() {
-if(!hasFs){
-  const finLocal = localStorage.getItem('FINNHUB_TOKEN') || '';
-  if(finLocal) finnhub = finLocal;
-}
-
   let alpha = '';
   let finnhub = '';
   try {
@@ -34,37 +29,10 @@ if(!hasFs){
       }
     });
   } catch (e) { console.error('Cannot read KEY.txt', e); }
-    if(!finnhub) finnhub = 'd19cvm9r01qmm7tudrk0d19cvm9r01qmm7tudrkg';
   return { alpha, finnhub };
 }
 
-
-/* === v7.62 browser‑safe storage fallback === */
-const hasFs = !!fs && typeof fs.existsSync === 'function';
-
-function readPriceHistoryLocal(){
-  try{
-    return JSON.parse(localStorage.getItem('priceHistory') || '{}');
-  }catch(e){
-    console.warn('priceHistory parse error', e);
-    localStorage.removeItem('priceHistory');
-    return {};
-  }
-}
-function atomicWriteLocal(obj){
-  try{
-    localStorage.setItem('priceHistory', JSON.stringify(obj));
-  }catch(e){
-    console.error('Failed to write priceHistory to localStorage', e);
-  }
-}
-
-/* Override file‑based helpers when fs is unavailable */
 function readPriceHistory() {
-if (!hasFs) {
-  return readPriceHistoryLocal();
-}
-
   try {
     if (!fs.existsSync(PRICE_PATH)) {
       fs.mkdirSync(path.dirname(PRICE_PATH), { recursive: true });
@@ -80,10 +48,6 @@ if (!hasFs) {
 }
 
 function atomicWrite(obj) {
-if (!hasFs) {
-  return atomicWriteLocal(obj);
-}
-
   const tmp = PRICE_PATH + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), 'utf8');
   fs.renameSync(tmp, PRICE_PATH);
