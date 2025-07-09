@@ -1,4 +1,3 @@
-
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -18,7 +17,7 @@ function render(){
   trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
-    const head=['#','logo','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
+  const head=['#','logo','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
@@ -69,6 +68,7 @@ function render(){
        const trades=JSON.parse(localStorage.getItem('trades')||'[]');
        trades.splice(idx,1);
        localStorage.setItem('trades',JSON.stringify(trades));
+       localStorage.setItem('trades_sync', Math.random()); // 触发 storage 广播
        render();
      };
   });
@@ -77,6 +77,7 @@ function render(){
        const idx=parseInt(btn.getAttribute('data-edit'),10);
        localStorage.setItem('editIndex',idx);
        location.href='index.html#edit';
+       // 建议在编辑保存时也加 setItem('trades_sync', Math.random())
      };
   });
 }

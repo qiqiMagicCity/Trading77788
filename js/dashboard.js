@@ -1,4 +1,3 @@
-
 /* ---------- Prev Close attachment (v7.27) ---------- */
 
 /* ---------- Global Timezone helpers (v7.79) ---------- */
@@ -797,11 +796,11 @@ function renderNYDate(){
 renderNYDate();
 setInterval(renderNYDate,60*1000);
 
-/* ---------- storage sync (v7.79) ---------- */
+/* ---------- storage sync (v7.80) ---------- */
 window.addEventListener('storage', (e)=>{
-  if(e.key==='trades'){
+  if(e.key==='trades' || e.key==='trades_sync'){
     try{
-      trades = JSON.parse(e.newValue||'[]');
+      trades = JSON.parse(localStorage.getItem('trades')||'[]');
     }catch(err){
       trades = [];
     }
@@ -813,4 +812,3 @@ window.addEventListener('storage', (e)=>{
     renderSymbolsList && renderSymbolsList();
   }
 });
-
