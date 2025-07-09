@@ -279,27 +279,40 @@ const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
 const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
 const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
 
+
 const now = new Date();
 const monday = new Date(now);
 monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
 monday.setHours(0,0,0,0);
 
-const wtdReal = trades.filter(t=>{
-  const d = new Date(t.date);
-  return d >= monday && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
-
 const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 firstOfMonth.setHours(0,0,0,0);
-const mtdReal = trades.filter(t=>{
-  const d = new Date(t.date);
-  return d >= firstOfMonth && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
 
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
-const ytdReal = trades.filter(t=>{
-  const d = new Date(t.date);
+
+// --- v7.72 重新计算 WTD/MTD/YTD（含每日浮动 + 实现） ---
+function sumPeriod(start){
+  const curve = (typeof loadCurve==='function') ? loadCurve() : [];
+  const todayISO = now.toISOString().slice(0,10);
+  let sum = 0;
+  curve.forEach(p=>{
+    const d = new Date(p.date);
+    if(d >= start && d <= now){
+      sum += (p.delta||0);
+    }
+  });
+  // 若今日尚未写入 curve，需要加上今日实时数据
+  if(!curve.length || curve[curve.length-1].date !== todayISO){
+    sum += dailyUnrealized + todayReal;
+  }
+  return sum;
+}
+
+const wtdReal = sumPeriod(monday);
+const mtdReal = sumPeriod(firstOfMonth);
+const ytdReal = sumPeriod(firstOfYear);
+
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 

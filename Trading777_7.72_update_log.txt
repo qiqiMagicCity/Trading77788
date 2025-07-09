@@ -1,0 +1,16 @@
+Trading777 v7.72  更新日志  (2025-07-09)
+
+### 修复
+1. **WTD / MTD / YTD 计算错误**  
+   - 之前仅统计了已实现盈亏（trades.pl），未纳入每日浮动盈亏，导致三项指标偏小。  
+   - 新算法改为从 *资金收益曲线* (equityCurve.delta) 汇总，并在尚未写入当日曲线时自动加上 “当日已实现 + 当日浮动” 数据，完全符合《首页计算模块规则.txt》中定义。
+
+2. **逻辑封装**  
+   - 在 `js/dashboard.js` 内新增 `sumPeriod(start)` 工具函数，统一计算 WTD/MTD/YTD，避免未来维护时重复代码。
+
+
+### 其它
+- 所有页面 `<title>` 更新为 **Trading777 v7.72**，浏览器标签实时反映版本。  
+- 保持 `js/lib/idb.js` 路径不变，避免 Git 冲突。  
+- 无需 `vercel.json`，本地 `npx vercel build` 验证通过。
+
