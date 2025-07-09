@@ -1,3 +1,9 @@
+/* ----- helper: local date time string (v7.58) ----- */
+function getLocalDateTimeStr(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
 
 /* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
@@ -43,9 +49,15 @@ async function getPrevTradingDayClose(symbol){
 
 
 function buildOptionSymbol(root, dateStr, cp, strike){
-  const d = dayjs(dateStr).format('YYMMDD');
-  const strikeInt = Math.round(strike * 1000).toString().padStart(8,'0');
-  return (root + d + cp + strikeInt).toUpperCase();
+  // OCC option code: ROOT + YYMMDD + C/P + strike*1000 (8 digits)
+  if(!root || !dateStr || !cp){ return ''; }
+  const dObj = new Date(dateStr.includes('/') ? dateStr.replace(/\//g,'-') : dateStr);
+  if(isNaN(dObj)){ return ''; }
+  const yy = String(dObj.getFullYear()).slice(-2);
+  const mm = String(dObj.getMonth()+1).padStart(2,'0');
+  const dd = String(dObj.getDate()).padStart(2,'0');
+  const strikeInt = Math.round(parseFloat(strike) * 1000).toString().padStart(8,'0');
+  return (root.toUpperCase() + yy + mm + dd + cp + strikeInt);
 }
 
 
@@ -303,6 +315,11 @@ const ytdReal = trades.filter(t=>{
   return d >= firstOfYear && d <= now;
 }).reduce((s,t)=> s + (t.pl||0), 0);
 
+// ----- v7.60 修复：WTD/MTD/YTD 计算口径 -----
+const wtd = wtdReal + dailyUnrealized;
+const mtd = mtdReal + dailyUnrealized;
+const ytd = ytdReal + dailyUnrealized;
+
   return {
     cost,
     value,
@@ -316,9 +333,9 @@ const ytdReal = trades.filter(t=>{
     intradayReal,
     dailyUnrealized,
     winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
+    wtd,
+    mtd,
+    ytd
   };
 }
 
@@ -348,9 +365,9 @@ const a=[
 ['累计交易次数',Utils.fmtInt(s.totalTrades)],
 ['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
 ['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
-['WTD', Utils.fmtDollar(s.wtdReal)],
-['MTD', Utils.fmtDollar(s.mtdReal)],
-['YTD', Utils.fmtDollar(s.ytdReal)],
+['WTD', Utils.fmtDollar(s.wtd)],
+['MTD', Utils.fmtDollar(s.mtd)],
+['YTD', Utils.fmtDollar(s.ytd)],
 
 ];
   a.forEach((it,i)=>{
@@ -495,7 +512,7 @@ function openTradeForm(editIndex){
 <label>单价</label><input type="number" step="0.01" id="t-price" />
 <div style="margin-top:14px;text-align:right;">
   <button id="t-cancel">取消</button>
-  <button id=</div>"t-save">确定</button>
+  <button id="t-save" class="primary">确定</button>
 </div>`;
   document.body.appendChild(modal);
   if(editIndex!=null){
@@ -506,7 +523,7 @@ function openTradeForm(editIndex){
      document.getElementById('t-qty').value=t.qty;
      document.getElementById('t-price').value=t.price;
   }else{
-     document.getElementById('t-date').value=new Date().toISOString().slice(0,16);
+     document.getElementById('t-date').value=getLocalDateTimeStr();
   }
   function close(){modal.remove();}
   
@@ -523,22 +540,43 @@ chkOpt.addEventListener('change',()=>{
     optDiv.style.display='none';
   }
 });
-// Generate OCC symbol as user types
-['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
-  modal.querySelector(sel)?.addEventListener('input',()=>{
+// Generate OCC symbol automatically as user fills the option form
+  const updateSymbol = ()=>{
     const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
     const exp  = modal.querySelector('#opt-exp').value;
     const cp   = modal.querySelector('#opt-cp').value;
     const strike = parseFloat(modal.querySelector('#opt-strike').value);
     if(root && exp && cp && strike){
       modal.querySelector('#opt-symbol').value = buildOptionSymbol(root,exp,cp,strike);
+    }else{
+      modal.querySelector('#opt-symbol').value = '';
     }
+  };
+  ['input','change'].forEach(evt=>{
+    ['#opt-root','#opt-exp','#opt-cp','#opt-strike'].forEach(sel=>{
+      modal.querySelector(sel)?.addEventListener(evt, updateSymbol);
+    });
   });
-});
 
 document.getElementById('t-cancel').onclick=close;
   
 document.getElementById('t-save').onclick=function(){
+    updateSymbol();
+
+    
+    const chkOpt = modal.querySelector('#t-isOption');
+    if(chkOpt && chkOpt.checked){
+        let symField = modal.querySelector('#opt-symbol');
+        if(symField && !symField.value){
+            const root = modal.querySelector('#opt-root').value.trim().toUpperCase();
+            const exp  = modal.querySelector('#opt-exp').value;
+            const cp   = modal.querySelector('#opt-cp').value;
+            const strike = parseFloat(modal.querySelector('#opt-strike').value);
+            if(root && exp && cp && strike){
+                symField.value = buildOptionSymbol(root,exp,cp,strike);
+            }
+        }
+    }
     const dateInput = document.getElementById('t-date').value;
     const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
     const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
@@ -563,6 +601,15 @@ document.getElementById('t-save').onclick=function(){
     }
 
     const trade = {date,symbol,side,qty,price,pl,closed:closedFlag};
+
+if(chkOpt && chkOpt.checked){
+    trade.isOption = true;
+    trade.underlying = modal.querySelector('#opt-root').value.trim().toUpperCase();
+    trade.expiry = modal.querySelector('#opt-exp').value;
+    trade.cp = modal.querySelector('#opt-cp').value;
+    trade.strike = parseFloat(modal.querySelector('#opt-strike').value);
+}
+
 
     if(editIndex != null){
         trades[editIndex] = trade;
