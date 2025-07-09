@@ -545,9 +545,20 @@ function openTradeForm(editIndex){
 <label>单价</label><input type="number" step="0.01" id="t-price" />
 <div style="margin-top:14px;text-align:right;">
   <button id="t-cancel">取消</button>
-  <button id=</div>"t-save">确定</button>
+  <button id="t-save">确定</button>
 </div>`;
   document.body.appendChild(modal);
+
+// Set default trade datetime to now in New York timezone (America/New_York)
+if(editIndex==null){
+    const now = new Date();
+    // convert to New York timezone by using toLocaleString
+    const nyString = now.toLocaleString('en-US', {timeZone: 'America/New_York'});
+    const nyDate   = new Date(nyString);
+    const pad = (n)=>n.toString().padStart(2,'0');
+    const val = `${nyDate.getFullYear()}-${pad(nyDate.getMonth()+1)}-${pad(nyDate.getDate())}T${pad(nyDate.getHours())}:${pad(nyDate.getMinutes())}`;
+    document.getElementById('t-date').value = val;
+}
   if(editIndex!=null){
      const t=trades[editIndex];
      document.getElementById('t-date').value=t.date+'T00:00:00';
