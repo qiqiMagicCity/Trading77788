@@ -291,56 +291,52 @@ firstOfMonth.setHours(0,0,0,0);
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
 
-// --- v7.73 重新计算 WTD/MTD/YTD（含每日浮动 + 实现） ---
-
-
-function sumPeriod(start){
+// --- v7.75 重新计算 WTD/MTD/YTD（含每日浮动 + 已实现） ---
+function sumPeriod(startDate){
+  // 参数为 JS Date（00:00:00）
+  const toISO = d => d.toISOString().slice(0,10);
+  const startISO = toISO(startDate);
+  const todayISO = toISO(new Date());
   const curve = (typeof loadCurve==='function') ? loadCurve() : [];
-  const todayISO = now.toISOString().slice(0,10);
   let sum = 0;
-  let prevValue = null;
 
-  for(const p of curve){
-    const d = new Date(p.date);
-    if(d < start){
-      // 记录 start 之前最后一个 value，作为比较基准
-      if(typeof p.value === 'number'){
-        prevValue = p.value;
-      }
-      continue;
-    }
-    if(d > now) break;
-
-    if(typeof p.delta === 'number'){
-      sum += p.delta;
-      if(typeof p.value === 'number'){
-        prevValue = p.value;
-      }
-    }else if(typeof p.value === 'number'){
-      const unrealDiff = prevValue !== null ? (p.value - prevValue) : 0;
-      sum += unrealDiff + (p.real || 0);
-      prevValue = p.value;
+  // 1) 将所有 delta 按日期聚合（允许同一天多条 delta，全部累加）
+  const dailyDelta = {};
+  for(const row of curve){
+    if(!row.date) continue;
+    if(row.date < startISO || row.date === todayISO) continue; // 当天实时数据另算
+    if(typeof row.delta === 'number' && !isNaN(row.delta)){
+      dailyDelta[row.date] = (dailyDelta[row.date] || 0) + row.delta;
     }
   }
-
-  // 若今日尚未写入 curve，需要加上今日实时数据 (今日浮动 + 已实现)
-  if(!curve.length || curve[curve.length-1].date !== todayISO){
-    sum += dailyUnrealized + todayReal;
+  for(const d in dailyDelta){
+    sum += dailyDelta[d];
   }
+
+  // 2) 对于缺失 delta 的日期，用 value 差分补齐
+  // 先把 value 行按日期升序去重（保留最后一条）
+  const valueRows = {};
+  for(const row of curve){
+    if(row && typeof row.value === 'number'){
+      valueRows[row.date] = row.value; // later entries overwrite earlier ones
+    }
+  }
+  const sortedDates = Object.keys(valueRows).sort();
+  for(let i=1;i<sortedDates.length;i++){
+    const d = sortedDates[i];
+    const prevD = sortedDates[i-1];
+    if(d < startISO || d === todayISO) continue;
+    if(dailyDelta[d] != null) continue; // 已有 delta
+    const diff = valueRows[d] - valueRows[prevD];
+    sum += diff;
+  }
+
+  // 3) 若今天尚未写入 curve，追加今日实时（浮动 + 已实现）
+  sum += (typeof dailyUnrealized==='number'?dailyUnrealized:0) +
+         (typeof todayReal==='number'?todayReal:0);
+
   return sum;
 }
- else if (typeof p.value !== 'undefined') {
-        sum += p.value; // 兼容旧曲线数据（仅浮动）
-      }
-    }
-  });
-  // 若今日尚未写入 curve，需要加上今日实时数据 (今日浮动 + 已实现)
-  if(!curve.length || curve[curve.length-1].date !== todayISO){
-    sum += dailyUnrealized + todayReal;
-  }
-  return sum;
-}
-
 
 const wtdReal = sumPeriod(monday);
 const mtdReal = sumPeriod(firstOfMonth);
