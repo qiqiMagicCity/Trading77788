@@ -1,0 +1,19 @@
+Trading777 v7.74 更新日志
+日期: 2025-07-09 18:28:25
+
+【修复】首页 WTD/MTD/YTD 计算错误
+  - 重写 js/dashboard.js 内 sumPeriod() 函数：
+    • 新增“基准值 prevValue”逻辑，先捕获 start 之前最近一日的浮动市值，
+      然后按日差分 + 已实现盈亏 (real) 反推 delta，兼容旧版 equity_curve
+      仅含 value/real 字段的历史数据。
+    • 若曲线包含新版 delta 字段，仍走快速累加路径。
+    • 若今日尚未写入曲线，则自动加上 “当前浮动 + 当日已实现” 两部分实时数据。
+    • 彻底解决 WTD/MTD/YTD 与历史已实现盈亏显示一致的问题。
+
+【优化】版本号自动更新
+  - index.html / analysis.html / stock.html / trades.html
+    <title> 改为 Trading777 v7.74。
+
+【未改动】
+  - 其他源码、样式、数据结构保持 v7.73 完全一致。
+  - KEY.txt 等配置文件未变动。

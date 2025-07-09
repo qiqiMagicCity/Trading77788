@@ -293,16 +293,43 @@ firstOfYear.setHours(0,0,0,0);
 
 // --- v7.73 重新计算 WTD/MTD/YTD（含每日浮动 + 实现） ---
 
+
 function sumPeriod(start){
   const curve = (typeof loadCurve==='function') ? loadCurve() : [];
   const todayISO = now.toISOString().slice(0,10);
   let sum = 0;
-  curve.forEach(p=>{
+  let prevValue = null;
+
+  for(const p of curve){
     const d = new Date(p.date);
-    if(d >= start && d <= now){
-      if (typeof p.delta !== 'undefined') {
-        sum += p.delta;
-      } else if (typeof p.value !== 'undefined') {
+    if(d < start){
+      // 记录 start 之前最后一个 value，作为比较基准
+      if(typeof p.value === 'number'){
+        prevValue = p.value;
+      }
+      continue;
+    }
+    if(d > now) break;
+
+    if(typeof p.delta === 'number'){
+      sum += p.delta;
+      if(typeof p.value === 'number'){
+        prevValue = p.value;
+      }
+    }else if(typeof p.value === 'number'){
+      const unrealDiff = prevValue !== null ? (p.value - prevValue) : 0;
+      sum += unrealDiff + (p.real || 0);
+      prevValue = p.value;
+    }
+  }
+
+  // 若今日尚未写入 curve，需要加上今日实时数据 (今日浮动 + 已实现)
+  if(!curve.length || curve[curve.length-1].date !== todayISO){
+    sum += dailyUnrealized + todayReal;
+  }
+  return sum;
+}
+ else if (typeof p.value !== 'undefined') {
         sum += p.value; // 兼容旧曲线数据（仅浮动）
       }
     }
