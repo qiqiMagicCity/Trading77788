@@ -291,7 +291,8 @@ firstOfMonth.setHours(0,0,0,0);
 const firstOfYear = new Date(now.getFullYear(), 0, 1);
 firstOfYear.setHours(0,0,0,0);
 
-// --- v7.72 重新计算 WTD/MTD/YTD（含每日浮动 + 实现） ---
+// --- v7.73 重新计算 WTD/MTD/YTD（含每日浮动 + 实现） ---
+
 function sumPeriod(start){
   const curve = (typeof loadCurve==='function') ? loadCurve() : [];
   const todayISO = now.toISOString().slice(0,10);
@@ -299,22 +300,24 @@ function sumPeriod(start){
   curve.forEach(p=>{
     const d = new Date(p.date);
     if(d >= start && d <= now){
-      sum += (p.delta||0);
+      if (typeof p.delta !== 'undefined') {
+        sum += p.delta;
+      } else if (typeof p.value !== 'undefined') {
+        sum += p.value; // 兼容旧曲线数据（仅浮动）
+      }
     }
   });
-  // 若今日尚未写入 curve，需要加上今日实时数据
+  // 若今日尚未写入 curve，需要加上今日实时数据 (今日浮动 + 已实现)
   if(!curve.length || curve[curve.length-1].date !== todayISO){
     sum += dailyUnrealized + todayReal;
   }
   return sum;
 }
 
+
 const wtdReal = sumPeriod(monday);
 const mtdReal = sumPeriod(firstOfMonth);
 const ytdReal = sumPeriod(firstOfYear);
-
-  return d >= firstOfYear && d <= now;
-}).reduce((s,t)=> s + (t.pl||0), 0);
 
   return {
     cost,

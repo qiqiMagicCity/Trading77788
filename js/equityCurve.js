@@ -117,13 +117,26 @@
     });
 
     // 4. 计算累积净值
-    let cumulative = curve.length? curve[curve.length-1].cumulative : 0;
-    cumulative += unreal;
-    const newPoint = {date:today,value:unreal,cumulative,auto:true};
-    // 替换或 push
-    const idx=curve.findIndex(p=>p.date===today);
-    if(idx>=0) curve[idx]=newPoint; else curve.push(newPoint);
-    saveCurve(curve);
+    
+// 4. 计算当日已实现盈亏
+const todayReal = trades.filter(t=> t.date === today).reduce((s,t)=> s + (t.pl||0), 0);
+
+// 5. 计算当日浮动盈亏（unreal）已在上方得出
+
+// 6. 计算 delta = 当日已实现盈亏 + 浮动盈亏变动
+const prevUnreal = curve.length ? curve[curve.length-1].value : 0;
+const delta = todayReal + (unreal - prevUnreal);
+
+// 7. 计算累积净值
+let cumulative = curve.length ? curve[curve.length-1].cumulative : 0;
+cumulative += delta;
+
+const newPoint = {date: today, value: unreal, real: todayReal, delta, cumulative, auto:true};
+// 替换或 push
+const idx = curve.findIndex(p=> p.date === today);
+if(idx >= 0) curve[idx] = newPoint; else curve.push(newPoint);
+saveCurve(curve);
+
     console.log('资金收益曲线已自动更新', newPoint);
   }
   run();
