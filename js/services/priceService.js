@@ -1,177 +1,111 @@
+/**
+ * priceService.js – browser‑only version (v7.70)
+ * Fetches realtime quotes from Finnhub and stores daily closes in IndexedDB.
+ * No Node.js fs/path required – works on Vercel static hosting.
+ */
+import { putPrice } from '../db/idb.js';
+
+/** milliseconds to cache realtime quotes in localStorage */
+const RT_CACHE_MS = 60_000;
+
+/** Lazy‑load API keys from /KEY.txt (placed at repo root) */
+let _keys = null;
+async function loadKeys(){
+  if(_keys) return _keys;
+  try{
+    const res = await fetch('/KEY.txt');
+    const txt = await res.text();
+    const lines = txt.split(/\r?\n/);
+    const obj = {};
+    for(const line of lines){
+      const [k,v] = line.split('=');
+      if(k && v){
+        obj[k.trim()] = v.trim();
+      }else if(line.toLowerCase().includes('finnhub')){
+        const m = line.match(/([A-Za-z0-9]{20,})/);
+        if(m) obj.finnhub = m[1];
+      }else if(line.toLowerCase().includes('alpha')){
+        const m = line.match(/([A-Za-z0-9]{10,})/);
+        if(m) obj.alpha = m[1];
+      }
+    }
+    _keys = {
+      alpha: obj.ALPHA_KEY || obj.alpha,
+      finnhub: obj.Finnhub || obj.finnhub
+    };
+    return _keys;
+  }catch(e){
+    console.error('[priceService] failed to load KEY.txt', e);
+    _keys = {};
+    return _keys;
+  }
+}
 
 /**
- * priceService.js
- * Handles historical daily and realtime price retrieval and caching.
- * - Daily prices fetched from Alpha Vantage TIME_SERIES_DAILY_ADJUSTED.
- * - Realtime (1‑min cache) fetched from Finnhub quote endpoint.
- * Both stored in /data/price-history.json with atomic writes.
+ * Fetch realtime price for a symbol with 1‑minute local cache.
+ * @param {string} symbol
+ * @returns {Promise<number|null>}
  */
-
-const fs = window.require ? window.require('fs') : null;    // Electron or NW.js
-const path = window.require ? window.require('path') : null;
-
-const PRICE_PATH = path ? path.join(process.cwd(), 'data', 'price-history.json') : '/data/price-history.json';
-const KEY_PATH = path ? path.join(process.cwd(), 'KEY.txt') : '/KEY.txt';
-
-function getApiKeys() {
-  let alpha = '';
-  let finnhub = '';
-  try {
-    const content = fs.readFileSync(KEY_PATH, 'utf8');
-    content.split(/\r?\n/).forEach(line => {
-      if (/ALPHA/i.test(line)) {
-        const m = line.match(/([A-Z0-9]{10,})/);
-        if (m) alpha = m[1];
-      }
-      if (/FINNHUB/i.test(line)) {
-        const m = line.match(/([A-Z0-9]{10,})/);
-        if (m) finnhub = m[1];
-      }
-    });
-  } catch (e) { console.error('Cannot read KEY.txt', e); }
-  return { alpha, finnhub };
-}
-
-function readPriceHistory() {
-  try {
-    if (!fs.existsSync(PRICE_PATH)) {
-      fs.mkdirSync(path.dirname(PRICE_PATH), { recursive: true });
-      fs.writeFileSync(PRICE_PATH, '{}', 'utf8');
+export async function fetchRealtimePrice(symbol){
+  const cacheKey = `rt_${symbol}`;
+  try{
+    const cached = JSON.parse(localStorage.getItem(cacheKey)||'null');
+    if(cached && Date.now() - cached.ts < RT_CACHE_MS){
+      return cached.price;
     }
-    const raw = fs.readFileSync(PRICE_PATH, 'utf8');
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn('Resetting corrupted price-history.json', e);
-    fs.writeFileSync(PRICE_PATH, '{}', 'utf8');
-    return {};
+  }catch{}
+
+  const { finnhub } = await loadKeys();
+  if(!finnhub){
+    console.warn('[priceService] Finnhub API key missing');
+    return null;
   }
-}
-
-function atomicWrite(obj) {
-  const tmp = PRICE_PATH + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), 'utf8');
-  fs.renameSync(tmp, PRICE_PATH);
-}
-
-export async function fetchDailySeries(symbols = []) {
-  const { alpha } = getApiKeys();
-  const priceHistory = readPriceHistory();
-  for (const sym of symbols) {
-    const now = new Date();
-    const todayStr = now.toISOString().substring(0,10);
-    if (priceHistory[sym]?.daily?.[todayStr]) continue; // already have today's close
-    try {
-      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${sym}&outputsize=compact&apikey=${alpha}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      const series = json['Time Series (Daily)'];
-      if (series) {
-        if (!priceHistory[sym]) priceHistory[sym] = { daily:{}, realtime:{} };
-        Object.entries(series).forEach(([date, o])=>{
-          priceHistory[sym].daily[date] = parseFloat(o['4. close']);
-        });
-        console.log('[AV] daily updated', sym);
-      } else {
-        console.warn('[AV] daily missing', sym, json);
-      }
-    } catch(e) {
-      console.error('[AV] daily error', sym, e);
-    }
-  }
-  atomicWrite(priceHistory);
-  return priceHistory;
-}
-
-const RT_CACHE_MS = 60*1000;
-
-export async function fetchRealtimePrice(symbol) {
-  const { finnhub } = getApiKeys();
-  const priceHistory = readPriceHistory();
-  const rt = priceHistory[symbol]?.realtime || {};
-  const latestTs = Object.keys(rt).sort().pop();
-  if (latestTs && (Date.now() - new Date(latestTs).getTime()) < RT_CACHE_MS) {
-    return rt[latestTs];
-  }
-  try {
+  try{
     const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${finnhub}`;
     const res = await fetch(url);
     const json = await res.json();
-    const price = json.c || json.current || null;
-    if (price != null) {
-      if (!priceHistory[symbol]) priceHistory[symbol] = { daily:{}, realtime:{} };
-      priceHistory[symbol].realtime[new Date().toISOString()] = price;
-      atomicWrite(priceHistory);
+    const price = json.c ?? json.current ?? null;
+    if(price!=null){
+      localStorage.setItem(cacheKey, JSON.stringify({price, ts: Date.now()}));
     }
     return price;
-  } catch(e) {
-    console.error('[Finnhub] realtime error', symbol, e);
+  }catch(e){
+    console.error('[priceService] fetchRealtimePrice', symbol, e);
     return null;
   }
 }
 
-
 /**
- * saveDailyClose
- * Persist today's close price into daily map.
+ * Save today's closing price in IndexedDB.
  * Called by closeRecorder.js after market close.
  */
-export function saveDailyClose(symbol, price) {
-  const priceHistory = readPriceHistory();
-  const todayStr = new Date().toISOString().substring(0,10);
-  if (!priceHistory[symbol]) priceHistory[symbol] = { daily: {}, realtime: {} };
-  priceHistory[symbol].daily[todayStr] = price;
-  atomicWrite(priceHistory);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////
-// === Finnhub daily candle backfill helpers (added v7.18) ===
-/**
- * fetchDailyCandles
- * @param {string} symbol
- * @param {number} fromEpoch   seconds since 1970‑01‑01
- * @param {number} toEpoch     seconds
- * @returns {Promise<{c:number[], t:number[]}>}
- */
-export async function fetchDailyCandles(symbol, fromEpoch, toEpoch) {
-  const { finnhub } = getApiKeys();
-  const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${fromEpoch}&to=${toEpoch}&token=${finnhub}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if (json.s !== 'ok') {
-    throw new Error(json.s || 'Finnhub candle error');
-  }
-  return json; // includes arrays c (close), t (epoch sec)
+export async function saveDailyClose(symbol, price){
+  const todayStr = new Date().toISOString().slice(0,10);
+  await putPrice(symbol, todayStr, price, 'finnhub');
 }
 
 /**
- * saveDailyClosesBulk
- * Persist bulk close data arrays into price-history.json
+ * Bulk save close prices. Accepts {[symbol]:price}
  */
-export function saveDailyClosesBulk(symbol, tArray, cArray) {
-  const priceHistory = readPriceHistory();
-  if (!priceHistory[symbol]) priceHistory[symbol] = { daily: {}, realtime: {} };
-  for (let i = 0; i < tArray.length; i++) {
-    const dateStr = new Date(tArray[i] * 1000).toISOString().substring(0, 10);
-    priceHistory[symbol].daily[dateStr] = cArray[i];
+export async function saveDailyClosesBulk(map){
+  const entries = Object.entries(map);
+  for(const [sym, price] of entries){
+    await saveDailyClose(sym, price);
   }
-  atomicWrite(priceHistory);
 }
 
+/** Placeholder stubs for old API compatibility */
+export async function fetchDailySeries(){ return {}; }
+export async function fetchDailyCandles(){ return {}; }
+
 /**
- * getTrackedSymbols
- * Returned cached list of symbols from localStorage.trades OR keys in price history.
+ * getTrackedSymbols – try localStorage.trades; otherwise empty array
  */
-export async function getTrackedSymbols() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const trades = JSON.parse(localStorage.getItem('trades') || '[]');
-      const syms = [...new Set(trades.map(t => t.symbol).filter(Boolean))];
-      if (syms.length) return syms;
-    }
-  } catch (e) {
-    console.warn('[getTrackedSymbols] localStorage unavailable', e);
+export function getTrackedSymbols(){
+  try{
+    const trades = JSON.parse(localStorage.getItem('trades')||'[]');
+    return [...new Set(trades.map(t=>t.symbol).filter(Boolean))];
+  }catch{
+    return [];
   }
-  const priceHistory = readPriceHistory();
-  return Object.keys(priceHistory);
 }

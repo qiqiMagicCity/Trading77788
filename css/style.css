@@ -264,26 +264,3 @@ body{margin:0;}
 .calendar-header div{color:#94a3b8;}
 /* 修复日视图滚动 */
 .calendar-scroll{overflow:auto;max-height:360px;}
-
-
-/* --- v7.55 UI tweaks --- */
-input[type="checkbox"]{
-  width:18px;
-  height:18px;
-  accent-color:#18d07a;
-  cursor:pointer;
-  vertical-align:middle;
-  margin-left:6px;
-}
-
-button.primary{
-  background:#18d07a;
-  color:#fff;
-  border:none;
-  padding:6px 18px;
-  border-radius:4px;
-  cursor:pointer;
-}
-button.primary:hover{
-  opacity:0.85;
-}
