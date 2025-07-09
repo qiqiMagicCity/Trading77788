@@ -1,9 +1,9 @@
 /**
- * priceService.js – browser‑only version (v7.70)
+ * priceService.js – browser‑only version (v7.71)
  * Fetches realtime quotes from Finnhub and stores daily closes in IndexedDB.
  * No Node.js fs/path required – works on Vercel static hosting.
  */
-import { putPrice } from '../db/idb.js';
+import { putPrice } from '../lib/idb.js';
 
 /** milliseconds to cache realtime quotes in localStorage */
 const RT_CACHE_MS = 60_000;

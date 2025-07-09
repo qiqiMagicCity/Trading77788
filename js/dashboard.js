@@ -1,7 +1,7 @@
 
 /* ---------- Prev Close attachment (v7.27) ---------- */
 async function attachPrevCloses(){
-  const idb = await import('./db/idb.js');
+  const idb = await import('./lib/idb.js');
   const now = new Date();
   let d = new Date(now);
   // 找到上一个交易日（跳过周末）
@@ -31,7 +31,7 @@ async function attachPrevCloses(){
 
 
 async function getPrevTradingDayClose(symbol){
-  const idb = await import('./db/idb.js');
+  const idb = await import('./lib/idb.js');
   const now = new Date();
   let d = new Date(now);
   d.setDate(d.getDate()-1);

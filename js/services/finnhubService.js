@@ -4,7 +4,7 @@
  * v7.26
  */
 import { apiQueue } from './apiQueue.js';
-import { putPrice, getPrice } from '../db/idb.js';
+import { putPrice, getPrice } from '../lib/idb.js';
 
 const TOKEN_KEY = 'FINNHUB_TOKEN';
 const API_BASE  = 'https://finnhub.io/api/v1';

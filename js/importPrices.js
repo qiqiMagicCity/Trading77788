@@ -2,7 +2,7 @@
  * importPrices.js v7.34
  * 支持导入通过 dailyClose.js 导出的简化 JSON 文件到 IndexedDB
  */
-import { putPrice } from './db/idb.js';
+import { putPrice } from './lib/idb.js';
 
 function importPrices() {
   const input = document.createElement('input');
