@@ -423,7 +423,9 @@ function renderPositions(){
   tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
   positions.forEach(p=>{
     const amt=Math.abs(p.qty*p.avgPrice);
-    const pl=(p.last-p.avgPrice)*p.qty;
+    // 用昨收价计算当前浮盈亏
+const curPL = (p.priceOk!==false && typeof p.prevClose==='number') ? (p.last - p.prevClose) * p.qty : null;
+const curPLCls = curPL > 0 ? 'green' : curPL < 0 ? 'red' : 'white';
     const cls=pl>0?'green':pl<0?'red':'white';
     const times=trades.filter(t=>t.symbol===p.symbol).length;
     
@@ -438,7 +440,7 @@ tbl.insertAdjacentHTML('beforeend',`
     <td>${p.avgPrice.toFixed(2)}</td>
     <td>${amt.toFixed(2)}</td>
     <td>${(p.avgPrice).toFixed(2)}</td>
-    <td id="pl-${p.symbol}" class="${cls}">${(p.priceOk===false?'--':pl.toFixed(2))}</td>
+    <td id="pl-${p.symbol}" class="${curPLCls}">${(curPL!==null ? curPL.toFixed(2) : '--')}</td>
     <td id="total-${p.symbol}" class="${totalPNL>0?'green':totalPNL<0?'red':'white'}">${(p.priceOk===false?'--':totalPNL.toFixed(2))}</td>
     <td>${times}</td>
     <td><a href="stock.html?symbol=${p.symbol}" class="details">详情</a></td>
