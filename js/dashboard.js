@@ -145,7 +145,7 @@ function recalcPositions(){
 
     // 写回盈亏与是否已平仓标识
     t.pl = realized;
-    t.closed = realized !== 0;
+    t.closed = remaining === 0; // closed when entire lot offset, even if pl is 0
   });
 
   /* 汇总成持仓数组 */
@@ -681,6 +681,9 @@ function updatePriceCells(){
       totalCell.className = totalPNL>0?'green':totalPNL<0?'red':'white';
     }
   });
+
+  // Ensure stats refresh with each quote tick
+  try{ renderStats(); }catch(e){}
 }
 
 function updatePrices(){
