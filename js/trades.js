@@ -70,6 +70,7 @@ function render(){
        localStorage.setItem('trades',JSON.stringify(trades));
        localStorage.setItem('trades_sync', Math.random()); // 触发 storage 广播
        render();
+       if(window.refreshAll) window.refreshAll();  // ★ 同页面强制刷新
      };
   });
   tbl.querySelectorAll('button[data-edit]').forEach(btn=>{
