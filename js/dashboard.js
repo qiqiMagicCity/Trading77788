@@ -1,5 +1,11 @@
 
 /* ---------- Prev Close attachment (v7.27) ---------- */
+
+/* ---------- Global Timezone helpers (v7.79) ---------- */
+const NY_TZ = 'America/New_York';
+// luxon already loaded globally
+const nyNow   = ()=> luxon.DateTime.now().setZone(NY_TZ);
+const todayNY = ()=> nyNow().toISODate();
 async function attachPrevCloses(){
   const idb = await import('./lib/idb.js');
   const now = new Date();
@@ -100,7 +106,7 @@ const Utils={fmtDollar,fmtInt,fmtWL,fmtPct};
 function recalcPositions(){
   /* 以 FIFO 原则重构持仓与平仓盈亏 */
   const symbolLots = {};   // {SYM: [{qty, price}] }
-  const dayStr = new Date().toISOString().slice(0,10);
+  const dayStr = todayNY();
 
   trades.sort((a,b)=> new Date(a.date) - new Date(b.date));   // 确保按时间先后
 
@@ -166,7 +172,7 @@ function recalcPositions(){
 
 /* ---------- Calc Intraday Realized P/L (v7.7.5) ---------- */
 function calcIntraday(trades){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayNY();
   const dayTrades = trades.filter(t=> t.date === todayStr);
   const bySymbol = {};
   dayTrades.forEach(t=>{
@@ -601,7 +607,7 @@ document.getElementById('t-cancel').onclick=close;
   
 document.getElementById('t-save').onclick=function(){
     const dateInput = document.getElementById('t-date').value;
-    const date = dateInput ? dateInput.slice(0,10) : new Date().toISOString().slice(0,10);
+    const date = dateInput ? dateInput.slice(0,10) : todayNY();
     const symbol  = modal.querySelector('input[name="symbol"]').value.trim().toUpperCase();
     const side    = document.getElementById('t-side').value;
     const qty     = Math.abs(parseInt(document.getElementById('t-qty').value,10));
@@ -790,3 +796,21 @@ function renderNYDate(){
 }
 renderNYDate();
 setInterval(renderNYDate,60*1000);
+
+/* ---------- storage sync (v7.79) ---------- */
+window.addEventListener('storage', (e)=>{
+  if(e.key==='trades'){
+    try{
+      trades = JSON.parse(e.newValue||'[]');
+    }catch(err){
+      trades = [];
+    }
+    recalcPositions();
+    saveData();
+    renderStats();
+    renderPositions();
+    renderTrades();
+    renderSymbolsList && renderSymbolsList();
+  }
+});
+
