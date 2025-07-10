@@ -1,3 +1,4 @@
+
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -17,7 +18,7 @@ function render(){
   trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
-  const head=['#','logo','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
+    const head=['#','logo','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
   tbl.innerHTML='<tr>'+head.map(h=>`<th class="${h==='中文'?'cn':''}">${h}</th>`).join('')+'</tr>';
 
   let histReal = 0;
@@ -68,9 +69,7 @@ function render(){
        const trades=JSON.parse(localStorage.getItem('trades')||'[]');
        trades.splice(idx,1);
        localStorage.setItem('trades',JSON.stringify(trades));
-       localStorage.setItem('trades_sync', Math.random()); // 触发 storage 广播
        render();
-       if(window.refreshAll) window.refreshAll();  // ★ 删除后刷新
      };
   });
   tbl.querySelectorAll('button[data-edit]').forEach(btn=>{
@@ -81,20 +80,5 @@ function render(){
      };
   });
 }
-
-// 用于新增或编辑交易时的保存（推荐在 trade 保存逻辑中调用）
-window.saveTradeAndRefresh = function(trade, editIndex) {
-  let trades = JSON.parse(localStorage.getItem('trades')||'[]');
-  if(editIndex !== undefined && editIndex !== null){
-    trades[editIndex] = trade;
-  }else{
-    trades.unshift(trade);
-  }
-  localStorage.setItem('trades',JSON.stringify(trades));
-  localStorage.setItem('trades_sync', Math.random());
-  if(window.refreshAll) window.refreshAll(); // ★ 新增/编辑后刷新
-  render();
-};
-
 render();
 })();
