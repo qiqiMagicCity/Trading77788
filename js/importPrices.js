@@ -1,6 +1,6 @@
 /**
- * importPrices.js v7.34
- * 支持导入通过 dailyClose.js 导出的简化 JSON 文件到 IndexedDB
+ * importPrices.js v7.35
+ * 导入嵌套对象格式的收盘价 JSON 到 IndexedDB
  */
 import { putPrice } from './lib/idb.js';
 
@@ -14,15 +14,25 @@ function importPrices() {
     try {
       const text = await file.text();
       const json = JSON.parse(text);
-      const list = Array.isArray(json) ? json : (json.prices || []);
-      if (!Array.isArray(list)) throw new Error('文件格式不正确，未找到价格数组');
       let imported = 0;
-      for (const r of list) {
-        if (r && r.symbol && r.date && typeof r.close === 'number') {
-          await putPrice(r.symbol, r.date, r.close, 'import');
-          imported++;
+
+      if (json && typeof json === 'object' && !Array.isArray(json)) {
+        for (const date in json) {
+          const dayObj = json[date];
+          if (dayObj && typeof dayObj === 'object') {
+            for (const symbol in dayObj) {
+              const price = dayObj[symbol];
+              if (typeof price === 'number') {
+                await putPrice(symbol, date, price, 'import');
+                imported++;
+              }
+            }
+          }
         }
+      } else {
+        throw new Error('文件格式不正确，未找到嵌套对象格式');
       }
+
       alert(`成功导入 ${imported} 条收盘价`);
     } catch (err) {
       alert('导入失败: ' + err.message);
