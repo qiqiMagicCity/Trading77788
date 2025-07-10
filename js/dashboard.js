@@ -1,3 +1,15 @@
+if (!window.closePrices) {
+  fetch('close_prices.json')
+    .then(r => r.json())
+    .then(data => {
+      window.closePrices = data;
+      if (typeof renderStats === 'function') renderStats();
+    })
+    .catch(err => {
+      alert('未找到内置收盘价文件，请导入收盘价');
+    });
+}
+
 // 从 localStorage 恢复收盘价数据
 if (!window.closePrices && localStorage.getItem('closePrices')) {
   try {
