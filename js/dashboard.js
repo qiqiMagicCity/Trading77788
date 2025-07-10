@@ -1,3 +1,16 @@
+if (!window.closePrices) {
+  fetch('close_prices.json')
+    .then(r => r.json())
+    .then(data => {
+      window.closePrices = data;
+      // 可选：自动刷新统计区
+      if (typeof renderStats === 'function') renderStats();
+    })
+    .catch(err => {
+      console.warn('自动加载 close_prices.json 失败：', err);
+    });
+}
+
 function sumPeriodStrict(startDate) {
   // 读取 close_prices.json
   if (!window.closePrices) {
