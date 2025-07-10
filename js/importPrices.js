@@ -34,6 +34,7 @@ function importPrices() {
       }
 
       window.closePrices = json; // 缓存导入的收盘价数据到全局
+      localStorage.setItem('closePrices', JSON.stringify(json)); // 持久化到本地
       alert(`成功导入 ${imported} 条收盘价`);
     } catch (err) {
       alert('导入失败: ' + err.message);
