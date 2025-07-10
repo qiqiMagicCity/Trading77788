@@ -222,160 +222,7 @@ function calcIntraday(trades){
   });
   return pl;
 }
-function stats(){
-  // 重新计算账户统计数据，兼容多空仓位显示
-  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
-  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
-  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
-  
-const floating = positions.reduce((sum,p)=>{
-  if(p.qty===0||p.priceOk===false) return sum;
-  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
-  return sum + pl;
-},0);
 
-
-
-
-
-  const latestTradeDate = trades.reduce((d,t)=> t.date>d ? t.date : d, '');
-  const todayStr = latestTradeDate || new Date().toLocaleDateString('en-CA', { timeZone:'America/New_York' });
-  const todayTrades = trades.filter(t=> t.date === todayStr);
-// --- v7.53 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
-// 构建今日净买卖映射
-const dayNetMap = {};
-todayTrades.forEach(t=>{
-  const rec = dayNetMap[t.symbol] || (dayNetMap[t.symbol] = { qty:0, cost:0 });
-  const signedQty = (t.side==='BUY' || t.side==='COVER') ? t.qty : -t.qty;
-  rec.qty  += signedQty;
-  rec.cost += signedQty * t.price;
-});
-
-const dailyUnrealized = positions.reduce((sum, p) => {
-  if (p.qty === 0 || p.priceOk === false || typeof p.prevClose !== 'number') return sum;
-
-  const net = dayNetMap[p.symbol] || { qty:0, cost:0 };
-  const newQty = net.qty;
-  const carryQty = p.qty - newQty;                // 昨收基准
-  const avgCostToday = newQty ? net.cost / newQty : 0;
-
-  let delta = 0;
-  // 历史仓部分
-  if (carryQty) {
-    delta += carryQty > 0
-      ? (p.last - p.prevClose) * carryQty         // 多头
-      : (p.prevClose - p.last) * Math.abs(carryQty); // 空头
-  }
-  // 今日仓部分
-  if (newQty) {
-    delta += newQty > 0
-      ? (p.last - avgCostToday) * newQty          // 多头
-      : (avgCostToday - p.last) * Math.abs(newQty); // 空头
-  }
-  return sum + delta;
-}, 0);
-  const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
-  const intradayReal = calcIntraday(trades);
-
-  const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
-  const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
-  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
-const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
-const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
-const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
-
-
-const now = new Date();
-const monday = new Date(now);
-monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-monday.setHours(0,0,0,0);
-
-const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-firstOfMonth.setHours(0,0,0,0);
-
-const firstOfYear = new Date(now.getFullYear(), 0, 1);
-firstOfYear.setHours(0,0,0,0);
-
-// --- v7.75 重新计算 WTD/MTD/YTD（含每日浮动 + 已实现） ---
-function sumPeriod(startDate){
-  // startDate: JS Date at 00:00 local, inclusive
-  const toISO = d => d.toISOString().slice(0,10);
-  const startISO = toISO(startDate);
-  const todayISO = toISO(new Date());
-
-  // ---- 1. Build daily realized P/L map ----
-  const realizedDaily = {};
-  trades.forEach(t=>{
-    if(!t.closed) return;
-    const d = t.date;
-    if(d < startISO || d === todayISO) return;   // skip before period and today (today added later)
-    realizedDaily[d] = (realizedDaily[d] || 0) + (t.pl || 0);
-  });
-
-  // ---- 2. Build daily equity delta map (unrealised Δ + realised, depending on how curve was stored) ----
-  const curve = (typeof loadCurve==='function') ? loadCurve() : [];
-  const deltaDaily = {};
-  const valueDaily = {};  // fallback to diff of value when delta missing
-  curve.forEach(row=>{
-    if(!row.date) return;
-    const d = row.date;
-    if(d < startISO || d === todayISO) return;
-    if(typeof row.delta === 'number' && !isNaN(row.delta)){
-      deltaDaily[d] = (deltaDaily[d] || 0) + row.delta;
-    }
-    if(typeof row.value === 'number' && !isNaN(row.value) && !row.delta){
-      // keep the latest value of the day
-      valueDaily[d] = row.value;
-    }
-  });
-
-  // ---- 3. Infer missing delta from successive value rows ----
-  const sortedDates = Object.keys(valueDaily).sort();
-  for(let i = 1; i < sortedDates.length; i++){
-    const d = sortedDates[i];
-    const prev = sortedDates[i-1];
-    if(deltaDaily[d] != null) continue;  // already has delta
-    if(valueDaily[d] == null || valueDaily[prev] == null) continue;
-    deltaDaily[d] = valueDaily[d] - valueDaily[prev];
-  }
-
-  // ---- 4. Sum realised + delta for the period ----
-  let sum = 0;
-  const uniqueDates = new Set([...Object.keys(realizedDaily), ...Object.keys(deltaDaily)]);
-  uniqueDates.forEach(d=>{
-    if(d < startISO || d === todayISO) return;
-    sum += (realizedDaily[d] || 0) + (deltaDaily[d] || 0);
-  });
-
-  // ---- 5. Add TODAY (real‑time) components ----
-  sum += (typeof todayReal === 'number' ? todayReal : 0) +
-         (typeof dailyUnrealized === 'number' ? dailyUnrealized : 0);
-
-  return sum;
-}
-
-const wtdReal = sumPeriod(monday);
-const mtdReal = sumPeriod(firstOfMonth);
-const ytdReal = sumPeriod(firstOfYear);
-
-  return {
-    cost,
-    value,
-    floating,
-    todayReal,
-    wins,
-    losses,
-    todayTrades: todayTrades.length,
-    totalTrades: trades.length,
-    histReal,
-    intradayReal,
-    dailyUnrealized,
-    winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
-  };
-}
 
 
 /* ---------- 5. Render helpers ---------- */
@@ -419,6 +266,70 @@ async function sumPeriodStrict(startDate, endDate, trades, closeMap) {
       curDate.setDate(curDate.getDate() + 1);
       continue;
     }
+
+
+async function statsStrict() {
+  const nowNY = luxon.DateTime.now().setZone('America/New_York');
+  const todayStr = nowNY.toISODate();
+  const trades = JSON.parse(localStorage.getItem('trades') || '[]');
+  const positions = JSON.parse(localStorage.getItem('positions') || '[]');
+  const closeMap = await getClosePrices();
+
+  const cost = positions.reduce((s, p) => s + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((s, p) => p.priceOk !== false ? s + Math.abs(p.qty) * p.last : s, 0);
+  const floating = positions.reduce((s, p) => {
+    if (p.qty === 0 || p.priceOk === false) return s;
+    const pl = p.qty > 0 ? (p.last - p.avgPrice) * p.qty : (p.avgPrice - p.last) * Math.abs(p.qty);
+    return s + pl;
+  }, 0);
+
+  const todayReal = trades.filter(t => t.date === todayStr && t.closed).reduce((s, t) => s + (t.pl || 0), 0);
+
+  const wins = trades.filter(t => t.closed && t.pl > 0).length;
+  const losses = trades.filter(t => t.closed && t.pl < 0).length;
+  const winRate = (wins + losses) > 0 ? (wins / (wins + losses)) * 100 : null;
+  const todayTrades = trades.filter(t => t.date === todayStr).length;
+  const totalTrades = trades.length;
+  const histReal = trades.filter(t => t.closed).reduce((s, t) => s + (t.pl || 0), 0);
+  const intradayReal = calcIntraday(trades);
+
+  let dailyUnrealized = 0;
+  if (positions && positions.length) {
+    for (const p of positions) {
+      const prevDay = luxon.DateTime.fromISO(todayStr).minus({ days: 1 }).toISODate();
+      if (typeof p.last === 'number' && closeMap && closeMap[prevDay] && typeof closeMap[prevDay][p.symbol] === 'number') {
+        dailyUnrealized += (p.last - closeMap[prevDay][p.symbol]) * p.qty;
+      }
+    }
+  }
+
+  const monday = nowNY.startOf('week').plus({ days: 1 }).toJSDate();
+  const firstOfMonth = nowNY.startOf('month').toJSDate();
+  const firstOfYear = nowNY.startOf('year').toJSDate();
+
+  const wtdReal = await sumPeriodStrict(monday, nowNY.toJSDate(), trades, closeMap);
+  const mtdReal = await sumPeriodStrict(firstOfMonth, nowNY.toJSDate(), trades, closeMap);
+  const ytdReal = await sumPeriodStrict(firstOfYear, nowNY.toJSDate(), trades, closeMap);
+
+  return {
+    cost,
+    value,
+    floating,
+    todayReal,
+    wtdReal,
+    mtdReal,
+    ytdReal,
+    winRate,
+    todayTrades,
+    totalTrades,
+    histReal,
+    intradayReal,
+    dailyUnrealized
+  };
+}
+
+
+
     const dStr = getISODateNY(curDate);
     let dayReal = trades.filter(t => t.date === dStr && t.closed).reduce((s, t) => s + (t.pl || 0), 0);
     let dayUnreal = 0;
@@ -483,28 +394,7 @@ async function sumPeriodStrict(startDate, endDate, trades, closeMap) {
   }
   return plSum;
 }
-async function statsStrict() {
-  const nowNY = luxon.DateTime.now().setZone('America/New_York');
-  const todayStr = nowNY.toISODate();
-  const trades = JSON.parse(localStorage.getItem('trades') || '[]');
-  const positions = JSON.parse(localStorage.getItem('positions') || '[]');
-  const closeMap = await getClosePrices();
-  const cost = positions.reduce((s, p) => s + Math.abs(p.qty * p.avgPrice), 0);
-  const value = positions.reduce((s, p) => p.priceOk !== false ? s + Math.abs(p.qty) * p.last : s, 0);
-  const floating = positions.reduce((s, p) => {
-    if (p.qty === 0 || p.priceOk === false) return s;
-    const pl = p.qty > 0 ? (p.last - p.avgPrice) * p.qty : (p.avgPrice - p.last) * Math.abs(p.qty);
-    return s + pl;
-  }, 0);
-  const todayReal = trades.filter(t => t.date === todayStr && t.closed).reduce((s, t) => s + (t.pl || 0), 0);
-  const monday = nowNY.startOf('week').plus({ days: 1 }).toJSDate();
-  const firstOfMonth = nowNY.startOf('month').toJSDate();
-  const firstOfYear = nowNY.startOf('year').toJSDate();
-  const wtdReal = await sumPeriodStrict(monday, nowNY.toJSDate(), trades, closeMap);
-  const mtdReal = await sumPeriodStrict(firstOfMonth, nowNY.toJSDate(), trades, closeMap);
-  const ytdReal = await sumPeriodStrict(firstOfYear, nowNY.toJSDate(), trades, closeMap);
-  return { cost, value, floating, todayReal, wtdReal, mtdReal, ytdReal };
-}
+
 async // （已删除）旧版同步 renderStats() 函数体，已被 async renderStats() 替代
 }
 }
