@@ -309,62 +309,25 @@ firstOfYear.setHours(0,0,0,0);
 
 // --- v7.75 重新计算 WTD/MTD/YTD（含每日浮动 + 已实现） ---
 function sumPeriod(startDate){
-  // startDate: JS Date at 00:00 local, inclusive
   const toISO = d => d.toISOString().slice(0,10);
   const startISO = toISO(startDate);
   const todayISO = toISO(new Date());
 
-  // ---- 1. Build daily realized P/L map ----
-  const realizedDaily = {};
-  trades.forEach(t=>{
-    if(!t.closed) return;
-    const d = t.date;
-    if(d < startISO || d === todayISO) return;   // skip before period and today (today added later)
-    realizedDaily[d] = (realizedDaily[d] || 0) + (t.pl || 0);
-  });
-
-  // ---- 2. Build daily equity delta map (unrealised Δ + realised, depending on how curve was stored) ----
-  const curve = (typeof loadCurve==='function') ? loadCurve() : [];
-  const deltaDaily = {};
-  const valueDaily = {};  // fallback to diff of value when delta missing
-  curve.forEach(row=>{
-    if(!row.date) return;
-    const d = row.date;
-    if(d < startISO || d === todayISO) return;
-    if(typeof row.delta === 'number' && !isNaN(row.delta)){
-      deltaDaily[d] = (deltaDaily[d] || 0) + row.delta;
-    }
-    if(typeof row.value === 'number' && !isNaN(row.value) && !row.delta){
-      // keep the latest value of the day
-      valueDaily[d] = row.value;
-    }
-  });
-
-  // ---- 3. Infer missing delta from successive value rows ----
-  const sortedDates = Object.keys(valueDaily).sort();
-  for(let i = 1; i < sortedDates.length; i++){
-    const d = sortedDates[i];
-    const prev = sortedDates[i-1];
-    if(deltaDaily[d] != null) continue;  // already has delta
-    if(valueDaily[d] == null || valueDaily[prev] == null) continue;
-    deltaDaily[d] = valueDaily[d] - valueDaily[prev];
-  }
-
-  // ---- 4. Sum realised + delta for the period ----
+  // 只从 EOD 曲线中读取每天的 row.delta（= 当日已实现 + 当日浮动）
   let sum = 0;
-  const uniqueDates = new Set([...Object.keys(realizedDaily), ...Object.keys(deltaDaily)]);
-  uniqueDates.forEach(d=>{
-    if(d < startISO || d === todayISO) return;
-    sum += (realizedDaily[d] || 0) + (deltaDaily[d] || 0);
+  const curve = (typeof loadCurve==='function') ? loadCurve() : [];
+  curve.forEach(row => {
+    if (!row.date || typeof row.delta !== 'number') return;
+    const d = row.date;
+    if (d < startISO || d === todayISO) return;
+    sum += row.delta;
   });
 
-  // ---- 5. Add TODAY (real‑time) components ----
-  sum += (typeof todayReal === 'number' ? todayReal : 0) +
-         (typeof dailyUnrealized === 'number' ? dailyUnrealized : 0);
+  // 最后加上“今日已实现 + 今日浮动”
+  sum += (todayReal || 0) + (dailyUnrealized || 0);
 
   return sum;
 }
-
 const wtdReal = sumPeriod(monday);
 const mtdReal = sumPeriod(firstOfMonth);
 const ytdReal = sumPeriod(firstOfYear);
