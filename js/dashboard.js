@@ -6,8 +6,19 @@ const NY_TZ = 'America/New_York';
 // luxon already loaded globally
 const nyNow   = ()=> luxon.DateTime.now().setZone(NY_TZ);
 const todayNY = ()=> nyNow().toISODate();
+
+// ---------- 静态 Close Prices JSON 读取助手 ----------
+let _closePricesData;
+async function loadClosePricesData() {
+  if (!_closePricesData) {
+    const res = await fetch('data/close_prices.json');
+    _closePricesData = await res.json();
+  }
+}
+
+// ---------- Prev Close attachment (v1.3) ----------
 async function attachPrevCloses(){
-  const idb = await import('./lib/idb.js');
+  await loadClosePricesData();
   const now = new Date();
   let d = new Date(now);
   // 找到上一个交易日（跳过周末）
@@ -28,23 +39,22 @@ async function attachPrevCloses(){
     return;
   }
   for(const p of positions){
-    const rec = await idb.getPrice(p.symbol, dateStr);
-    if(rec && typeof rec.close === 'number'){
-      p.prevClose = rec.close;
+    const price = _closePricesData[dateStr]?.[p.symbol];
+    if (typeof price === 'number') {
+      p.prevClose = price;
     }
   }
 }
 
 
 async function getPrevTradingDayClose(symbol){
-  const idb = await import('./lib/idb.js');
+  await loadClosePricesData();
   const now = new Date();
   let d = new Date(now);
   d.setDate(d.getDate()-1);
   while(d.getDay()===0 || d.getDay()===6){ d.setDate(d.getDate()-1); }
   const dateStr = d.toISOString().slice(0,10);
-  const rec = await idb.getPrice(symbol, dateStr);
-  return rec ? rec.close : null;
+  return _closePricesData[dateStr]?.[symbol] ?? null;
 }
 
 
