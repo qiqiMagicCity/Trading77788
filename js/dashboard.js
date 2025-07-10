@@ -257,15 +257,85 @@ function isWeekendNY(d) {
   const day = luxon.DateTime.fromJSDate(d).setZone('America/New_York').weekday;
   return day === 6 || day === 7;
 }
+
 async function sumPeriodStrict(startDate, endDate, trades, closeMap) {
   let plSum = 0;
   let curDate = new Date(startDate);
   const end = new Date(endDate);
+
   while (curDate <= end) {
-    if (isWeekendNY(curDate)) {
-      curDate.setDate(curDate.getDate() + 1);
-      continue;
+    const dStr = getISODateNY(curDate);
+
+    // 1. 当天所有已实现盈亏
+    let dayReal = trades.filter(t => t.date === dStr && t.closed).reduce((s, t) => s + (t.pl || 0), 0);
+
+    // 2. 当日浮动盈亏
+    let dayUnreal = 0;
+    const syms = Array.from(new Set(trades.map(t => t.symbol)));
+    for (const sym of syms) {
+      let prevQty = 0;
+      let lots = [];
+      trades.filter(t => t.symbol === sym && getNYDateObj(t.date) < curDate)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .forEach(t => {
+          if (t.side === 'BUY' || t.side === 'COVER') {
+            let rem = t.qty;
+            while (rem > 0 && lots.length && lots[0].qty < 0) {
+              let opp = lots[0];
+              let match = Math.min(rem, -opp.qty);
+              opp.qty += match;
+              rem -= match;
+              if (opp.qty === 0) lots.shift();
+            }
+            if (rem > 0) lots.push({ qty: rem, price: t.price });
+          } else if (t.side === 'SELL' || t.side === 'SHORT') {
+            let rem = t.qty;
+            while (rem > 0 && lots.length && lots[0].qty > 0) {
+              let opp = lots[0];
+              let match = Math.min(rem, opp.qty);
+              opp.qty -= match;
+              rem -= match;
+              if (opp.qty === 0) lots.shift();
+            }
+            if (rem > 0) lots.push({ qty: -rem, price: t.price });
+          }
+        });
+      prevQty = lots.reduce((s, l) => s + l.qty, 0);
+      if (prevQty !== 0 && closeMap && closeMap[dStr] && typeof closeMap[dStr][sym] === 'number') {
+        let prevClose = null;
+        let prevDay = new Date(curDate);
+        prevDay.setDate(prevDay.getDate() - 1);
+        let prevDayStr = getISODateNY(prevDay);
+        while ((!closeMap[prevDayStr] || typeof closeMap[prevDayStr][sym] !== 'number') && prevDay > new Date(startDate)) {
+          prevDay.setDate(prevDay.getDate() - 1);
+          prevDayStr = getISODateNY(prevDay);
+        }
+        if (closeMap[prevDayStr] && typeof closeMap[prevDayStr][sym] === 'number') {
+          prevClose = closeMap[prevDayStr][sym];
+        }
+        if (typeof prevClose === 'number') {
+          dayUnreal += (closeMap[dStr][sym] - prevClose) * prevQty;
+        }
+      }
+      let dayTrades = trades.filter(t => t.symbol === sym && t.date === dStr);
+      let dayNet = 0, dayCost = 0;
+      for (const t of dayTrades) {
+        const signedQty = (t.side === 'BUY' || t.side === 'COVER') ? t.qty : -t.qty;
+        dayNet += signedQty;
+        dayCost += signedQty * t.price;
+      }
+      if (dayNet !== 0 && closeMap && closeMap[dStr] && typeof closeMap[dStr][sym] === 'number') {
+        let avgCost = dayNet ? dayCost / dayNet : 0;
+        dayUnreal += (closeMap[dStr][sym] - avgCost) * dayNet;
+      }
     }
+
+    plSum += dayReal + dayUnreal;
+    curDate.setDate(curDate.getDate() + 1);
+  }
+
+  return plSum;
+}
 
 
 async function statsStrict() {
