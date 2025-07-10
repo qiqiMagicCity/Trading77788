@@ -389,30 +389,124 @@ function updateClocks(){
 
 
 /* Stats boxes */
-function renderStats(){
-  const s=stats();
-  
-const a=[
-['账户总成本',Utils.fmtDollar(s.cost)],
-['目前市值',Utils.fmtDollar(s.value)],
-['当前浮动盈亏',Utils.fmtDollar(s.floating)],
-['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
-['日内交易', Utils.fmtDollar(s.intradayReal)],
-['当日浮动盈亏', Utils.fmtDollar(s.dailyUnrealized)],
-['当日交易次数',Utils.fmtInt(s.todayTrades)],
-['累计交易次数',Utils.fmtInt(s.totalTrades)],
-['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
-['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
-['WTD', Utils.fmtDollar(s.wtdReal)],
-['MTD', Utils.fmtDollar(s.mtdReal)],
-['YTD', Utils.fmtDollar(s.ytdReal)],
-
-];
-  a.forEach((it,i)=>{
-    const box=document.getElementById('stat-'+(i+1));
-    if(!box) return;
-    box.innerHTML=`<div class="box-title">${it[0]}</div><div class="box-value">${it[1]}</div>`;
-  });
+async function getClosePrices() {
+  try {
+    const resp = await fetch('close_prices.json');
+    if (!resp.ok) throw new Error('fetch failed');
+    return await resp.json();
+  } catch (e) {
+    console.error('读取 close_prices.json 失败:', e);
+    return {};
+  }
+}
+function getNYDateObj(date) {
+  if (!date) return null;
+  return luxon.DateTime.fromISO(date, { zone: 'America/New_York' }).toJSDate();
+}
+function getISODateNY(d) {
+  return luxon.DateTime.fromJSDate(d).setZone('America/New_York').toISODate();
+}
+function isWeekendNY(d) {
+  const day = luxon.DateTime.fromJSDate(d).setZone('America/New_York').weekday;
+  return day === 6 || day === 7;
+}
+async function sumPeriodStrict(startDate, endDate, trades, closeMap) {
+  let plSum = 0;
+  let curDate = new Date(startDate);
+  const end = new Date(endDate);
+  while (curDate <= end) {
+    if (isWeekendNY(curDate)) {
+      curDate.setDate(curDate.getDate() + 1);
+      continue;
+    }
+    const dStr = getISODateNY(curDate);
+    let dayReal = trades.filter(t => t.date === dStr && t.closed).reduce((s, t) => s + (t.pl || 0), 0);
+    let dayUnreal = 0;
+    const syms = Array.from(new Set(trades.map(t => t.symbol)));
+    for (const sym of syms) {
+      let prevQty = 0;
+      let lots = [];
+      trades.filter(t => t.symbol === sym && getNYDateObj(t.date) < curDate).sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
+        if (t.side === 'BUY' || t.side === 'COVER') {
+          let rem = t.qty;
+          while (rem > 0 && lots.length && lots[0].qty < 0) {
+            let opp = lots[0];
+            let match = Math.min(rem, -opp.qty);
+            opp.qty += match;
+            rem -= match;
+            if (opp.qty === 0) lots.shift();
+          }
+          if (rem > 0) lots.push({ qty: rem, price: t.price });
+        } else if (t.side === 'SELL' || t.side === 'SHORT') {
+          let rem = t.qty;
+          while (rem > 0 && lots.length && lots[0].qty > 0) {
+            let opp = lots[0];
+            let match = Math.min(rem, opp.qty);
+            opp.qty -= match;
+            rem -= match;
+            if (opp.qty === 0) lots.shift();
+          }
+          if (rem > 0) lots.push({ qty: -rem, price: t.price });
+        }
+      });
+      prevQty = lots.reduce((s, l) => s + l.qty, 0);
+      if (prevQty !== 0 && closeMap && closeMap[dStr] && typeof closeMap[dStr][sym] === 'number') {
+        let prevClose = null;
+        let prevDay = new Date(curDate);
+        prevDay.setDate(prevDay.getDate() - 1);
+        let prevDayStr = getISODateNY(prevDay);
+        while ((!closeMap[prevDayStr] || typeof closeMap[prevDayStr][sym] !== 'number') && prevDay > new Date(startDate)) {
+          prevDay.setDate(prevDay.getDate() - 1);
+          prevDayStr = getISODateNY(prevDay);
+        }
+        if (closeMap[prevDayStr] && typeof closeMap[prevDayStr][sym] === 'number') {
+          prevClose = closeMap[prevDayStr][sym];
+        }
+        if (typeof prevClose === 'number') {
+          dayUnreal += (closeMap[dStr][sym] - prevClose) * prevQty;
+        }
+      }
+      let dayTrades = trades.filter(t => t.symbol === sym && t.date === dStr);
+      let dayNet = 0, dayCost = 0;
+      for (const t of dayTrades) {
+        const signedQty = (t.side === 'BUY' || t.side === 'COVER') ? t.qty : -t.qty;
+        dayNet += signedQty;
+        dayCost += signedQty * t.price;
+      }
+      if (dayNet !== 0 && closeMap && closeMap[dStr] && typeof closeMap[dStr][sym] === 'number') {
+        let avgCost = dayNet ? dayCost / dayNet : 0;
+        dayUnreal += (closeMap[dStr][sym] - avgCost) * dayNet;
+      }
+    }
+    plSum += dayReal + dayUnreal;
+    curDate.setDate(curDate.getDate() + 1);
+  }
+  return plSum;
+}
+async function statsStrict() {
+  const nowNY = luxon.DateTime.now().setZone('America/New_York');
+  const todayStr = nowNY.toISODate();
+  const trades = JSON.parse(localStorage.getItem('trades') || '[]');
+  const positions = JSON.parse(localStorage.getItem('positions') || '[]');
+  const closeMap = await getClosePrices();
+  const cost = positions.reduce((s, p) => s + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((s, p) => p.priceOk !== false ? s + Math.abs(p.qty) * p.last : s, 0);
+  const floating = positions.reduce((s, p) => {
+    if (p.qty === 0 || p.priceOk === false) return s;
+    const pl = p.qty > 0 ? (p.last - p.avgPrice) * p.qty : (p.avgPrice - p.last) * Math.abs(p.qty);
+    return s + pl;
+  }, 0);
+  const todayReal = trades.filter(t => t.date === todayStr && t.closed).reduce((s, t) => s + (t.pl || 0), 0);
+  const monday = nowNY.startOf('week').plus({ days: 1 }).toJSDate();
+  const firstOfMonth = nowNY.startOf('month').toJSDate();
+  const firstOfYear = nowNY.startOf('year').toJSDate();
+  const wtdReal = await sumPeriodStrict(monday, nowNY.toJSDate(), trades, closeMap);
+  const mtdReal = await sumPeriodStrict(firstOfMonth, nowNY.toJSDate(), trades, closeMap);
+  const ytdReal = await sumPeriodStrict(firstOfYear, nowNY.toJSDate(), trades, closeMap);
+  return { cost, value, floating, todayReal, wtdReal, mtdReal, ytdReal };
+}
+async // （已删除）旧版同步 renderStats() 函数体，已被 async renderStats() 替代
+}
 }
 
 /* Positions table */
@@ -765,7 +859,7 @@ function maybeCloseEquity(){
   if(nowNY.hour > 16 || (nowNY.hour === 16 && nowNY.minute >= 5)){
     const curve = loadCurve();
     if(curve.at(-1)?.date === tradeDate) return; // already recorded
-    const s = stats();
+    const s = await statsStrict();
     const delta = s.dailyUnrealized + s.todayReal;
     const cumulative = (curve.at(-1)?.cumulative ?? 0) + delta;
     curve.push({date: tradeDate, delta, cumulative});
