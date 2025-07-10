@@ -1,26 +1,14 @@
-if (!window.closePrices) {
-  fetch('close_prices.json')
-    .then(r => r.json())
-    .then(data => {
-      window.closePrices = data;
-      // 可选：自动刷新统计区
-      if (typeof renderStats === 'function') renderStats();
-    })
-    .catch(err => {
-      console.warn('自动加载 close_prices.json 失败：', err);
-    });
+// 从 localStorage 恢复收盘价数据
+if (!window.closePrices && localStorage.getItem('closePrices')) {
+  try {
+    window.closePrices = JSON.parse(localStorage.getItem('closePrices'));
+  } catch (e) {
+    console.warn('恢复 closePrices 失败:', e);
+  }
 }
 
 function sumPeriodStrict(startDate) {
   // 读取 close_prices.json
-  if (!window.closePrices) {
-    try {
-      throw new Error("收盘价数据未加载");
-    } catch (e) {
-      alert("缺少 close_prices.json，请先导入/加载收盘价数据");
-      return 0;
-    }
-  }
   const toISO = d => d.toISOString().slice(0,10);
   const today = new Date();
   const todayISO = toISO(today);
