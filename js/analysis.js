@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 /* Trading777 交易分析 – v7.7.3 */
 (function(){
   /* ---------- utilities ---------- */
@@ -10,7 +14,7 @@
 
   /* ---------- clock ---------- */
   function renderClocks(){
-    const fmt = tz => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
+    const fmt = tz => nowNY().toLocaleTimeString('en-GB',{timeZone:tz,hour12:false});
     document.getElementById('clocks').innerHTML =
       `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
   };  // ← 加上分号
@@ -51,12 +55,12 @@
   const calendarWrap = document.getElementById('calendar-wrap');
   let curYearMonth = lastDate
     ? lastDate.slice(0,7)
-    : (new Date()).toISOString().slice(0,7);
+    : (nowNY()).toISOString().slice(0,7);
 
   function renderCalendar(ym){
     const [y,m] = ym.split('-').map(n=>parseInt(n,10));
-    const first = new Date(y, m-1, 1);
-    const last = new Date(y, m, 0);
+    const first = toNY(y, m-1, 1);
+    const last = toNY(y, m, 0);
     const startDow = (first.getDay()+6)%7; // Monday=0
     const weeks = Math.ceil((startDow + last.getDate())/7);
 
@@ -92,13 +96,13 @@
 
   document.getElementById('prev-month').onclick = ()=>{
     const [y,m] = curYearMonth.split('-').map(Number);
-    const date = new Date(y, m-2, 1);
+    const date = toNY(y, m-2, 1);
     curYearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
     renderCalendar(curYearMonth);
   };
   document.getElementById('next-month').onclick = ()=>{
     const [y,m] = curYearMonth.split('-').map(Number);
-    const date = new Date(y, m, 1);
+    const date = toNY(y, m, 1);
     curYearMonth = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
     renderCalendar(curYearMonth);
   };
@@ -155,7 +159,7 @@
 
 /* ---- v7.8.1 新增: Alpha Vantage 收盘价 + 当日浮动盈亏 ---- */
 ;(function(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = nowNY().toISOString().slice(0,10);
 
   // Fetch Alpha Vantage key from KEY.txt (格式: Alpha key：XXXXX)
   function fetchAlphaKey(){

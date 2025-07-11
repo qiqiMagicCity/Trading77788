@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 
 /**
  * finnhubService.js - Fetch daily close prices with cache & fallback
@@ -21,8 +25,8 @@ export function getToken(){
  * @returns {number|null}
  */
 export async function fetchFinnhubDailyClose(symbol, date){
-  const fromTs = Math.floor(new Date(date + 'T00:00:00Z').getTime()/1000);
-  const toTs   = Math.floor(new Date(date + 'T23:59:59Z').getTime()/1000);
+  const fromTs = Math.floor(toNY(date + 'T00:00:00Z').getTime()/1000);
+  const toTs   = Math.floor(toNY(date + 'T23:59:59Z').getTime()/1000);
   const url = `${API_BASE}/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${fromTs}&to=${toTs}&token=${getToken()}`;
   try{
     const json = await apiQueue.enqueue(()=> fetch(url).then(r=>r.json()));

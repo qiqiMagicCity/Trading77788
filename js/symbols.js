@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 /* Auto‑generated Symbols Chinese mapping – v5.3.14 */
 window.SymbolCN = {
   "MSFT": "微软",

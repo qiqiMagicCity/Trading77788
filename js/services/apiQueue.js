@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 /**
  * apiQueue.js - Token‑bucket rate limited fetch queue (60 req/min default)
  */

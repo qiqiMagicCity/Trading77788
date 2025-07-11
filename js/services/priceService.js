@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 /**
  * priceService.js – browser‑only version (v7.71)
  * Fetches realtime quotes from Finnhub and stores daily closes in IndexedDB.
@@ -80,7 +84,7 @@ export async function fetchRealtimePrice(symbol){
  * Called by closeRecorder.js after market close.
  */
 export async function saveDailyClose(symbol, price){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = nowNY().toISOString().slice(0,10);
   await putPrice(symbol, todayStr, price, 'finnhub');
 }
 

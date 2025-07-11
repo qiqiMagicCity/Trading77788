@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 /**
  * dailyClose.js – v7.36
  * 导出收盘价：嵌套对象格式
@@ -6,7 +10,7 @@
 function exportCurrentPrices() {
   const rows = document.querySelectorAll('#positions tr[data-symbol]');
   const data = {};
-  const now = new Date();
+  const now = nowNY();
   const today = now.toISOString().slice(0, 10);
 
   data[today] = {};

@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 
 /**
  * historicalBackfill.js v1.0
@@ -16,7 +20,7 @@ export async function runHistoricalBackfill(progressCallback = () => {}) {
     console.warn('[Backfill] No tracked symbols found.');
     return;
   }
-  const startEpoch = Math.floor(new Date(START_DATE + 'T00:00:00Z').getTime() / 1000);
+  const startEpoch = Math.floor(toNY(START_DATE + 'T00:00:00Z').getTime() / 1000);
   const endEpoch = Math.floor(Date.now() / 1000);
 
   for (let i = 0; i < symbols.length; i++) {

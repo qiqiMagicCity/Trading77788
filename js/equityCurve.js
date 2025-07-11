@@ -1,3 +1,7 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 
 (function(){
   const STORAGE_KEY = 'equity_curve';
@@ -49,7 +53,7 @@
 /* ---- v7.8.1 新增: Alpha Vantage 收盘价 & 当日浮动盈亏自动更新 ---- */
 (function(){
   // 若曲线里已存在今天数据且执行过，则跳过
-  const today = new Date().toISOString().slice(0,10);
+  const today = nowNY().toISOString().slice(0,10);
   const curve = loadCurve();
   if(curve.some(p=> p.date===today && p.auto)) return;
 
@@ -60,7 +64,7 @@
   /* 1. 计算持仓 */
   function calcPositions(){
     const pos={};
-    trades.sort((a,b)=> new Date(a.date)-new Date(b.date));
+    trades.sort((a,b)=> toNY(a.date)-toNY(b.date));
     trades.forEach(t=>{
       const s=t.symbol, q=Number(t.qty), price=Number(t.price);
       if(t.side==='BUY' || t.side==='COVER'){

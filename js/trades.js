@@ -1,8 +1,12 @@
+// Time utilities added in v1.0 to enforce America/New_York zone
+const { DateTime } = luxon;
+const nowNY = () => DateTime.now().setZone('America/New_York');
+const toNY = (input) => input ? DateTime.fromJSDate(toNY(input)).setZone('America/New_York') : nowNY();
 
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
+  return toNY(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
 }
 (function(){
 const tbl=document.getElementById('all-trades');
@@ -15,7 +19,7 @@ function getSideClass(side) {
 }
 function render(){
   let trades = JSON.parse(localStorage.getItem('trades')||'[]');
-  trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
+  trades.sort((a,b)=> toNY(b.date)-toNY(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
     const head=['#','logo','代码','中文','日期','星期','统计','方向','单价','数量','订单金额','盈亏平衡点','盈亏','详情','目前持仓','持仓成本','编辑','删除'];
