@@ -2,7 +2,7 @@
 /* ---------- Prev Close attachment (v7.27) ---------- */
 
 /* ---------- Global Timezone helpers (v7.79) ---------- */
-const NY_TZ = 'America/New_York';
+// duplicate removed
 // luxon already loaded globally
 const nyNow   = ()=> luxon.DateTime.now().setZone(NY_TZ);
 const todayNY = ()=> nyNow().toISODate();
