@@ -24,3 +24,7 @@ export function buildFIFO(trades){
   });
   return batches.filter(b=>b.qty>0);
 }
+
+export function getOpenPositions(trades){
+  return buildFIFO(trades);
+}
