@@ -1,4 +1,4 @@
-// Shared utilities
+/* Shared utilities */
 
 // Data load/save
 function loadData(key, defaultValue = '[]') {
@@ -56,6 +56,15 @@ function getWeekIdx(dateStr) {
   return new Date(parts[0], parts[1]-1, parts[2]).getDay();
 }
 
+// Update clocks
+function updateClocks() {
+  const fmt = tz => new Date().toLocaleTimeString('en-GB', {timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit'});
+  const clocks = document.getElementById('clocks');
+  if (clocks) clocks.innerHTML = `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
+  const nyDate = document.getElementById('nyDate');
+  if (nyDate) nyDate.innerHTML = new Intl.DateTimeFormat('zh-CN', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short'}).format(new Date());
+}
+
 // Safe call
 function safeCall(fn, defaultValue = null) {
   try {
@@ -66,7 +75,7 @@ function safeCall(fn, defaultValue = null) {
   }
 }
 
-// Export prices
+// Export/Import prices
 function exportPrices() {
   const data = loadData('close_prices', '{}');
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -78,7 +87,6 @@ function exportPrices() {
   URL.revokeObjectURL(url);
 }
 
-// Import prices
 function importPrices() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -108,9 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (exportBtn) exportBtn.addEventListener('click', exportPrices);
   const importBtn = document.getElementById('import-prices');
   if (importBtn) importBtn.addEventListener('click', importPrices);
+  updateClocks();
+  setInterval(updateClocks, 60000);
 });
 
-// Fetch fallback for JSON
+// Fetch fallback
 const originalFetch = fetch;
 window.fetch = function(url, options) {
   return originalFetch(url, options).then(response => {
