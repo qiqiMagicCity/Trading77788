@@ -50,4 +50,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.body.appendChild(div);
 });
 </script>
+
+<script type='module'>
+import { getDailyResults, sumRange, sumSince } from './utils/dailyResult.js';
+(async ()=>{
+ const list= await getDailyResults();
+ const WTD=sumRange(list,7).toFixed(2);
+ const MTD=sumSince(list,'2025-07-01').toFixed(2);
+ const W_EXPECT='12466.74', M_EXPECT='25398.11';
+ if(WTD===W_EXPECT && MTD===M_EXPECT) console.log('P&L validation pass');
+ else console.error('Validation diff',WTD,MTD);
+})();
+</script>
+
 </body></html>
