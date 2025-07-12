@@ -1,11 +1,11 @@
-// Shared utilities for all pages
+// Shared utilities
 
-// Data loading/saving
+// Data load/save
 function loadData(key, defaultValue = '[]') {
   try {
     return JSON.parse(localStorage.getItem(key) || defaultValue);
   } catch (e) {
-    console.error('Load data error for ' + key, e);
+    console.error('Load error: ' + key, e);
     return JSON.parse(defaultValue);
   }
 }
@@ -14,11 +14,11 @@ function saveData(key, data) {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (e) {
-    console.error('Save data error for ' + key, e);
+    console.error('Save error: ' + key, e);
   }
 }
 
-// Formatting functions
+// Formatting
 const Utils = {
   fmtSign(n) {
     if (isNaN(n)) n = 0;
@@ -40,18 +40,14 @@ const Utils = {
   }
 };
 
-// Date helpers (fallback if luxon not loaded)
+// Date helpers
 const NY_TZ = 'America/New_York';
 const nyNow = () => {
-  if (typeof luxon !== 'undefined') {
-    return luxon.DateTime.now().setZone(NY_TZ);
-  } else {
-    const d = new Date();
-    // Approximate ET offset
-    const offset = -4 * 60; // ET UTC-4
-    d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + offset);
-    return d;
-  }
+  if (typeof luxon !== 'undefined') return luxon.DateTime.now().setZone(NY_TZ);
+  const d = new Date();
+  const offset = -4 * 60;
+  d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + offset);
+  return d;
 };
 const todayNY = () => nyNow().toISOString().slice(0, 10);
 
@@ -60,7 +56,7 @@ function getWeekIdx(dateStr) {
   return new Date(parts[0], parts[1]-1, parts[2]).getDay();
 }
 
-// Safe call wrapper
+// Safe call
 function safeCall(fn, defaultValue = null) {
   try {
     return fn();
@@ -70,7 +66,7 @@ function safeCall(fn, defaultValue = null) {
   }
 }
 
-// Export prices
+// Export/Import prices
 function exportPrices() {
   const data = loadData('close_prices', '{}');
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -82,7 +78,6 @@ function exportPrices() {
   URL.revokeObjectURL(url);
 }
 
-// Import prices
 function importPrices() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -106,10 +101,10 @@ function importPrices() {
   input.click();
 }
 
-// Button wire for prices (if on page with IDs)
-if (document.getElementById('export-prices')) {
-  document.getElementById('export-prices').addEventListener('click', exportPrices);
-}
-if (document.getElementById('import-prices')) {
-  document.getElementById('import-prices').addEventListener('click', importPrices);
-}
+// Wire buttons
+document.addEventListener('DOMContentLoaded', () => {
+  const exportBtn = document.getElementById('export-prices');
+  if (exportBtn) exportBtn.addEventListener('click', exportPrices);
+  const importBtn = document.getElementById('import-prices');
+  if (importBtn) importBtn.addEventListener('click', importPrices);
+});

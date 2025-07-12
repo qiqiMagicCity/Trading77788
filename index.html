@@ -42,28 +42,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>交易分析</title>
+  <title>Trading777 仪表盘</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
   <script src="js/shared.js"></script>
-  <script src="js/analysis.js"></script>
+  <script src="js/fifo.js"></script>
+  <script src="js/equityCurve.js"></script>
+  <script src="js/symbols.js"></script>
+  <script src="js/dashboard.js"></script>
 </head>
 <body>
-  <a href="index.html">← 返回仪表盘</a>
-  <h1>📊 交易分析</h1>
-  <div id="curve-chart" style="height:400px;"></div>
-  <div class="calendar-controls">
-    <button class="btn" onclick="switchView('day')">日</button>
-    <button class="btn" onclick="switchView('week')">周</button>
-    <button class="btn" onclick="switchView('month')">月</button>
-    <button class="btn" onclick="switchView('year')">年</button>
+  <div class="top">
+    <div class="clocks" id="clocks"></div>
+    <div class="logo">Trading777 💹💹💹 | 琦大爷</div>
+    <div class="right-btns">
+      <button id="import">导入</button>
+      <button id="export">导出</button>
+      <button id="export-prices">导出收盘价格</button>
+      <button id="import-prices">导入收盘价格</button>
+    </div>
   </div>
-  <div class="calendar-grid" id="calendar-grid"></div>
-  <div id="rankings">
-    <h2>盈利 TOP 10</h2>
-    <table id="profit-top"></table>
-    <h2>亏损 TOP 10</h2>
-    <table id="loss-top"></table>
-  </div>
+  <div id="nyDate" class="date"></div>
+  <div class="stats-grid" id="stats-grid"></div>
+  <div class="section-title">持仓一览</div>
+  <table class="table" id="positions"></table>
+  <div class="section-title">近期交易</div>
+  <table class="table" id="trades"></table>
+  <div class="section-title">个股交易记录</div>
+  <div id="symbols-list" class="symbols-list"></div>
+  <button id="fab">+</button>
 </body>
 </html>

@@ -42,28 +42,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>交易分析</title>
+  <title>全部交易记录</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script src="js/shared.js"></script>
-  <script src="js/analysis.js"></script>
+  <script src="js/trades.js"></script>
 </head>
 <body>
-  <a href="index.html">← 返回仪表盘</a>
-  <h1>📊 交易分析</h1>
-  <div id="curve-chart" style="height:400px;"></div>
-  <div class="calendar-controls">
-    <button class="btn" onclick="switchView('day')">日</button>
-    <button class="btn" onclick="switchView('week')">周</button>
-    <button class="btn" onclick="switchView('month')">月</button>
-    <button class="btn" onclick="switchView('year')">年</button>
-  </div>
-  <div class="calendar-grid" id="calendar-grid"></div>
-  <div id="rankings">
-    <h2>盈利 TOP 10</h2>
-    <table id="profit-top"></table>
-    <h2>亏损 TOP 10</h2>
-    <table id="loss-top"></table>
-  </div>
+  <a href="index.html">← 返回</a>
+  <h1>全部交易记录</h1>
+  <table class="table" id="all-trades"></table>
 </body>
 </html>
