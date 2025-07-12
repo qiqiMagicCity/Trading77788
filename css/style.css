@@ -264,3 +264,18 @@ body{margin:0;}
 .calendar-header div{color:#94a3b8;}
 /* 修复日视图滚动 */
 .calendar-scroll{overflow:auto;max-height:360px;}
+
+/* unified card colors */
+.stats-grid .title{
+  color:#a2e5cf;
+  font-size:0.9rem;
+  font-weight:600;
+  text-align:center;
+}
+.stats-grid .value{
+  color:#24e29c;
+  font-size:1.15rem;
+  font-weight:700;
+  text-align:center;
+  margin-top:4px;
+}
