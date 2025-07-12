@@ -1,16 +1,11 @@
-/**
- * dateUtils.js – common NY time helpers (v0.1)
- * All scripts should import or reference these helpers instead of redefining.
- * Kept global-safe: attaches functions to window for legacy <script> inclusion.
- * Usage (module): import { nyNow, todayNY } from '../utils/dateUtils.js';
- */
-const NY_TZ = 'America/New_York';
-// luxon is expected to be loaded globally before this script
-export const nyNow = () => luxon.DateTime.now().setZone(NY_TZ);
-export const todayNY = () => nyNow().toISODate();
-// Legacy global fallback
-if (typeof window !== 'undefined') {
-  window.NY_TZ = NY_TZ;
-  window.nyNow = nyNow;
-  window.todayNY = todayNY;
-}
+window.NY_TZ = -4;
+window.LON_TZ = 1;
+
+window.nyNow = function(){
+  const d = new Date();
+  return new Date(d.getTime() + (window.NY_TZ - d.getTimezoneOffset()/60)*3600000);
+};
+window.lonNow = function(){
+  const d=new Date();
+  return new Date(d.getTime() + (window.LON_TZ - d.getTimezoneOffset()/60)*3600000);
+};
