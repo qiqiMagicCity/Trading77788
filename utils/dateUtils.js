@@ -6,8 +6,8 @@
  */
 const NY_TZ = 'America/New_York';
 // luxon is expected to be loaded globally before this script
-export const nyNow = () => luxon.DateTime.now().setZone(NY_TZ);
-export const todayNY = () => nyNow().toISODate();
+const nyNow = () => luxon.DateTime.now().setZone(NY_TZ);
+const todayNY = () => nyNow().toISODate();
 // Legacy global fallback
 if (typeof window !== 'undefined') {
   window.NY_TZ = NY_TZ;
