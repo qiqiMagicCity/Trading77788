@@ -1,41 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Trading777 Self‑Check</title>
-<style>
-body{{font-family:Arial;background:#111;color:#eee;padding:20px}}
-table{{border-collapse:collapse;width:100%}}
-td,th{{border:1px solid #555;padding:8px;text-align:left}}
-.green{{color:#0f0}} .red{{color:#f33}}
-</style>
-</head>
+<html>
+<head><meta charset="utf-8"><title>Trading777 Self Check</title></head>
 <body>
-<h1>Trading777 自检面板</h1>
-<table>
-<thead><tr><th>检查项</th><th>结果</th><th>详情</th></tr></thead>
-<tbody id="results"></tbody>
-</table>
-
-<script type="module">
-import {{ NY_TZ }} from './js/utils/timeNY.js';
-const checks = {{}};
-
-try{ 
-  const trades=JSON.parse(localStorage.getItem('trades')||'[]');
-  checks.localStorage = {{ ok:true, detail:`trades: ${trades.length}` }};
-}catch(e){{ checks.localStorage={{ok:false,detail:e.message}} }}
-
-try{ 
-  await import('./js/dashboard.js');
-  checks.dashboard={{ok:true,detail:'dashboard.js loaded'}};
-}catch(e){{ checks.dashboard={{ok:false,detail:e.message}} }}
-
-for(const [k,v] of Object.entries(checks)){{
-  const tr=document.createElement('tr');
-  tr.innerHTML = `<td>${{k}}</td><td class="${{v.ok?'green':'red'}}">${{v.ok?'✔':'✖'}}</td><td>${{v.detail}}</td>`;
-  document.getElementById('results').appendChild(tr);
-}}
-</script>
+  <h1>Self Check</h1>
+  <pre id="out"></pre>
+  <script type="module">
+    import { computeAllMetrics } from './modules/metrics-engine.js';
+    async function run() {
+      const trades = await (await fetch('./data/trades.json')).json().catch(()=>[]);
+      const closeMap = await (await fetch('./data/close_prices.json')).json().catch(()=>({}));
+      const metrics = await computeAllMetrics(trades, {});
+      document.getElementById('out').textContent = JSON.stringify(metrics, null, 2);
+    }
+    run();
+  </script>
 </body>
 </html>
