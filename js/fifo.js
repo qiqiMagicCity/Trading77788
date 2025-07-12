@@ -1,62 +1,109 @@
-// FIFO calculation
 
-function computePositions(trades) {
-  const symbolLots = {};
-  trades.sort((a, b) => new Date(a.date) - new Date(b.date));
-  trades.forEach(t => {
-    const lots = symbolLots[t.symbol] || (symbolLots[t.symbol] = []);
-    let remaining = t.qty;
-    let realized = 0;
-    const signedQty = (t.side === 'BUY' || t.side === 'COVER') ? t.qty : -t.qty;
-    if (signedQty > 0) {
-      for (let i = 0; i < lots.length && remaining > 0; ) {
-        const lot = lots[i];
-        if (lot.qty < 0) {
-          const closeQty = Math.min(remaining, -lot.qty);
-          realized += (lot.price - t.price) * closeQty;
-          lot.qty += closeQty;
-          remaining -= closeQty;
-          if (lot.qty === 0) lots.splice(i, 1);
-          else i++;
-        } else i++;
+// ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
+function getWeekIdx(dateStr){
+  const parts = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
+}
+
+/* FIFO cost calculation & metrics – ported from Apps Script (迭代3.3.2) */
+(function(g){
+  function computeFIFO(allTrades){
+    const EPS = 1e-6;
+    const symMap = {};   // per‑symbol state
+    // sort in-place by date asc (YYYY-MM-DD) then original order
+    allTrades.sort((a,b)=>{
+      const d1 = new Date(a.date), d2 = new Date(b.date);
+      return d1 - d2;
+    });
+
+    allTrades.forEach(t=>{
+      // ensure numeric types
+      t.price = Number(t.price);
+      t.qty   = Number(t.qty);
+
+      const s = t.symbol || 'UNKNOWN';
+      const st = symMap[s] || (symMap[s] = {
+        positionList: [],
+        direction: 'NONE',
+        accRealized: 0,
+        count: 0
+      });
+      st.count += 1;
+
+      let showPNL = 0;
+      
+      const price = t.price;
+      const qty   = t.qty * (t.type==='Option'?100:1); // --- Option qty factor
+
+
+      if(t.side==='BUY' || t.side==='COVER' || t.side==='回补' || t.side==='BOUGHT' || t.side==='买入'){
+        if(st.direction==='NONE' || st.direction==='LONG'){
+          st.positionList.push({price, qty});
+          st.direction='LONG';
+        }else{
+          let rem = qty;
+          while(rem>EPS && st.positionList.length){
+            const lot = st.positionList[0];
+            const c = Math.min(rem, lot.qty);
+            showPNL += (lot.price - price)*c;
+            lot.qty -= c;
+            rem -= c;
+            if(lot.qty<=EPS) st.positionList.shift();
+          }
+          st.accRealized += showPNL;
+          if(rem>EPS){
+            st.positionList=[{price, qty: rem}];
+            st.direction='LONG';
+          }else if(!st.positionList.length){
+            st.direction='NONE';
+          }
+        }
+      }else if(t.side==='SELL' || t.side==='SHORT' || t.side==='做空' || t.side==='SOLD' || t.side==='卖出'){
+        if(st.direction==='NONE' || st.direction==='SHORT'){
+          st.positionList.push({price, qty});
+          st.direction='SHORT';
+        }else{
+          let rem = qty;
+          while(rem>EPS && st.positionList.length){
+            const lot = st.positionList[0];
+            const c = Math.min(rem, lot.qty);
+            showPNL += (price - lot.price)*c;
+            lot.qty -= c;
+            rem -= c;
+            if(lot.qty<=EPS) st.positionList.shift();
+          }
+          st.accRealized += showPNL;
+          if(rem>EPS){
+            st.positionList=[{price, qty: rem}];
+            st.direction='SHORT';
+          }else if(!st.positionList.length){
+            st.direction='NONE';
+          }
+        }
       }
-      if (remaining > 0) lots.push({qty: remaining, price: t.price});
-    } else {
-      remaining = -signedQty;
-      for (let i = 0; i < lots.length && remaining > 0; ) {
-        const lot = lots[i];
-        if (lot.qty > 0) {
-          const closeQty = Math.min(remaining, lot.qty);
-          realized += (t.price - lot.price) * closeQty;
-          lot.qty -= closeQty;
-          remaining -= closeQty;
-          if (lot.qty === 0) lots.splice(i, 1);
-          else i++;
-        } else i++;
+
+      const totalQty = st.positionList.reduce((s,l)=> s + l.qty, 0);
+      const netAfter = (st.direction==='SHORT'? -totalQty : totalQty);
+
+      let mVal = 0, jVal = 0;
+      if(totalQty>EPS){
+        const sumCost = st.positionList.reduce((s,l)=> s + l.price*l.qty, 0);
+        mVal = sumCost / totalQty;
+        jVal = (sumCost - st.accRealized) / totalQty;
       }
-      if (remaining > 0) lots.push({qty: -remaining, price: t.price});
-    }
-    t.pl = realized;
-    t.closed = remaining === 0;
-  });
-  const positions = Object.entries(symbolLots).map(([sym, lots]) => {
-    const qty = lots.reduce((s, l) => s + l.qty, 0);
-    const cost = lots.reduce((s, l) => s + l.qty * l.price, 0);
-    return {symbol: sym, qty, avgPrice: qty ? Math.abs(cost) / Math.abs(qty) : 0, last: 0, priceOk: false};
-  }).filter(p => p.qty !== 0);
-  return positions;
-}
 
-function computeIntradayPNL(trades) {
-  const today = todayNY();
-  const dayTrades = trades.filter(t => t.date === today);
-  // Behavior and FIFO perspective
-  let behavior = 0;
-  let fifo = 0;
-  // Implement logic
-  return {behavior, fifo};
-}
+      // enrich trade object
+      t.weekday = (function(d){ const w=d.getDay(); return ((w+6)%7)+1; })(new Date(t.date));
+      t.count   = st.count;
+      t.amount  = t.qty * t.price;
+      t.be      = jVal;
+      t.pl      = showPNL;          /* overwrite / set */
+      t.afterQty= netAfter;
+      t.avgCost = mVal;
+    });
 
-function computeHistPNL(trades) {
-  return trades.reduce((s, t) => s + (t.closed ? t.pl : 0), 0);
-}
+    return allTrades;
+  }
+
+  g.FIFO = {computeFIFO};
+})(window);
