@@ -1,0 +1,266 @@
+:root{
+  --page-max:1200px;
+}
+
+/* v5.3.7 页面宽度统一 */
+.section-title,.table,#symbols-list,.stats-grid{
+  width:90%;
+  max-width:var(--page-max);
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.stats-grid{
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+}
+
+/* 确保符号按钮始终10个一行 */
+.symbols-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-start;
+  width:90%;
+  max-width:var(--page-max);
+  margin:10px auto 0;
+}
+
+.symbol-tag{
+  flex:0 0 calc(10% - 8px);
+}
+
+html{font-size:115%;background:#002020;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;}
+body{margin:0;}
+.top{background:rgba(0,255,153,0.3);display:flex;justify-content:space-between;align-items:center;padding:8px 20px;box-sizing:border-box;}
+.clocks{display:flex;gap:12px;font-weight:600;}
+.logo{flex:0 0 36px;text-align:center;}
+.right-btns{margin-left:auto;margin-right:40px;}
+.right-btns button{margin-left:10px;padding:4px 12px;border:none;border-radius:4px;background:#00e676;color:#002020;font-weight:600;cursor:pointer;}
+.stats-grid{display:grid;grid-template-columns:repeat(8,180px);gap:10px;justify-content:center;margin:20px auto;}
+.box{background:#003030;border:1px solid #00e67666;border-radius:6px;min-height:100px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:10px;}
+.box-title{font-size:0.8rem;margin-bottom:4px;opacity:0.85;}
+.box-value{font-size:1rem;font-weight:700;}
+.green{color:#00e676;}
+.red{color:#ff5252;}
+.white{color:#ffffff;}
+.section-title{width:90%;max-width:1100px;margin:24px auto 8px;color:#00e676;font-size:1rem;}
+.details{color:#0090ff!important;text-decoration:none;margin-left:6px;}
+.table{width:90%;max-width:1100px;margin:0 auto 20px;border-collapse:collapse;font-size:0.8rem;}
+.table th,.table td{border:1px solid #004040;padding:4px 6px;text-align:center;}
+.table th{background:#004040;}
+.table td.red{color:#ff5252;}
+.table td.green{color:#00e676;}
+#fab{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);width:48px;height:48px;border-radius:50%;background:#00e676;border:none;color:#002020;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+
+/* --- modal --- */
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.65);display:flex;justify-content:center;align-items:center;z-index:1000;}
+.modal-content{background:#fff;color:#002020;padding:20px 24px;border-radius:8px;min-width:320px;max-width:90vw;}
+.modal-content h3{margin-top:0;color:#002020;text-align:center;}
+.modal-content label{display:block;margin:10px 0 4px;color:#002020;}
+.modal-content input,.modal-content select{width:100%;padding:6px;border:1px solid #888;border-radius:4px;}
+.modal-content button{padding:6px 14px;margin-left:6px;border:none;border-radius:4px;cursor:pointer;}
+.modal-content button#t-save{background:#00e676;color:#002020;font-weight:600;}
+.modal-content button#t-cancel{background:#ccc;color:#002020;}
+
+
+/* v3.3.5 新增 - 个股页面大字水印 */
+.watermark{
+  font-size:4rem;
+  font-weight:700;
+  text-align:center;
+  opacity:0.06;
+  letter-spacing:4px;
+  margin-top:60px;
+  user-select:none;
+}
+
+.purple{color:#b266ff;}
+.blue{color:#66ccff;}
+
+
+/* -------- symbols list (功能区3) -------- */
+.symbols-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:10px 0 20px;
+
+  justify-content:center;
+}
+.symbol-tag{
+  padding:4px 8px;
+  background:#002b29;
+  border:1px solid #05c788;
+  border-radius:4px;
+  color:#05c788;
+  text-decoration:none;
+  font-size:14px;
+
+  flex:0 0 calc(10% - 8px);
+  text-align:center;
+}
+.symbol-tag:hover{
+  background:#05c788;
+  color:#002b29;
+}
+
+.table td, .table th { white-space: normal; }
+/* -- 美化 trades.html 页 编辑/删除按钮（圆形图标、动效、气泡） -- */
+.btn-action {
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  margin: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: rgba(40,60,60,0.09);
+  color: #fff;
+  box-shadow: 0 1px 8px 0 rgba(0,0,0,0.10);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.18s, transform 0.14s, box-shadow 0.14s;
+  z-index: 1;
+}
+.btn-edit { color: #29b6f6; }
+.btn-del  { color: #ff5252; }
+
+.btn-action:hover {
+  background: rgba(70,200,240,0.19);
+  transform: scale(1.15) rotate(-7deg);
+  box-shadow: 0 4px 18px 0 rgba(36,190,190,0.10);
+}
+.btn-del:hover {
+  background: rgba(255,82,82,0.17);
+  color: #fff;
+  transform: scale(1.18) rotate(8deg);
+}
+
+/* 气泡提示 */
+.btn-action[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40,50,60,0.97);
+  color: #fff;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: normal;
+  opacity: 0.97;
+  pointer-events: none;
+  box-shadow: 0 2px 7px 0 rgba(0,0,0,0.19);
+  z-index: 10;
+}
+
+/* Logo column */
+.logo{width:36px;height:36px;object-fit:contain;vertical-align:middle;}
+.cn{ text-align:left; padding-left:12px; }
+
+/* Adaptive width for logo and Chinese columns */
+#all-trades th:nth-child(2),
+#all-trades td:nth-child(2){
+  width:48px;
+}
+
+#all-trades th:nth-child(4),
+#all-trades td:nth-child(4){
+  max-width:220px;
+}
+
+
+/* v7.7.2 column width fine‑tuning */
+#all-trades {
+  table-layout: auto; /* keep natural width calc */
+}
+
+#all-trades th:nth-child(2),
+#all-trades td:nth-child(2) { /* logo 列 */
+  width: 56px;           /* 正方形 logo + padding */
+  text-align: center;
+}
+
+#all-trades th:nth-child(4),
+#all-trades td:nth-child(4) { /* 中文列 */
+  width: 1%;             /* 最小化列占比，宽度由内容决定 */
+  white-space: nowrap;   /* 不换行 */
+}
+
+/* v7.7.5 nowrap fix */
+#all-trades td,#all-trades th{white-space:nowrap;}
+
+.top .date{margin-right:12px;font-weight:bold;}
+
+
+/* --- v7.10 buttons & calendar --- */
+.btn{
+  background:#014d4d;
+  border:1px solid #05b3b3;
+  color:#fff;
+  padding:6px 14px;
+  margin-right:4px;
+  border-radius:6px;
+  cursor:pointer;
+  transition:background .2s ease;
+}
+.btn:hover{background:#027272}
+.btn.active{
+  background:#05b3b3;
+  color:#002020;
+}
+.calendar-scroll{
+  overflow-x:auto;
+  padding:10px 0;
+}
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(120px,1fr));
+  gap:4px;
+}
+.calendar-cell{
+  background:#013939;
+  border:1px solid #025f5f;
+  border-radius:4px;
+  min-height:80px;
+  padding:4px;
+  box-sizing:border-box;
+  font-size:.8rem;
+}
+.calendar-cell.positive{background:#014e2a;}
+.calendar-cell.negative{background:#5f1a1a;}
+.calendar-cell.zero{background:#2d3748;}
+
+/* --- calendar enhancements --- */
+.calendar-controls{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:10px 0;
+  justify-content:center;
+}
+.calendar-controls .btn{
+  padding:4px 8px;
+}
+.view-btns .active{
+  background:#1b7d4d;
+  color:#fff;
+}
+
+/* v7.14 calendar header */
+.calendar-header{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(120px,1fr));
+  gap:4px;
+  font-weight:bold;
+  text-align:center;
+  margin-bottom:4px;
+}
+.calendar-header div{color:#94a3b8;}
+/* 修复日视图滚动 */
+.calendar-scroll{overflow:auto;max-height:360px;}
