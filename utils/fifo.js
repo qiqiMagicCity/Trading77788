@@ -1,35 +1,26 @@
 export function buildFIFO(trades){
-  const map = {};
+  // trades: array of {date, symbol, qty, price, side}
+  if(!Array.isArray(trades)){
+    console.warn('buildFIFO expects array, got', typeof trades);
+    return [];
+  }
+  const holdings = {};
+  const batches = [];
   trades.forEach(t=>{
-    const {symbol, type, qty, price, date} = t;
-    if(!map[symbol]) map[symbol] = {long:[], short:[]};
-    const s = map[symbol];
-    const q = Math.abs(qty);
-    if(type==='BUY'){
-      s.long.push({qty:q, price});
-    }else if(type==='SELL'){
-      consume(s.long, q);
-    }else if(type==='SHORT'){
-      s.short.push({qty:q, price});
-    }else if(type==='COVER'){
-      consume(s.short, q);
+    const {symbol, qty, price, side}=t;
+    if(side==='BUY'){
+      batches.push({symbol, qty, price, side:'LONG'});
+    }else if(side==='SELL'){
+      let remain=qty;
+      for(const b of batches){
+        if(b.symbol===symbol && b.side==='LONG' && b.qty>0){
+          const q=Math.min(remain,b.qty);
+          b.qty-=q;
+          remain-=q;
+          if(remain===0) break;
+        }
+      }
     }
   });
-  return map;
-}
-function consume(stack, qty){
-  let remain = qty;
-  while(remain>0 && stack.length){
-    const batch = stack[0];
-    if(batch.qty<=remain){ remain -= batch.qty; stack.shift(); }
-    else{ batch.qty -= remain; remain = 0; }
-  }
-}
-export function getOpenPositions(fifoMap){
-  const pos = [];
-  for(const sym in fifoMap){
-    fifoMap[sym].long.forEach(b=>pos.push({symbol:sym, qty:b.qty, cost:b.price, dir:'LONG'}));
-    fifoMap[sym].short.forEach(b=>pos.push({symbol:sym, qty:b.qty, cost:b.price, dir:'SHORT'}));
-  }
-  return pos;
+  return batches.filter(b=>b.qty>0);
 }
