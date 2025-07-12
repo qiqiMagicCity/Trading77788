@@ -1,30 +1,10 @@
-// Analysis page logic
-
-// Load shared
-// Assume shared.js loaded
-
-// Load trades/equityCurve
-
-// Render curve using echarts
-function renderCurve() {
-  // Chart as per template
-}
-
-// Render calendar
-function renderCalendar() {
-  // Views day/week/month/year
-}
-
-// Render rankings
-function renderRankings() {
-  // Top 10 profit/loss
-}
-
-// Events for buttons/tabs
+// Analysis logic (placeholder for now)
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderCurve();
-  renderCalendar();
-  renderRankings();
-  // Switch views
+  const chart = document.getElementById('curve-chart');
+  chart.innerHTML = '曲线图 (实施中)';
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '日历 (实施中)';
+  const rankings = document.getElementById('rankings');
+  rankings.innerHTML = '排行榜 (实施中)';
 });

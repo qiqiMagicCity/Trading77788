@@ -1,11 +1,10 @@
-// Stock page logic
+// Stock logic
 
-// Load shared
+function renderStockDetails() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const symbol = urlParams.get('symbol');
+  document.getElementById('symbol-title').innerHTML = symbol + ' 详情';
+  // Render details and table for symbol
+}
 
-// Get symbol from URL
-
-// Render details, trades table for symbol
-
-document.addEventListener('DOMContentLoaded', () => {
-  renderStockDetails();
-});
+document.addEventListener('DOMContentLoaded', renderStockDetails);

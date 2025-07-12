@@ -1,14 +1,16 @@
-// Equity curve management
+// Equity curve module
 
 function loadCurve() {
-  return safeCall(() => loadData('equityCurve', '[]'), []);
+  return loadData('equity_curve', '[]');
 }
 
 function saveCurve(data) {
-  saveData('equityCurve', data);
+  saveData('equity_curve', data);
 }
 
-// Sum for periods
 function sumPeriod(startDate) {
-  // Logic as per rules
+  const curve = loadCurve();
+  const trades = loadData('trades', '[]');
+  // Implement sum for M11-M13
+  return 0;
 }
