@@ -8,7 +8,7 @@ function loadDashboardData() {
   positions = safeCall(() => FIFO.computePositions(trades), []);
 }
 
-function stats() {
+function calcStats() {
   const cost = positions.reduce((sum, p) => sum + Math.abs(p.qty * p.avgPrice), 0);
   const value = positions.reduce((sum, p) => sum + Math.abs(p.qty * p.last), 0);
   const floating = positions.reduce((sum, p) => p.qty > 0 ? (p.last - p.avgPrice) * p.qty : (p.avgPrice - p.last) * Math.abs(p.qty), 0);
@@ -16,9 +16,8 @@ function stats() {
   return { cost, value, floating /* etc */ };
 }
 
-// Render stats (13 boxes, M5 double line)
 function renderStats() {
-  const s = stats();
+  const s = calcStats();
   const grid = document.getElementById('stats-grid');
   grid.innerHTML = '';
   const titles = ['持仓成本', '持仓市值', '持仓浮盈', '今天持仓平仓盈利', '今日日内交易盈利', '今日总盈利变化', '今日交易次数', '累计交易次数', '所有历史平仓盈利', '胜率', 'WTD', 'MTD', 'YTD'];
