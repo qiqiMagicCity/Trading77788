@@ -5,7 +5,7 @@ let trades = [];
 
 function loadDashboardData() {
   trades = loadData('trades', '[]');
-  positions = FIFO.computePositions(trades);
+  positions = safeCall(() => FIFO.computePositions(trades), []);
 }
 
 function stats() {

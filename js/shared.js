@@ -66,7 +66,7 @@ function safeCall(fn, defaultValue = null) {
   }
 }
 
-// Export/Import prices
+// Export prices
 function exportPrices() {
   const data = loadData('close_prices', '{}');
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -78,6 +78,7 @@ function exportPrices() {
   URL.revokeObjectURL(url);
 }
 
+// Import prices
 function importPrices() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -101,10 +102,25 @@ function importPrices() {
   input.click();
 }
 
-// Wire buttons
+// Button wire
 document.addEventListener('DOMContentLoaded', () => {
   const exportBtn = document.getElementById('export-prices');
   if (exportBtn) exportBtn.addEventListener('click', exportPrices);
   const importBtn = document.getElementById('import-prices');
   if (importBtn) importBtn.addEventListener('click', importPrices);
 });
+
+// Fetch fallback for JSON
+const originalFetch = fetch;
+window.fetch = function(url, options) {
+  return originalFetch(url, options).then(response => {
+    if (!response.ok) throw new Error('Fetch error');
+    return response.text().then(text => {
+      if (text.startsWith('<')) {
+        console.error('Fetch returned HTML instead of JSON for ' + url);
+        return {};
+      }
+      return JSON.parse(text);
+    });
+  });
+};
