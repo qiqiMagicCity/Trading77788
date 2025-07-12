@@ -3,8 +3,15 @@
 /* ---------- Global Timezone helpers (v7.79) ---------- */
 const NY_TZ = 'America/New_York';
 // luxon already loaded globally
-const nyNow   = ()=> luxon.DateTime.now().setZone(NY_TZ);
-const todayNY = ()=> nyNow().toISODate();
+const nyNow = () => {
+  if (typeof luxon !== 'undefined') {
+    return luxon.DateTime.now().setZone(NY_TZ);
+  } else {
+    console.warn('luxon not loaded, fallback to native Date');
+    return new Date(); // fallback
+  }
+};
+const todayNY = () => nyNow().toISODate();
 async function attachPrevCloses(){
   const idb = await import('./lib/idb.js');
   const now = new Date();
@@ -224,20 +231,23 @@ function calcIntraday(trades){
 }
 function stats(){
   // 重新计算账户统计数据，兼容多空仓位显示
-  try {
-    const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * (p.avgPrice || 0)), 0);
-    const value = positions.reduce((sum,p)=> p.priceOk !== false ? sum + Math.abs(p.qty) * (p.last || 0) : sum, 0);
-    // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
-    const floating = positions.reduce((sum,p)=>{
-      if(p.qty===0 || p.priceOk===false) return sum;
-      const pl = p.qty>0 ? ((p.last || 0) - (p.avgPrice || 0))*p.qty : ((p.avgPrice || 0) - (p.last || 0))*Math.abs(p.qty);
-      return sum + (isFinite(pl) ? pl : 0);
-    },0);
+  const cost = positions.reduce((sum, p)=> sum + Math.abs(p.qty * p.avgPrice), 0);
+  const value = positions.reduce((sum,p)=> p.priceOk!==false ? sum + Math.abs(p.qty)*p.last : sum, 0);
+  // 对于空头仓位，浮动盈亏 = 建仓均价 - 现价
+  
+const floating = positions.reduce((sum,p)=>{
+  if(p.qty===0||p.priceOk===false) return sum;
+  const pl = p.qty>0 ? (p.last - p.avgPrice)*p.qty : (p.avgPrice - p.last)*Math.abs(p.qty);
+  return sum + pl;
+},0);
 
 
-    const latestTradeDate = trades.reduce((d,t)=> t.date>d ? t.date : d, '');
-    const todayStr = latestTradeDate || new Date().toLocaleDateString('en-CA', { timeZone:'America/New_York' });
-    const todayTrades = trades.filter(t=> t.date === todayStr);
+
+
+
+  const latestTradeDate = trades.reduce((d,t)=> t.date>d ? t.date : d, '');
+  const todayStr = latestTradeDate || new Date().toLocaleDateString('en-CA', { timeZone:'America/New_York' });
+  const todayTrades = trades.filter(t=> t.date === todayStr);
 // --- v7.53 修复：精确计算当日浮动盈亏（历史仓 + 今日仓） ---
 // 构建今日净买卖映射
 const dayNetMap = {};
@@ -260,38 +270,45 @@ const dailyUnrealized = positions.reduce((sum, p) => {
   // 历史仓部分
   if (carryQty) {
     delta += carryQty > 0
-      ? ((p.last || 0) - p.prevClose) * carryQty         // 多头
-      : (p.prevClose - (p.last || 0)) * Math.abs(carryQty); // 空头
+      ? (p.last - p.prevClose) * carryQty         // 多头
+      : (p.prevClose - p.last) * Math.abs(carryQty); // 空头
   }
   // 今日仓部分
   if (newQty) {
     delta += newQty > 0
-      ? ((p.last || 0) - avgCostToday) * newQty          // 多头
-      : (avgCostToday - (p.last || 0)) * Math.abs(newQty); // 空头
+      ? (p.last - avgCostToday) * newQty          // 多头
+      : (avgCostToday - p.last) * Math.abs(newQty); // 空头
   }
-  return sum + (isFinite(delta) ? delta : 0);
+  return sum + delta;
 }, 0);
-    const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
-    const intradayReal = calcIntraday(trades);
+  const todayReal = todayTrades.reduce((s,t)=> s + (t.pl||0), 0);
+  const intradayReal = calcIntraday(trades);
 
-    const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
-    const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
-    const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
+  const wins = todayTrades.filter(t=> (t.pl||0) > 0).length;
+  const losses = todayTrades.filter(t=> (t.pl||0) < 0).length;
+  const histReal = trades.reduce((s,t)=> s + (t.pl||0), 0);
 const winsTotal = trades.filter(t=> (t.pl||0) > 0).length;
 const lossesTotal = trades.filter(t=> (t.pl||0) < 0).length;
 const winRate = (winsTotal + lossesTotal) ? winsTotal / (winsTotal + lossesTotal) * 100 : null;
 
 
-const now = nyNow();
-const monday = now.startOf('week');
-const firstOfMonth = now.startOf('month');
-const firstOfYear = now.startOf('year');
+const now = new Date();
+const monday = new Date(now);
+monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+monday.setHours(0,0,0,0);
+
+const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+firstOfMonth.setHours(0,0,0,0);
+
+const firstOfYear = new Date(now.getFullYear(), 0, 1);
+firstOfYear.setHours(0,0,0,0);
 
 // --- v7.75 重新计算 WTD/MTD/YTD（含每日浮动 + 已实现） ---
 function sumPeriod(startDate){
-  // startDate: luxon DateTime at start of period
-  const startISO = startDate.toISODate();
-  const todayISO = todayNY();
+  // startDate: JS Date at 00:00 local, inclusive
+  const toISO = d => d.toISOString().slice(0,10);
+  const startISO = toISO(startDate);
+  const todayISO = toISO(new Date());
 
   // ---- 1. Build daily realized P/L map ----
   const realizedDaily = {};
@@ -341,69 +358,32 @@ function sumPeriod(startDate){
   sum += (typeof todayReal === 'number' ? todayReal : 0) +
          (typeof dailyUnrealized === 'number' ? dailyUnrealized : 0);
 
-  return isFinite(sum) ? sum : 0;
+  return sum;
 }
 
 const wtdReal = sumPeriod(monday);
 const mtdReal = sumPeriod(firstOfMonth);
 const ytdReal = sumPeriod(firstOfYear);
 
-  const M5 = FIFO.computeIntradayPNL(trades);
-  const M6 = (todayReal || 0) + (dailyUnrealized || 0);
-  const M7 = calcTodayCounts(trades);
-  const M8 = calcAllCounts(trades);
-  const M9 = histReal || 0;
-  const M10 = {wins: winsTotal, losses: lossesTotal, rate: winRate || 0};
-
   return {
-    cost: isFinite(cost) ? cost : 0,
-    value: isFinite(value) ? value : 0,
-    floating: isFinite(floating) ? floating : 0,
-    todayReal: isFinite(todayReal) ? todayReal : 0,
-    intradayReal: isFinite(intradayReal) ? intradayReal : 0,
-    dailyUnrealized: isFinite(dailyUnrealized) ? dailyUnrealized : 0,
+    cost,
+    value,
+    floating,
+    todayReal,
+    wins,
+    losses,
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
-    histReal: isFinite(histReal) ? histReal : 0,
+    histReal,
+    intradayReal,
+    dailyUnrealized,
     winRate,
-    wtdReal: isFinite(wtdReal) ? wtdReal : 0,
-    mtdReal: isFinite(mtdReal) ? mtdReal : 0,
-    ytdReal: isFinite(ytdReal) ? ytdReal : 0,
-    M5, M6, M7, M8, M9, M10
+    wtdReal,
+    mtdReal,
+    ytdReal
   };
-  } catch (e) {
-    console.error('stats计算错误', e);
-    return {cost:0, value:0, floating:0, todayReal:0, intradayReal:0, dailyUnrealized:0, todayTrades:0, totalTrades:0, histReal:0, winRate:0, wtdReal:0, mtdReal:0, ytdReal:0, M5:{behavior:0, fifo:0}, M6:0, M7:{B:0,S:0,P:0,C:0,total:0}, M8:{B:0,S:0,P:0,C:0,total:0}, M9:0, M10:{wins:0, losses:0, rate:0}};
-  }
 }
 
-/* ---------- Calc Today Counts for M7 ---------- */
-function calcTodayCounts(trades) {
-  const todayStr = todayNY();
-  const dayTrades = trades.filter(t=> t.date === todayStr);
-  const counts = {B:0, S:0, P:0, C:0};
-  dayTrades.forEach(t=>{
-    if(t.side === 'BUY') counts.B++;
-    if(t.side === 'SELL') counts.S++;
-    if(t.side === 'SHORT') counts.P++;
-    if(t.side === 'COVER') counts.C++;
-  });
-  counts.total = dayTrades.length;
-  return counts;
-}
-
-/* ---------- Calc All Counts for M8 ---------- */
-function calcAllCounts(trades) {
-  const counts = {B:0, S:0, P:0, C:0};
-  trades.forEach(t=>{
-    if(t.side === 'BUY') counts.B++;
-    if(t.side === 'SELL') counts.S++;
-    if(t.side === 'SHORT') counts.P++;
-    if(t.side === 'COVER') counts.C++;
-  });
-  counts.total = trades.length;
-  return counts;
-}
 
 /* ---------- 5. Render helpers ---------- */
 
@@ -420,16 +400,16 @@ function renderStats(){
   const s=stats();
   
 const a=[
-['持仓成本',Utils.fmtDollar(s.cost)],
-['持仓市值',Utils.fmtDollar(s.value)],
-['持仓浮盈',Utils.fmtDollar(s.floating)],
-['今天持仓平仓盈利',Utils.fmtDollar(s.todayReal)],
-['今日日内交易盈利',`<span>交易视角：${Utils.fmtDollar(s.M5.behavior)}</span><span>FIFO视角：${Utils.fmtDollar(s.M5.fifo)}</span>`],
-['今日总盈利变化',Utils.fmtDollar(s.M6)],
-['今日交易次数',`B/${s.M7.B} S/${s.M7.S} P/${s.M7.P} C/${s.M7.C} 【${s.M7.total}】`],
-['累计交易次数',`B/${s.M8.B} S/${s.M8.S} P/${s.M8.P} C/${s.M8.C} 【${s.M8.total}】`],
-['所有历史平仓盈利',Utils.fmtDollar(s.M9)],
-['胜率', `W/${s.M10.wins} L/${s.M10.losses} ${s.M10.rate.toFixed(1)}%`],
+['账户总成本',Utils.fmtDollar(s.cost)],
+['目前市值',Utils.fmtDollar(s.value)],
+['当前浮动盈亏',Utils.fmtDollar(s.floating)],
+['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
+['日内交易', Utils.fmtDollar(s.intradayReal)],
+['当日浮动盈亏', Utils.fmtDollar(s.dailyUnrealized)],
+['当日交易次数',Utils.fmtInt(s.todayTrades)],
+['累计交易次数',Utils.fmtInt(s.totalTrades)],
+['历史已实现盈亏',Utils.fmtDollar(s.histReal)],
+['胜率', s.winRate!==null ? Utils.fmtPct(s.winRate) : '--'],
 ['WTD', Utils.fmtDollar(s.wtdReal)],
 ['MTD', Utils.fmtDollar(s.mtdReal)],
 ['YTD', Utils.fmtDollar(s.ytdReal)],
@@ -532,7 +512,7 @@ function importData(){
         if(data.positions){ positions=data.positions; } else { recalcPositions(); }
         if(data.equityCurve){ saveCurve(data.equityCurve); }
         saveData();
-        renderStats();renderPositions();renderPositions();renderTrades();
+        renderStats();renderPositions();renderTrades();
   renderSymbolsList();
         alert('导入成功!');
       }catch(err){
@@ -646,7 +626,7 @@ document.getElementById('t-save').onclick=function(){
 window.addEventListener('load',()=>{
   // recalc positions in case only trades exist
   recalcPositions();
-  renderStats();renderPositions();renderPositions();renderTrades();
+  renderStats();renderPositions();renderTrades();
   renderSymbolsList();
   updateClocks();
   setInterval(updateClocks,1000);

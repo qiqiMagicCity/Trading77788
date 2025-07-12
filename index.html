@@ -44,6 +44,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trading777 仪表盘</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="js/fifo.js"></script>
+  <script src="js/equityCurve.js"></script>
 </head>
 <body>
   <div class="top">
@@ -52,11 +57,13 @@
     <div class="right-btns">
       <button id="import">导入</button>
       <button id="export">导出</button>
-      <a href="trades.html" class="details">全部交易</a>
-      <a href="analysis.html" class="details">分析</a>
+      <button id="export-prices">导出收盘价格</button>
+      <button id="import-prices">导入收盘价格</button>
     </div>
   </div>
-  <div class="stats-grid" id="stats-grid"></div> <!-- 支持M5双行，class不变 -->
+  <div class="stats-grid" id="stats-grid">
+    <!-- Placeholder for stats boxes, dynamically filled to restore layout -->
+  </div>
   <div class="section-title">持仓一览</div>
   <table class="table" id="positions"></table>
   <div class="section-title">近期交易</div>
