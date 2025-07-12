@@ -1,21 +1,16 @@
-// Auto-generated Trading77788 v3
-// File: modules/metrics/M10.js
-// Date: 2025-07-12
+// Trading77788 v6 - M10.js generated 2025-07-12
 
-import { buildFifoState, processTradeFIFO } from '../helpers/fifo.js';
 
-export default function M10(trades=[]) {
-  const state = buildFifoState();
-  let W=0, L=0;
-  const callback = match => {
-    const pl = match.direction==='long'
-      ? (match.closePrice - match.openPrice) * match.qty
-      : (match.openPrice - match.closePrice) * match.qty;
-    if (pl > 0) W++;
-    else if (pl < 0) L++;
-  };
-  for (const t of trades) processTradeFIFO(state, t, callback);
-  const total = W + L;
-  const winRate = total ? (W / total) * 100 : 0;
-  return {W,L,winRate};
+import {buildBook,process} from '../helpers/fifo.js';
+export default function M10(trades){
+  const b=buildBook();
+  let W=0,L=0;
+  trades.forEach(t=>process(b,t,lot=>{
+    const p=(lot.close.side==='SELL')?
+      (lot.close.price-lot.price)*lot.qty:
+      (lot.price-lot.close.price)*lot.qty;
+    if(p>0) W++; else if(p<0) L++;
+  }));
+  const tot=W+L;
+  return {W,L,winRate:tot?W/tot*100:0};
 }

@@ -1,11 +1,4 @@
-// Auto-generated Trading77788 v3
-// File: js/modules/metrics/M11.js
-// Date: 2025-07-12
+// Trading77788 v6 - M11.js generated 2025-07-12
 
-import { startOfWeek } from '../../utils/dateHelpers.js';
-import dailyPL from './dailyPL.js';
 
-export default function M11(trades=[], closeMap={}, todayStr){
-  const start = startOfWeek(todayStr);
-  return dailyPL(trades, closeMap, start, todayStr);
-}
+export default function M11(daily){return daily.reduce((a,d)=>a+d.realized+d.unrealized,0);}

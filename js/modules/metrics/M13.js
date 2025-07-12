@@ -1,10 +1,4 @@
-// Auto-generated Trading77788 v3
-// File: js/modules/metrics/M13.js
-// Date: 2025-07-12
+// Trading77788 v6 - M13.js generated 2025-07-12
 
-import { startOfYear } from '../../utils/dateHelpers.js';
-import dailyPL from './dailyPL.js';
-export default function M13(trades=[], closeMap={}, todayStr){
-  const start = startOfYear(todayStr);
-  return dailyPL(trades, closeMap, start, todayStr);
-}
+
+export default function M13(daily){return daily.reduce((a,d)=>a+d.realized+d.unrealized,0);}

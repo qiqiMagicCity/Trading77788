@@ -1,15 +1,14 @@
-// Auto-generated Trading77788 v3
-// File: modules/metrics/M8.js
-// Date: 2025-07-12
+// Trading77788 v6 - M8.js generated 2025-07-12
 
-export default function M8(trades=[]) {
-  const counts = {B:0,S:0,P:0,C:0};
-  for (const t of trades) {
-    if (t.side === 'BUY') counts.B++;
-    else if (t.side === 'SELL') counts.S++;
-    else if (t.side === 'SHORT') counts.P++;
-    else if (t.side === 'COVER') counts.C++;
-  }
-  counts.total = counts.B + counts.S + counts.P + counts.C;
-  return counts;
+
+export default function M8(trades){
+  const c={B:0,S:0,P:0,C:0};
+  trades.forEach(t=>{
+    if(t.side==='BUY') c.B++;
+    else if(t.side==='SELL') c.S++;
+    else if(t.side==='SHORT') c.P++;
+    else if(t.side==='COVER') c.C++;
+  });
+  c.total=c.B+c.S+c.P+c.C;
+  return c;
 }

@@ -1,15 +1,6 @@
-// M2.js - 持仓市值
-// Generated 2025-07-12
-import { buildPositions } from './positionUtils.js';
+// Trading77788 v6 - M2.js generated 2025-07-12
 
-/**
- * @param trades Array
- * @param prices Object mapping symbol -> latest price
- */
-export default function M2(trades = [], prices = {}) {
-  const pos = buildPositions(trades);
-  return pos.reduce((sum, p) => {
-    const current = Number(prices[p.symbol]) || 0;
-    return sum + Math.abs(current * p.qty);
-  }, 0);
+
+export default function M2(pos,priceMap){
+  return pos.reduce((a,p)=>a+Math.abs((priceMap[p.symbol]||0)*p.qty),0);
 }

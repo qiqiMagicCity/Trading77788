@@ -1,83 +1,42 @@
-// Auto-generated Trading77788 v3
-// File: modules/metrics/M5.js
-// Date: 2025-07-12
+// Trading77788 v6 - M5.js generated 2025-07-12
 
-import { buildFifoState, processTradeFIFO } from '../helpers/fifo.js';
-import { todayStr } from '../../utils/timeNY.js';
 
-/* Returns {behavior: Number, fifo: Number} */
-export default function M5(trades=[]) {
-  const today = todayStr();
-  const todayTrades = trades.filter(t=>t.date === today);
-
-  let behaviorPL = 0;
-  let fifoPL = 0;
-
-  // Historical FIFO state
-  const histState = buildFifoState();
-  for (const t of trades.filter(r=>r.date < today)) processTradeFIFO(histState, t);
-
-  // Intraday open stacks
-  const buyStack = [];   // array of {qty, price}
-  const shortStack = []; // array of {qty, price}
-
-  function popFromStack(stack, qtyNeeded) {
-    const out = [];
-    while (qtyNeeded > 0 && stack.length) {
-      const lot = stack[0];
-      const use = Math.min(qtyNeeded, lot.qty);
-      out.push({qty: use, price: lot.price});
-      lot.qty -= use;
-      qtyNeeded -= use;
-      if (lot.qty === 0) stack.shift();
+import {todayStr} from '../../utils/timeNY.js';
+export default function M5(trades){
+  const today=todayStr();
+  const todayTrades=trades.filter(t=>t.date===today);
+  const buyStack={}, shortStack={};
+  let m51=0,m52=0;
+  function push(stack,sym,lot){(stack[sym]=stack[sym]||[]).push(lot);}
+  function match(stack,sym,qty,cb){
+    const arr=stack[sym]||[];
+    while(qty>0 && arr.length){
+      const lot=arr[0];
+      const use=Math.min(qty,lot.qty);
+      cb(lot, use);
+      lot.qty-=use;
+      qty-=use;
+      if(lot.qty===0) arr.shift();
     }
-    return {matched: out, remain: qtyNeeded};
+    return qty;
   }
-
-  for (const t of todayTrades) {
-    if (t.side === 'BUY') {
-      buyStack.push({qty:t.qty, price:t.price});
-      processTradeFIFO(histState, t); // open in FIFO too
-    } else if (t.side === 'SHORT') {
-      shortStack.push({qty:t.qty, price:t.price});
-      processTradeFIFO(histState, t);
-    } else if (t.side === 'SELL') {
-      let qty = t.qty;
-      // 1) Match with today's BUY for behavior
-      const res1 = popFromStack(buyStack, qty);
-      for (const lot of res1.matched) {
-        behaviorPL += (t.price - lot.price) * lot.qty;
-        fifoPL     += (t.price - lot.price) * lot.qty; // same cost
-        qty -= lot.qty;
-      }
-      // 2) Remaining qty -> historical FIFO
-      if (res1.remain > 0) {
-        let remaining = res1.remain;
-        const callback = match => {
-          fifoPL += (match.closePrice - match.openPrice) * match.qty;
-          remaining -= match.qty;
-        };
-        // Create synthetic trade to process
-        processTradeFIFO(histState, {...t, qty: res1.remain}, callback);
-      }
-    } else if (t.side === 'COVER') {
-      let qty = t.qty;
-      const res1 = popFromStack(shortStack, qty);
-      for (const lot of res1.matched) {
-        behaviorPL += (lot.price - t.price) * lot.qty;
-        fifoPL     += (lot.price - t.price) * lot.qty;
-        qty -= lot.qty;
-      }
-      if (res1.remain > 0) {
-        let remaining = res1.remain;
-        const callback = match => {
-          fifoPL += (match.openPrice - match.closePrice) * match.qty;
-          remaining -= match.qty;
-        };
-        processTradeFIFO(histState, {...t, qty: res1.remain}, callback);
-      }
+  const fifoCost={}; // symbol -> FIFO cost tracker from previous days isn't available for m5.2 sample limited.
+  todayTrades.forEach(t=>{
+    if(t.side==='BUY') push(buyStack,t.symbol,{qty:t.qty,price:t.price});
+    else if(t.side==='SHORT') push(shortStack,t.symbol,{qty:t.qty,price:t.price});
+    else if(t.side==='SELL'){
+      let remain=t.qty;
+      remain=match(buyStack,t.symbol,remain,(lot,use)=>{
+        m51+=(t.price-lot.price)*use;
+        m52+=(t.price-lot.price)*use;
+      });
+    }else if(t.side==='COVER'){
+      let remain=t.qty;
+      remain=match(shortStack,t.symbol,remain,(lot,use)=>{
+        m51+=(lot.price-t.price)*use;
+        m52+=(lot.price-t.price)*use;
+      });
     }
-  }
-
-  return {behavior: behaviorPL, fifo: fifoPL};
+  });
+  return {behavior:m51,fifo:m52};
 }
