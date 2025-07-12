@@ -14,6 +14,16 @@
   grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
 }
 
+/* 支持M5双行显示 */
+.box-value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.box-value span {
+  margin: 2px 0;
+}
+
 /* 确保符号按钮始终10个一行 */
 .symbols-list{
   display:flex;
@@ -27,6 +37,7 @@
 
 .symbol-tag{
   flex:0 0 calc(10% - 8px);
+  text-align:center;
 }
 
 html{font-size:115%;background:#002020;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;}
@@ -152,7 +163,7 @@ body{margin:0;}
   padding: 4px 14px;
   border-radius: 6px;
   font-size: 13px;
-  white-space: normal;
+  white-space: nowrap;
   opacity: 0.97;
   pointer-events: none;
   box-shadow: 0 2px 7px 0 rgba(0,0,0,0.19);
@@ -264,3 +275,29 @@ body{margin:0;}
 .calendar-header div{color:#94a3b8;}
 /* 修复日视图滚动 */
 .calendar-scroll{overflow:auto;max-height:360px;}
+
+/* 媒体查询 - 移动适配优化 */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .table {
+    font-size: 0.7rem;
+    overflow-x: auto;
+    display: block;
+  }
+  .symbols-list {
+    justify-content: center;
+  }
+  .symbol-tag {
+    flex: 0 0 calc(20% - 8px);
+  }
+  .calendar-grid {
+    grid-template-columns: repeat(7, minmax(80px,1fr));
+  }
+  .btn-action {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+}

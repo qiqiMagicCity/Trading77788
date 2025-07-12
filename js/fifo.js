@@ -1,4 +1,3 @@
-
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -105,5 +104,62 @@ function getWeekIdx(dateStr){
     return allTrades;
   }
 
-  g.FIFO = {computeFIFO};
+  /* ---------- Compute Intraday PNL for M5 ---------- */
+  function computeIntradayPNL(trades){
+    const todayStr = todayNY();
+    const dayTrades = trades.filter(t=> t.date === todayStr);
+    const bySymbol = {};
+    dayTrades.forEach(t=>{
+      if(!bySymbol[t.symbol]) bySymbol[t.symbol]=[];
+      bySymbol[t.symbol].push(t);
+    });
+    let behavior = 0;
+    let fifo = 0;
+    Object.entries(bySymbol).forEach(([sym, ts])=>{
+      // Behavior perspective (M5.1)
+      const queueBehavior = [];
+      // FIFO perspective (M5.2) - use global FIFO from computeFIFO
+      const fullTrades = FIFO.computeFIFO(trades.filter(tr => tr.symbol === sym));
+      const dayFull = fullTrades.filter(tr => tr.date === todayStr);
+      ts.forEach(t=>{
+        let signedQty=0;
+        if(t.side==='BUY'||t.side==='COVER'){ signedQty = t.qty; }
+        else if(t.side==='SELL'||t.side==='SHORT'){ signedQty = -t.qty; }
+        else { return; }
+        let price = t.price;
+        if(signedQty>0){
+          let remaining = signedQty;
+          while(remaining>0 && queueBehavior.length && queueBehavior[0].qty<0){
+            let opp = queueBehavior[0];
+            const match = Math.min(remaining, -opp.qty);
+            behavior += (opp.price - price) * match;
+            opp.qty += match;
+            remaining -= match;
+            if(opp.qty===0) queueBehavior.shift();
+          }
+          if(remaining>0){
+            queueBehavior.push({qty: remaining, price});
+          }
+        }else if(signedQty<0){
+          let remaining = -signedQty;
+          while(remaining>0 && queueBehavior.length && queueBehavior[0].qty>0){
+            let opp = queueBehavior[0];
+            const match = Math.min(remaining, opp.qty);
+            behavior += (price - opp.price) * match;
+            opp.qty -= match;
+            remaining -= match;
+            if(opp.qty===0) queueBehavior.shift();
+          }
+          if(remaining>0){
+            queueBehavior.push({qty: -remaining, price});
+          }
+        }
+      });
+      // FIFO (M5.2)
+      fifo += dayFull.reduce((s, tr) => s + (tr.pl || 0), 0);
+    });
+    return {behavior: isFinite(behavior) ? behavior : 0, fifo: isFinite(fifo) ? fifo : 0};
+  }
+
+  g.FIFO = {computeFIFO, computeIntradayPNL};
 })(window);
