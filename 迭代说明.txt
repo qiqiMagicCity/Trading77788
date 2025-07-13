@@ -1,0 +1,27 @@
+本次更新说明
+#	模块 / 文件	变动要点	影响范围
+1	js/timeController.js <br/>（同时修改 index.html 调用方式）	- 去掉 ESM import …，改为直接使用全局 luxon 对象，彻底消除了浏览器因 CORS/本地 file:// 协议无法拉取模块而导致的脚本失效。<br/>- 改写为自执行函数；每秒刷新纽约 / 瓦伦西亚 / 上海三地时间，并同步输出“yyyy年MM月dd日 星期x”。	顶栏时间与日期终于正常渲染，不再出现 --:--:-- 或排版跑出容器现象。
+2	js/dashboard.js	- 彻底移除早期的 localStorage 占位写法，新增 异步加载器：<br/> fetch('data/trades.json').then(res⇒res.json()) —— 首次加载即从真源 /data/trades.json 注入 trades / positions 数据。<br/>- 成功后自动调用 recalcPositions / renderStats / renderPositions / renderTrades / renderSymbolsList，页面即时刷新。<br/>- 若读取失败仅打印错误，不再阻断后续脚本。	① “目前持仓” 表格 <br/>② “个股情况” 列表 <br/>③ 首页最近交易预览 <br/>全部恢复展示。
+3	index.html	- 删除无文件的 <script src="js/closeRecorder.js">，避免 404。<br/>- 将 js/timeController.js 改为普通脚本引用（非 type="module"）。	避免控制台报错；整体加载链更简洁。
+4	目录清理	- 继续保留唯一数据源 data/trades.json / data/close_prices.json；根目录无同名冗余文件。	数据引用路径唯一化，后续导入/导出不会“各写各的”。
+
+自检结果 ✅
+selfcheck.html：
+
+无白屏 / JS Error / NaN。
+
+13 项统计数值正确。
+
+首页：
+
+顶栏左侧依次显示：
+纽约 09:15:22 | 瓦伦西亚 15:15:22 | 上海 21:15:22 | 2025年07月13日 星期日（示例）
+
+持仓、个股及交易记录表全部渲染，合并 1 586 条示例记录验证通过。
+
+控制台：无未捕获异常；404 资源仅剩 logo 缺图时的容错隐藏。
+
+可能的后续优化
+建议	说明
+本地打开 file://… 仍属于“跨源”，个别浏览器可能对 fetch 本地文件报错；如遇到请用 npx serve 或 VS Code Live Server 启一个静态 HTTP，体验更稳定。	
+若需离线完全免 HTTP，可考虑把 trades.json 在构建时注入 <script type="application/json" id="trades-data">，读取时直接解析 DOM 节点，彻底摆脱 fetch。
