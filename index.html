@@ -1,85 +1,42 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading777 仪表盘</title>
+  <title>Trading777 💹💹💹 | 琦大爷</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
-  <script>
-    if (!window.luxon) {
-      console.warn('luxon not loaded, fallback to native Date');
-      window.luxon = { DateTime: {
-        now: () => new Date(),
-        setZone: function() { return this; },
-        toISODate: function() { return new Date().toISOString().slice(0,10); }
-      } };
-    }
-  </script>
-  <script src="js/shared.js"></script>
-  <script src="js/fifo.js"></script>
-  <script src="js/equityCurve.js"></script>
+  <script src="js/lib/luxon.min.js"></script>
+  <script src="js/lib/utils.js"></script>
   <script src="js/symbols.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/fifo.js"></script>
+  <script src="js/dailyClose.js"></script>
+  <script src="js/equityCurve.js"></script>
   <script src="js/dashboard.js"></script>
 </head>
 <body>
   <div class="top">
-    <div class="clocks" id="clocks"></div>
+    <div id="clocks" class="clocks"></div>
     <div class="logo">Trading777 💹💹💹 | 琦大爷</div>
     <div class="right-btns">
-      <button id="import">导入</button>
-      <button id="export">导出</button>
-      <button id="export-prices">导出收盘价格</button>
-      <button id="import-prices">导入收盘价格</button>
+      <button onclick="importData()">导入</button>
+      <button onclick="exportData()">导出</button>
+      <button onclick="exportClosePrices()">导出收盘价格</button>
+      <button onclick="importClosePrices()">导入收盘价格</button>
     </div>
   </div>
-  <div id="nyDate" class="date"></div>
-  <div class="stats-grid" id="stats-grid"></div>
+
+  <div id="stats-grid" class="stats-grid"></div>
+
   <div class="section-title">目前持仓</div>
-  <table class="table" id="positions"></table>
+  <table id="positions" class="table"></table>
+
   <div class="section-title">交易记录</div>
-  <table class="table" id="trades"></table>
+  <table id="trades" class="table"></table>
+
   <div class="section-title">个股详情</div>
   <div id="symbols-list" class="symbols-list"></div>
+
   <button id="fab">+</button>
 </body>
 </html>

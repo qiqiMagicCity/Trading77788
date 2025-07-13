@@ -94,11 +94,11 @@ function updatePrices() {
 
 // Update clocks
 function updateClocks() {
-  const fmt = tz => new Date().toLocaleTimeString('en-GB', {timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit'});
+  const fmt = tz => new Date().toLocaleTimeString('en-GB', {timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  let nyDateStr = new Intl.DateTimeFormat('zh-CN', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short'}).format(new Date());
+  nyDateStr = nyDateStr.replace(/-/g, '/');  // 替换-为/，如2025/07/13 周日
   const clocks = document.getElementById('clocks');
-  if (clocks) clocks.innerHTML = `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')}`;
-  const nyDate = document.getElementById('nyDate');
-  if (nyDate) nyDate.innerHTML = new Intl.DateTimeFormat('zh-CN', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short'}).format(new Date());
+  if (clocks) clocks.innerHTML = `纽约：${fmt('America/New_York')} | 瓦伦西亚：${fmt('Europe/Madrid')} | 上海：${fmt('Asia/Shanghai')} ${nyDateStr}`;
 }
 
 // Load and render
