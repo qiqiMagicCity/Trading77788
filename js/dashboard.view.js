@@ -1,16 +1,16 @@
-/* M2/view.js
-   负责 DOM 渲染
-*/
-import { init as logicInit } from './logic.js';
-import ModuleBase from '../ModuleBase.js';
-const NAME = 'M2';
-const eventName = `${NAME}:update`;
-export function init(containerSelector = '#M2') {
-  const container = document.querySelector(containerSelector);
-  if (!container) return;
-  window.addEventListener(eventName, (e) => {
-    const { value } = e.detail;
-    container.textContent = value.toLocaleString();
+console.log('dashboard.view loaded');
+// simple formatter
+function fmt(v){
+  if(typeof v==='number') return Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(v);
+  return v;
+}
+function update(id,val){
+  const el=document.getElementById(id);
+  if(el) el.textContent=fmt(val);
+}
+// listen M1-M13
+for(let i=1;i<=13;i++){
+  window.addEventListener(`M${i}:update`,e=>{
+    update(`M${i}-value`, e.detail.value ?? e.detail);
   });
-  logicInit();
 }
