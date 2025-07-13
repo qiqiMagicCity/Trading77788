@@ -1,8 +1,12 @@
+
 /**
- * safeNumber – Format a number for display, returning '—' if invalid
+ * safeNumber – Format a number for display, returning '--' if invalid, '0' for zero
  * @param {number} val
  * @returns {string}
  */
 export function safeNumber(val){
-  return Number.isFinite(val) ? val.toLocaleString() : '—';
+  if(Number.isFinite(val)){
+    return val === 0 ? '0' : val.toLocaleString();
+  }
+  return '--';
 }

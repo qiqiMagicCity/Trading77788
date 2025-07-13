@@ -18,8 +18,11 @@ export default class ModuleBase {
 
   /* helper for numeric display */
   static safeNumber(val) {
-    return Number.isFinite(val) ? val.toLocaleString() : '--';
+  if(Number.isFinite(val)){
+    return val===0 ? '0' : val.toLocaleString();
   }
+  return '--';
+}
 
   /* generic render with error handling */
   static safeRender(container, data) {
