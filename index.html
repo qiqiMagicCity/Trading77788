@@ -1,59 +1,20 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Trading777 v7.80</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="css/style.css?v=7.80" />
-    <script src="js/priceService.js?v=12"></script>
+    <meta charset="UTF-8">
+    <title>Trading777_1.0</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="top-nav" id="time-header">
-  <span>纽约: <span id="time-ny">--:--:--</span></span>
-  <span style="margin-left:20px;">瓦伦西亚: <span id="time-va">--:--:--</span></span>
-  <span style="margin-left:20px;">上海: <span id="time-sh">--:--:--</span></span>
-  <span style="margin-left:20px;" id="date-today"></span>
-</div>
-
-  <header class="top">
-    <div id="clocks" class="clocks"></div><div class="right-btns">
-      <span id="nyDate" class="date"></span>
-      <button id="import">导入</button>
-      <button id="export" onclick="exportData()" onclick="exportData()">导出</button>
-      <button id="exportPrices">导出收盘价格</button>
-      <button id="importPrices">导入收盘价格</button>
-      <button id="metricsPage" onclick="location.href='metrics.html'">指标</button>
-
+    <h1>Trading777 账户总览</h1>
+    <div id="stats">
+        <div id="m1">M1 总成本: --</div>
+        <div id="m2">M2 市值: --</div>
+        <div id="m3">M3 浮盈: --</div>
     </div>
-  </header>
-
-  <h3 class="section-title" id="positions-title">目前持仓 <a href="analysis.html" class="details">交易分析</a></h3>
-  <table id="positions" class="table"></table>
-
-  
-<h3 class="section-title">个股情况 <a href="index.html" class="details" style="visibility:hidden;">详情</a></h3>
-<div id="symbols-list" class="symbols-list"></div>
-
-
-  <h3 class="section-title">交易记录 <a href="trades.html" class="details">查看全部</a></h3>
-  <table id="trades" class="table"></table>
-
-  <button id="fab">+</button>
-
-  
-<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
-<script src="js/equityCurve.js?v=7.80"></script>
-<script src="js/fifo.js?v=7.80"></script>
-  <script src="js/calc.js?v=7.80"></script>
-  <script src="js/symbols.js?v=7.80"></script>
-  <script src="js/dashboard.js?v=7.80"></script>
-    <script type="module" src="js/closeRecorder.js?v=7.80"></script>
-    <script type="module" src="js/dailyClose.js?v=7.80"></script>
-    <script type="module" src="js/importPrices.js?v=7.80"></script>
-
-<script src="utils/dateUtils.js"></script>
-<script src="js/timeController.js"></script>
-
-<script src="js/init.js"></script>
+    <script type="module" src="js/modules/m1.js"></script>
+    <script type="module" src="js/modules/m2.js"></script>
+    <script type="module" src="js/modules/m3.js"></script>
+    <script type="module" src="js/modules/priceService.js"></script>
 </body>
 </html>
