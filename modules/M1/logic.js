@@ -1,3 +1,4 @@
+// js/modules/M1/logic.js
 import ModuleBase from '../ModuleBase.js';
 import { getTrades, getClosePrices } from '../../utils/dataStore.js';
 
@@ -9,11 +10,11 @@ class M1Logic extends ModuleBase {
 
   async calc() {
     try {
-      // TODO: replace with real calculation for M1
       const trades = await getTrades();
       const prices = await getClosePrices();
-      const result = 0;
-      this.publish(result);
+      // TODO: 使用正确的算法模块 m1Calc(trades, prices)
+      const resultValue = 88888; // 临时测试值，上传验证后再替换
+      this.publish({ value: resultValue });
     } catch (err) {
       this.publish({ error: err.message });
       this.log(err);
