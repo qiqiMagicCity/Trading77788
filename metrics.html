@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <title>账户实时指标</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <h1>实时盈亏指标 (基于 Finnhub 实时价)</h1>
+  <div id="metrics-table"></div>
+<script type="module">
+  import { loadAll } from './utils/dataService.js';
+  import { calcAll } from './js/metricsService.js';
+  (async ()=>{
+    const data = await loadAll();
+    const metrics = calcAll(data);
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(metrics, null, 2);
+    document.getElementById('metrics-table').appendChild(pre);
+  })();
+</script>
+</body>
+</html>
