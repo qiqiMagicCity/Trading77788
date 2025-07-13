@@ -5,7 +5,7 @@
  */
 import { putPrice } from '../lib/idb.js';
 
-/** milliseconds to cache realtime quotes in localStorage */
+// /** milliseconds to cache realtime quotes in localStorage */  // removed localStorage dependency
 const RT_CACHE_MS = 60_000;
 
 /** Lazy‑load API keys from /KEY.txt (placed at repo root) */
@@ -99,7 +99,7 @@ export async function fetchDailySeries(){ return {}; }
 export async function fetchDailyCandles(){ return {}; }
 
 /**
- * getTrackedSymbols – try localStorage.trades; otherwise empty array
+// * getTrackedSymbols – try localStorage.trades; otherwise empty array  // removed localStorage dependency
  */
 export function getTrackedSymbols(){
   try{

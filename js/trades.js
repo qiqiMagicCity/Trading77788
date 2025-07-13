@@ -67,7 +67,7 @@ function render(){
   tbl.querySelectorAll('button[data-del]').forEach(btn=>{
      btn.onclick=()=>{
        const idx=parseInt(btn.getAttribute('data-del'),10);
-       const trades=JSON.parse(localStorage.getItem('trades')||'[]');
+// const trades=JSON.parse(localStorage.getItem('trades')||'[]');  // removed localStorage dependency
        trades.splice(idx,1);
               render();
      };

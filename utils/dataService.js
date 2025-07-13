@@ -19,7 +19,7 @@ export async function loadAll() {
   return { trades, closes, livePrices };
 }
 
-// loadTrades: only trades.json, no localStorage fallback
+// // loadTrades: only trades.json, no localStorage fallback  // removed localStorage dependency
 export async function loadTrades(){
   try{
     const res = await fetch('trades.json');

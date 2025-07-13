@@ -665,7 +665,7 @@ window.addEventListener('load',()=>{
     const idx=parseInt(null /* removed getItem */,10);
     if(!isNaN(idx)){
       openTradeForm(idx);
-      localStorage.removeItem('editIndex');
+// localStorage.removeItem('editIndex');  // removed localStorage dependency
       history.replaceState(null,'',location.pathname);
     }
   }
