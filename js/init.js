@@ -36,3 +36,23 @@
       }
   });
 })();
+
+
+// --- Patch: always fetch and merge with localStorage ---
+(function(){
+   const LOCAL_KEY = 'trades';
+   async function mergeRemoteTrades(){
+       try{
+         const remote = await fetch('data/trades.json').then(r=>r.json());
+         const remoteArr = Array.isArray(remote)?remote:(remote.trades||[]);
+         const localArr = JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]');
+         const merged = [...localArr];
+         const ids = new Set(localArr.map(t=>t.id||t.time||JSON.stringify(t)));
+         remoteArr.forEach(t=>{ const key=t.id||t.time||JSON.stringify(t); if(!ids.has(key)){merged.push(t);}});
+         window.trades = merged;
+         localStorage.setItem(LOCAL_KEY, JSON.stringify(merged));
+       }catch(e){console.warn('无法拉取远程 trades.json',e);}
+   }
+   // 在应用启动后立即合并
+   mergeRemoteTrades().then(()=>{ if(typeof recalcPositions==='function'){recalcPositions();}});
+})();

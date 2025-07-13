@@ -44,3 +44,14 @@
 
     refresh();
 })();
+
+
+// manual input fallback when no API key or quote
+window.priceService.promptPrice = function(symbol){
+   const existing = window.lastQuotes[symbol];
+   if(existing) return existing;
+   const v = prompt(`请输入 ${symbol} 的最新价格:`,'');
+   const n = parseFloat(v);
+   if(!isNaN(n)){ window.lastQuotes[symbol]=n; return n;}
+   return undefined;
+};

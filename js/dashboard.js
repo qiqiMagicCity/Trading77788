@@ -832,3 +832,34 @@ if (typeof priceService !== 'undefined') {
     }
     setInterval(refreshMarketData, 65 * 1000);
 }
+
+
+// Patched exportData to ensure browser download works
+window.exportData = function(){
+    try{
+        const data = {trades: window.trades || [], generated: new Date().toISOString()};
+        const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'trades.json';
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        document.body.removeChild(a);
+    }catch(e){
+        console.error('exportData failed',e);
+        alert('导出失败，请查看控制台日志');
+    }
+}
+
+
+// attempt manual price if missing
+if (typeof priceService !== 'undefined') {
+   window.positions && window.positions.forEach(p=>{
+        if(!priceService.getLast(p.symbol)){
+            const manual=priceService.promptPrice(p.symbol);
+            if(manual){ p.lastPrice=manual; }
+        }
+   });
+}
