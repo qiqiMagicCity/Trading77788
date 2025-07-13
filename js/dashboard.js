@@ -78,10 +78,13 @@ let positions = JSON.parse(localStorage.getItem('positions') || 'null') || defau
 if (!Array.isArray(positions)) {
   positions = Object.values(positions || {});
 }
+console.log('Loaded positions type:', Array.isArray(positions) ? 'array' : typeof positions);
+
 let trades = JSON.parse(localStorage.getItem('trades') || 'null') || defaultTrades.slice();
 if (!Array.isArray(trades)) {
   trades = Object.values(trades || {});
 }
+console.log('Loaded trades type:', Array.isArray(trades) ? 'array' : typeof trades);
 
 // If localStorage trades is empty, load from data/trades.json
 async function loadTradesIfEmpty() {
@@ -94,9 +97,15 @@ async function loadTradesIfEmpty() {
         if (!Array.isArray(trades)) {
           trades = Object.values(trades || {});
         }
+        if (data.positions) {
+          positions = data.positions;
+          if (!Array.isArray(positions)) {
+            positions = Object.values(data.positions || {});
+          }
+        }
         recalcPositions();
         saveData();
-        console.log('Loaded trades from data/trades.json');
+        console.log('Loaded trades and positions from data/trades.json');
       }
     } catch (error) {
       console.error('Failed to load data/trades.json:', error);
