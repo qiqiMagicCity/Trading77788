@@ -1,29 +1,24 @@
 import ModuleBase from '../ModuleBase.js';
-import { getTrades } from '../../utils/dataStore.js';
-function isToday(ts){
-  const d = new Date(ts);
-  const now = new Date();
-  return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
-}
-class M7Logic extends ModuleBase{
-  constructor(){ super('M7'); this.calc(); }
-  async calc(){ try{
-    const trades = await getTrades();
-    const today = trades.filter(t=>isToday(t.date));
-    const counts ={B:0,S:0,P:0,C:0
-  }catch(err){
-    this.publish({error: err.message});
-    this.log(err);
-  } };
-    today.forEach(t=>{
-      if(t.type==='BUY') counts.B++;
-      else if(t.type==='SELL') counts.S++;
-      else if(t.type==='SHORT') counts.P++;
-      else if(t.type==='COVER') counts.C++;
-    });
-    const total = counts.B+counts.S+counts.P+counts.C;
-    this.publish({counts,total});
+import { getTrades, getClosePrices } from '../../utils/dataStore.js';
+
+class M7Logic extends ModuleBase {
+  constructor() {
+    super('M7');
+    this.calc();
+  }
+
+  async calc() {
+    try {
+      // TODO: replace with real calculation for M7
+      const trades = await getTrades();
+      const prices = await getClosePrices();
+      const result = 0;
+      this.publish(result);
+    } catch (err) {
+      this.publish({ error: err.message });
+      this.log(err);
+    }
   }
 }
-window['M7Logic']=new M7Logic();
-export default window['M7Logic'];
+
+export default new M7Logic();

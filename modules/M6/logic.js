@@ -1,10 +1,24 @@
 import ModuleBase from '../ModuleBase.js';
-class M6Logic extends ModuleBase{
-  constructor(){ super('M6'); this.v3=0; this.v4=0;
-    window.addEventListener('M3:update', e=>{this.v3=e.detail.value; this.update();});
-    window.addEventListener('M4:update', e=>{this.v4=e.detail.value; this.update();});
+import { getTrades, getClosePrices } from '../../utils/dataStore.js';
+
+class M6Logic extends ModuleBase {
+  constructor() {
+    super('M6');
+    this.calc();
   }
-  update(){ this.publish({value: this.v3+this.v4}); }
+
+  async calc() {
+    try {
+      // TODO: replace with real calculation for M6
+      const trades = await getTrades();
+      const prices = await getClosePrices();
+      const result = 0;
+      this.publish(result);
+    } catch (err) {
+      this.publish({ error: err.message });
+      this.log(err);
+    }
+  }
 }
-window['M6Logic']=new M6Logic();
-export default window['M6Logic'];
+
+export default new M6Logic();

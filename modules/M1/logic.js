@@ -1,12 +1,24 @@
 import ModuleBase from '../ModuleBase.js';
+import { getTrades, getClosePrices } from '../../utils/dataStore.js';
+
 class M1Logic extends ModuleBase {
-  constructor(){ super('M1'); this.calc(); }
-  calc(){ try{
-    this.publish({value:0
-  }catch(err){
-    this.publish({error: err.message});
-    this.log(err);
-  } }); }
+  constructor() {
+    super('M1');
+    this.calc();
+  }
+
+  async calc() {
+    try {
+      // TODO: replace with real calculation for M1
+      const trades = await getTrades();
+      const prices = await getClosePrices();
+      const result = 0;
+      this.publish(result);
+    } catch (err) {
+      this.publish({ error: err.message });
+      this.log(err);
+    }
+  }
 }
-window['M1Logic'] = new M1Logic();
-export default window['M1Logic'];
+
+export default new M1Logic();

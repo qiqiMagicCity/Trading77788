@@ -1,32 +1,24 @@
 import ModuleBase from '../ModuleBase.js';
-import { getTrades } from '../../utils/dataStore.js';
-import { getPrice } from '../../utils/priceService.js';
-import { buildFIFO, getOpenPositions } from '../../utils/fifo.js';
+import { getTrades, getClosePrices } from '../../utils/dataStore.js';
 
 class M3Logic extends ModuleBase {
-  constructor(){ super('M3'); this.init(); }
-  async init(){
-    await this.calc();
-    setInterval(()=>this.calc(), 60000);
+  constructor() {
+    super('M3');
+    this.calc();
   }
-  async calc(){ try{
-    const trades = await getTrades();
-    const fifoMap = buildFIFO(trades);
-    const openPos = getOpenPositions(fifoMap);
-    let total = 0;
-    for(const p of openPos){
-      const price = await getPrice(p.symbol);
-      if(p.dir==='LONG'){
-        total += (price - p.cost) * p.qty;
-  }catch(err){
-    this.publish({error: err.message});
-    this.log(err);
-  } }else{
-        total += (p.cost - price) * p.qty;
-      }
+
+  async calc() {
+    try {
+      // TODO: replace with real calculation for M3
+      const trades = await getTrades();
+      const prices = await getClosePrices();
+      const result = 0;
+      this.publish(result);
+    } catch (err) {
+      this.publish({ error: err.message });
+      this.log(err);
     }
-    this.publish({value: total});
   }
 }
-window['M3Logic'] = new M3Logic();
-export default window['M3Logic'];
+
+export default new M3Logic();
