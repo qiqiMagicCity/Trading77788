@@ -1,14 +1,15 @@
 import ModuleBase from '../ModuleBase.js';
 import './logic.js';
 import { safeNumber } from '../../utils/renderUtils.js';
-class M8View extends ModuleBase{
-  constructor(){ super('M8'); this.container=document.querySelector('#M8-value'); this.subscribe(e=>this.render(e.detail)); }
-  render(data){ 
-    if(!this.container) return;
-    if(data && data.error){ this.container.textContent = 'ERR'; return; }
-    this.container.textContent = safeNumber(data.value);
-  }=data;
-    this.container.textContent=`累计 ${total} 笔 (B:${counts.B},S:${counts.S},P:${counts.P},C:${counts.C})`;
+
+class M8View extends ModuleBase {
+  constructor() {
+    super('M8');
+    this.container = document.querySelector('#M8-value');
+    this.subscribe(e => this.render(e.detail));
+  }
+  render(data) {
+    ModuleBase.safeRender(this.container, data);
   }
 }
-window['M8View']=new M8View();
+export default new M8View();
