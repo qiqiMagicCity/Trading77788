@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading777 💹💹💹 | 琦大爷</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/lib/luxon.min.js"></script>
-  <script src="js/lib/utils.js"></script>
-  <script src="js/symbols.js"></script>
-  <script src="js/calc.js"></script>
-  <script src="js/fifo.js"></script>
-  <script src="js/dailyClose.js"></script>
-  <script src="js/equityCurve.js"></script>
-  <script src="js/dashboard.js"></script>
+    <!-- Meta tags for standard rendering -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Title with full logo text -->
+    <title>Trading777 💹💹💹 | 琦大爷</title>
+    <!-- CSS link -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- JS libraries -->
+    <script src="js/lib/luxon.min.js"></script>
+    <script src="js/lib/luxon.min.js"></script> <!-- For time zone handling -->
+    <script src="js/lib/utils.js"></script>
+    <script src="js/symbols.js"></script>
+    <script src="js/calc.js"></script>
+    <script src="js/fifo.js"></script>
+    <script src="js/dailyClose.js"></script>
+    <script src="js/equityCurve.js"></script>
+    <script src="js/dashboard.js"></script>
 </head>
 <body>
+  <!-- Top bar with clocks, logo, buttons -->
   <div class="top">
     <div id="clocks" class="clocks"></div>
     <div class="logo">Trading777 💹💹💹 | 琦大爷</div>
@@ -26,17 +32,22 @@
     </div>
   </div>
 
+  <!-- Stats grid section -->
   <div id="stats-grid" class="stats-grid"></div>
 
+  <!-- Positions section -->
   <div class="section-title">目前持仓</div>
   <table id="positions" class="table"></table>
 
+  <!-- Trades section -->
   <div class="section-title">交易记录</div>
   <table id="trades" class="table"></table>
 
+  <!-- Symbols section -->
   <div class="section-title">个股详情</div>
   <div id="symbols-list" class="symbols-list"></div>
 
+  <!-- FAB button -->
   <button id="fab">+</button>
 </body>
 </html>
