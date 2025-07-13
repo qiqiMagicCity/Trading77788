@@ -2,7 +2,7 @@
   --page-max:1200px;
 }
 
-/* v5.3.7 页面宽度统一 */
+/* 页面宽度统一 */
 .section-title,.table,#symbols-list,.stats-grid{
   width:90%;
   max-width:var(--page-max);
@@ -14,7 +14,17 @@
   grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
 }
 
-/* 确保符号按钮始终10个一行 */
+/* M5双行支持 */
+.box-value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.box-value span {
+  margin: 2px 0;
+}
+
+/* 个股按钮8个一行 */
 .symbols-list{
   display:flex;
   flex-wrap:wrap;
@@ -26,15 +36,27 @@
 }
 
 .symbol-tag{
-  flex:0 0 calc(10% - 8px);
+  flex:0 0 calc(12.5% - 8px);
+  text-align:center;
+  padding:4px 8px;
+  background:#002b29;
+  border:1px solid #05c788;
+  border-radius:4px;
+  color:#05c788;
+  text-decoration:none;
+  font-size:14px;
+}
+.symbol-tag:hover{
+  background:#05c788;
+  color:#002b29;
 }
 
 html{font-size:115%;background:#002020;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;}
 body{margin:0;}
-.top{background:rgba(0,255,153,0.3);display:flex;justify-content:space-between;align-items:center;padding:8px 20px;box-sizing:border-box;}
-.clocks{display:flex;gap:12px;font-weight:600;}
-.logo{flex:0 0 36px;text-align:center;}
-.right-btns{margin-left:auto;margin-right:40px;}
+.top{background:rgba(0,255,153,0.3);display:flex;justify-content:space-between;align-items:center;padding:8px 20px;box-sizing:border-box;height:50px;}
+.clocks{position:absolute;left:20px;display:flex;gap:12px;font-weight:600;}
+.logo{flex:none;width:fit-content;margin:0 auto;text-align:center;font-weight:700;}
+.right-btns{position:absolute;right:20px;}
 .right-btns button{margin-left:10px;padding:4px 12px;border:none;border-radius:4px;background:#00e676;color:#002020;font-weight:600;cursor:pointer;}
 .stats-grid{display:grid;grid-template-columns:repeat(8,180px);gap:10px;justify-content:center;margin:20px auto;}
 .box{background:#003030;border:1px solid #00e67666;border-radius:6px;min-height:100px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:10px;}
@@ -52,8 +74,7 @@ body{margin:0;}
 .table td.green{color:#00e676;}
 #fab{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);width:48px;height:48px;border-radius:50%;background:#00e676;border:none;color:#002020;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
-
-/* --- modal --- */
+/* Modal */
 .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.65);display:flex;justify-content:center;align-items:center;z-index:1000;}
 .modal-content{background:#fff;color:#002020;padding:20px 24px;border-radius:8px;min-width:320px;max-width:90vw;}
 .modal-content h3{margin-top:0;color:#002020;text-align:center;}
@@ -63,8 +84,7 @@ body{margin:0;}
 .modal-content button#t-save{background:#00e676;color:#002020;font-weight:600;}
 .modal-content button#t-cancel{background:#ccc;color:#002020;}
 
-
-/* v3.3.5 新增 - 个股页面大字水印 */
+/* Watermark */
 .watermark{
   font-size:4rem;
   font-weight:700;
@@ -78,35 +98,16 @@ body{margin:0;}
 .purple{color:#b266ff;}
 .blue{color:#66ccff;}
 
-
-/* -------- symbols list (功能区3) -------- */
+/* Symbols list */
 .symbols-list{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
   margin:10px 0 20px;
-
   justify-content:center;
 }
-.symbol-tag{
-  padding:4px 8px;
-  background:#002b29;
-  border:1px solid #05c788;
-  border-radius:4px;
-  color:#05c788;
-  text-decoration:none;
-  font-size:14px;
 
-  flex:0 0 calc(10% - 8px);
-  text-align:center;
-}
-.symbol-tag:hover{
-  background:#05c788;
-  color:#002b29;
-}
-
-.table td, .table th { white-space: normal; }
-/* -- 美化 trades.html 页 编辑/删除按钮（圆形图标、动效、气泡） -- */
+/* Edit/Delete buttons */
 .btn-action {
   border: none;
   outline: none;
@@ -140,7 +141,7 @@ body{margin:0;}
   transform: scale(1.18) rotate(8deg);
 }
 
-/* 气泡提示 */
+/* Tooltip */
 .btn-action[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -152,7 +153,7 @@ body{margin:0;}
   padding: 4px 14px;
   border-radius: 6px;
   font-size: 13px;
-  white-space: normal;
+  white-space: nowrap;
   opacity: 0.97;
   pointer-events: none;
   box-shadow: 0 2px 7px 0 rgba(0,0,0,0.19);
@@ -163,42 +164,23 @@ body{margin:0;}
 .logo{width:36px;height:36px;object-fit:contain;vertical-align:middle;}
 .cn{ text-align:left; padding-left:12px; }
 
-/* Adaptive width for logo and Chinese columns */
-#all-trades th:nth-child(2),
-#all-trades td:nth-child(2){
-  width:48px;
-}
+/* Adaptive widths */
+#all-trades th:nth-child(2), #all-trades td:nth-child(2) { width:48px; }
+#all-trades th:nth-child(4), #all-trades td:nth-child(4) { max-width:220px; }
 
-#all-trades th:nth-child(4),
-#all-trades td:nth-child(4){
-  max-width:220px;
-}
+/* Table layout */
+#all-trades { table-layout: auto; }
 
+#all-trades th:nth-child(2), #all-trades td:nth-child(2) { width: 56px; text-align: center; }
+#all-trades th:nth-child(4), #all-trades td:nth-child(4) { width: 1%; white-space: nowrap; }
 
-/* v7.7.2 column width fine‑tuning */
-#all-trades {
-  table-layout: auto; /* keep natural width calc */
-}
+/* No wrap */
+#all-trades td, #all-trades th{white-space:nowrap;}
 
-#all-trades th:nth-child(2),
-#all-trades td:nth-child(2) { /* logo 列 */
-  width: 56px;           /* 正方形 logo + padding */
-  text-align: center;
-}
-
-#all-trades th:nth-child(4),
-#all-trades td:nth-child(4) { /* 中文列 */
-  width: 1%;             /* 最小化列占比，宽度由内容决定 */
-  white-space: nowrap;   /* 不换行 */
-}
-
-/* v7.7.5 nowrap fix */
-#all-trades td,#all-trades th{white-space:nowrap;}
-
+/* Date in top */
 .top .date{margin-right:12px;font-weight:bold;}
 
-
-/* --- v7.10 buttons & calendar --- */
+/* Buttons & calendar */
 .btn{
   background:#014d4d;
   border:1px solid #05b3b3;
@@ -236,7 +218,7 @@ body{margin:0;}
 .calendar-cell.negative{background:#5f1a1a;}
 .calendar-cell.zero{background:#2d3748;}
 
-/* --- calendar enhancements --- */
+/* Calendar controls */
 .calendar-controls{
   display:flex;
   align-items:center;
@@ -252,7 +234,7 @@ body{margin:0;}
   color:#fff;
 }
 
-/* v7.14 calendar header */
+/* Calendar header */
 .calendar-header{
   display:grid;
   grid-template-columns:repeat(7, minmax(120px,1fr));
@@ -262,20 +244,32 @@ body{margin:0;}
   margin-bottom:4px;
 }
 .calendar-header div{color:#94a3b8;}
-/* 修复日视图滚动 */
+
+/* Scroll fix */
 .calendar-scroll{overflow:auto;max-height:360px;}
 
-/* unified card colors */
-.stats-grid .title{
-  color:#a2e5cf;
-  font-size:0.9rem;
-  font-weight:600;
-  text-align:center;
-}
-.stats-grid .value{
-  color:#24e29c;
-  font-size:1.15rem;
-  font-weight:700;
-  text-align:center;
-  margin-top:4px;
+/* Mobile */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .table {
+    font-size: 0.7rem;
+    overflow-x: auto;
+    display: block;
+  }
+  .symbols-list {
+    justify-content: center;
+  }
+  .symbol-tag {
+    flex: 0 0 calc(12.5% - 8px);
+  }
+  .calendar-grid {
+    grid-template-columns: repeat(7, minmax(80px,1fr));
+  }
+  .btn-action {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
 }

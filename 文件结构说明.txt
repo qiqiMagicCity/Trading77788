@@ -1,0 +1,23 @@
+Trading77788/
+├── css/
+│   └── style.css (页面样式文件，定义颜色、布局、字体、盒子/表格/模态样式，支持M5双行、移动适配)
+├── data/
+│   ├── close_prices.json (收盘价格数据，JSON格式存储日期-符号-价格，用于浮盈计算)
+│   ├── price-history.json (价格历史数据，JSON格式存储符号历史价格，用于backfill)
+│   └── symbol_name_map.json (符号中文名映射，JSON格式存储符号-中文，用于表显示)
+├── js/
+│   ├── shared.js (共享工具文件，包含数据加载/保存、格式化函数、日期处理、防错wrapper、导入/导出prices逻辑)
+│   ├── dashboard.js (主页逻辑文件，处理数据加载、M1-M13计算、渲染盒子/表/按钮、事件如添加交易、价格更新)
+│   ├── fifo.js (FIFO计算文件，处理持仓recalc、当日/历史盈亏计算，支持M4/M5/M9)
+│   ├── equityCurve.js (曲线管理文件，加载/保存曲线数据、周期求和，支持M11-13)
+│   ├── analysis.js (分析页逻辑文件，渲染曲线图、日历grid、盈亏排行TOP10、视图切换事件)
+│   ├── trades.js (交易页逻辑文件，渲染全部交易记录表、编辑/删除事件)
+│   ├── stock.js (个股页逻辑文件，基于URL符号渲染详情/总收益/交易记录表)
+│   └── symbols.js (符号中文加载文件，动态fetch symbol_name_map.json，提供SymbolCN全局对象)
+├── logos/ (符号logo图片文件夹，用于表显示，复制你的旧logos或添加png如AAPL.png)
+├── analysis.html (分析页HTML，包含曲线div、日历控件/grid、排行表)
+├── index.html (主页HTML，包含顶栏、统计grid、持仓/交易表、个股列表、+按钮)
+├── KEY.txt (API密钥文件，包含Finnhub key，用于价格API)
+├── stock.html (个股页HTML，包含符号标题、详情div、交易表)
+├── trades.html (交易页HTML，包含全部交易表)
+└── vercel.json (Vercel配置文件，设置rewrites确保SPA路由)

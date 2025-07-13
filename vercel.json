@@ -1,11 +1,24 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "headers": [
+  "rewrites": [
+    {
+      "source": "/data/(.*)",
+      "destination": "/data/$1"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/js/$1"
+    },
+    {
+      "source": "/css/(.*)",
+      "destination": "/css/$1"
+    },
+    {
+      "source": "/logos/(.*)",
+      "destination": "/logos/$1"
+    },
     {
       "source": "/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=604800, immutable" }
-      ]
+      "destination": "/index.html"
     }
   ]
 }
