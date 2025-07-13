@@ -49,7 +49,7 @@ async function loadKeys(){
 export async function fetchRealtimePrice(symbol){
   const cacheKey = `rt_${symbol}`;
   try{
-    const cached = null;
+    const cached = JSON.parse(null /* removed getItem */||'null');
     if(cached && Date.now() - cached.ts < RT_CACHE_MS){
       return cached.price;
     }
@@ -66,7 +66,7 @@ export async function fetchRealtimePrice(symbol){
     const json = await res.json();
     const price = json.c ?? json.current ?? null;
     if(price!=null){
-      /* persistence disabled (localStorage removed) */
+      /* removed setItem */}));
     }
     return price;
   }catch(e){

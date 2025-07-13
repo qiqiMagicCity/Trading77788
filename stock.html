@@ -103,7 +103,17 @@ if(symbol){
 }
 
 
-    let trades = JSON.parse(localStorage.getItem('trades')||'[]').filter(t=>t.symbol===symbol);
+    
+let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+if(!trades.length){
+  try{
+    const resp = await fetch('data/trades.json');
+    const raw = await resp.json();
+    trades = Array.isArray(raw)?raw:(raw.trades||[]);
+  }catch(e){console.error(e);}
+}
+trades = trades.filter(t=>t.symbol===symbol);
+
     trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
     // 计算个股统计数据
     const longCnt = trades.filter(t=>t.side==='BUY'||t.side==='SELL').length;

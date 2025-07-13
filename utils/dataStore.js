@@ -1,6 +1,6 @@
 export async function getTrades(){
   try{
-    const res = await fetch('data/trades.json');
+    const res = await fetch('./trades.json');
     if(!res.ok) return [];
     const raw = await res.json();
     return Array.isArray(raw) ? raw : (raw.trades || []);

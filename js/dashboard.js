@@ -82,10 +82,7 @@ recalcPositions();
 
 
 /* Save helper */
-function saveData(){
-  /* removed setItem */);
-  /* removed setItem */);
-}
+// saveData will be provided by init.js
 
 /* ---------- 2. Utils ---------- */
 function fmtSign(n){
