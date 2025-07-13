@@ -8,13 +8,14 @@
      const saved = localStorage.getItem('trades');
      if(saved){
         try{ window.trades = JSON.parse(saved) || []; }catch(e){console.error(e);}
-        cb && cb();
+        try{ window.trades = JSON.parse(saved) || []; }catch(e){console.error(e);}
+        
      }else{
         fetch('data/trades.json').then(r=>r.json()).then(d=>{
             window.trades = Array.isArray(d)?d:(d.trades||[]);
             localStorage.setItem('trades', JSON.stringify(window.trades));
-            cb && cb();
-        }).catch(e=>{console.error('加载 trades.json 失败',e);});
+            
+         }).then(()=>{cb && cb();}).catch(e=>{console.error('加载 trades.json 失败',e);});
      }
   }
   window.saveData = function(){

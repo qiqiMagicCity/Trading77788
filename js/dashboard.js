@@ -1,4 +1,28 @@
 
+let closePricesCache = {};
+async function loadClosePrices(){
+    if(Object.keys(closePricesCache).length) return closePricesCache;
+    try{
+        const res = await fetch('data/close_prices.json');
+        closePricesCache = await res.json();
+    }catch(e){ console.error('无法加载 close_prices.json',e);}
+    return closePricesCache;
+}
+async function getPrevClose(symbol){
+   const closes = await loadClosePrices();
+   const dates = Object.keys(closes).sort(); // yyyy-mm-dd
+   const today = new Date().toISOString().slice(0,10);
+   let idx = dates.indexOf(today);
+   if(idx===-1) idx = dates.length;
+   for(let i=idx-1;i>=0;i--){
+      if(closes[dates[i]] && closes[dates[i]][symbol]!==undefined){
+         return closes[dates[i]][symbol];
+      }
+   }
+   return undefined;
+}
+
+
 /* ---------- Prev Close attachment (v7.27) ---------- */
 
 /* ---------- Global Timezone helpers (v7.79) ---------- */
@@ -30,7 +54,7 @@ async function attachPrevCloses(){
   for(const p of positions){
     const rec = await idb.getPrice(p.symbol, dateStr);
     if(rec && typeof rec.close === 'number'){
-      p.prevClose = rec.close;
+      if(!p.prevClose) { getPrevClose(p.symbol).then(v=>{p.prevClose=v;}); }
     }
   }
 }
@@ -821,7 +845,7 @@ if (typeof priceService !== 'undefined') {
             const last = priceService.getLast(p.symbol);
             if(last){
                 p.lastPrice = last;
-                if(p.prevClose){
+                if(p.prevClose!==undefined){
                     p.floatPL = ((last - p.prevClose) * p.qty).toFixed(2);
                 }
             }
