@@ -359,21 +359,21 @@ const mtdReal = sumPeriod(firstOfMonth);
 const ytdReal = sumPeriod(firstOfYear);
 
   return {
-    cost,
-    value,
-    floating,
-    todayReal,
+    cost: isNaN(cost) ? 0 : cost,  // 兜底 NaN
+    value: isNaN(value) ? 0 : value,
+    floating: isNaN(floating) ? 0 : floating,
+    todayReal: isNaN(todayReal) ? 0 : todayReal,
     wins,
     losses,
     todayTrades: todayTrades.length,
     totalTrades: trades.length,
-    histReal,
-    intradayReal,
-    dailyUnrealized,
+    histReal: isNaN(histReal) ? 0 : histReal,
+    intradayReal: isNaN(intradayReal) ? 0 : intradayReal,
+    dailyUnrealized: isNaN(dailyUnrealized) ? 0 : dailyUnrealized,
     winRate,
-    wtdReal,
-    mtdReal,
-    ytdReal
+    wtdReal: isNaN(wtdReal) ? 0 : wtdReal,
+    mtdReal: isNaN(mtdReal) ? 0 : mtdReal,
+    ytdReal: isNaN(ytdReal) ? 0 : ytdReal
   };
 }
 
@@ -393,8 +393,8 @@ function renderStats(){
   const s=stats();
   
 const a=[
-['账户总成本',Utils.fmtDollar(s.cost)],
-['目前市值',Utils.fmtDollar(s.value)],
+['账户总成本',Utils.fmtDollar(s.cost || '--')],
+['目前市值',Utils.fmtDollar(s.value || '--')],
 ['当前浮动盈亏',Utils.fmtDollar(s.floating)],
 ['当日已实现盈亏',Utils.fmtDollar(s.todayReal)],
 ['日内交易', Utils.fmtDollar(s.intradayReal)],
@@ -757,15 +757,18 @@ async function loadClosePrices() {
     }
     const data = await response.json();
     const idbModule = await import('./lib/idb.js');
-    // 假设 close_prices.json 格式为 { "symbol": { "date": close_price } }
-    for (const symbol in data) {
-      for (const date in data[symbol]) {
-        await idbModule.setPrice(symbol, date, { close: data[symbol][date] });
+    // 假设 close_prices.json 格式为 { "date": { "symbol": close_price } }
+    // 注意：提供的close_prices.json是 { "date": { "symbol": price } }，不是 { "symbol": { "date": price } }
+    // 所以调整循环
+    for (const date in data) {
+      for (const symbol in data[date]) {
+        await idbModule.putPrice(symbol, date, data[date][symbol]);
       }
     }
     console.log('close_prices.json loaded successfully into IDB');
   } catch (error) {
     console.error('Error loading close_prices.json:', error);
+    // 兜底：如果加载失败，继续执行，不崩溃
   }
 }
 
