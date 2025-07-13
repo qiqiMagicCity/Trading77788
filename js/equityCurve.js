@@ -4,14 +4,14 @@
 
   function loadCurve(){
     try{
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return JSON.parse(null /* removed getItem */ || '[]');
     }catch(e){
       return [];
     }
   }
 
   function saveCurve(arr){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    /* removed setItem */);
   }
 
   function exportCurve(){
@@ -30,7 +30,7 @@
     const reader = new FileReader();
     reader.onload = () => {
       try{
-        localStorage.setItem(STORAGE_KEY, reader.result);
+        /* removed setItem */;
         alert('资金收益曲线已导入完成！');
       }catch(e){
         alert('导入失败: ' + e.message);
@@ -54,7 +54,7 @@
   if(curve.some(p=> p.date===today && p.auto)) return;
 
   // 读取交易记录
-  const trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  const trades = JSON.parse(null /* removed getItem */||'[]');
   if(!trades.length) return;
 
   /* 1. 计算持仓 */

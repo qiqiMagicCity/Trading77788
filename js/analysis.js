@@ -18,7 +18,7 @@
   setInterval(renderClocks,1000*30);
 
   /* ---------- load trades ---------- */
-  let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  let trades = JSON.parse(null /* removed getItem */||'[]');
   trades.forEach(t=>{ t.date = t.date||t.time||t.datetime; });
   trades = trades.filter(t=>t.date && isFinite(t.pl));
 
@@ -206,7 +206,7 @@
 
   async function updateCurveWithUnreal(){
     try {
-      const trades = JSON.parse(localStorage.getItem('trades')||'[]');
+      const trades = JSON.parse(null /* removed getItem */||'[]');
       if(!trades.length) return;
       const positions = calcOpenPositions(trades);
       const symbols = Object.keys(positions);

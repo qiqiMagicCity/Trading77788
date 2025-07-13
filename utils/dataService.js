@@ -18,3 +18,14 @@ export async function loadAll() {
   }
   return { trades, closes, livePrices };
 }
+
+// loadTrades: only trades.json, no localStorage fallback
+export async function loadTrades(){
+  try{
+    const res = await fetch('trades.json');
+    return res.ok ? await res.json() : [];
+  }catch(e){
+    console.error('loadTrades failed', e);
+    return [];
+  }
+}

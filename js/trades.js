@@ -4,7 +4,7 @@ function getWeekIdx(dateStr){
   const parts = dateStr.split('-').map(Number);
   return new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
 }
-(function(){
+(async function(){
 const tbl=document.getElementById('all-trades');
 function getSideClass(side) {
   if (side === 'BUY') return 'green';
@@ -14,7 +14,8 @@ function getSideClass(side) {
   return '';
 }
 function render(){
-  let trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  const { loadTrades } = await import('./utils/dataService.js');
+  let trades = await loadTrades();
   trades.sort((a,b)=> new Date(b.date)-new Date(a.date));
   trades = window.FIFO ? window.FIFO.computeFIFO(trades) : trades;
 
@@ -68,15 +69,13 @@ function render(){
        const idx=parseInt(btn.getAttribute('data-del'),10);
        const trades=JSON.parse(localStorage.getItem('trades')||'[]');
        trades.splice(idx,1);
-       localStorage.setItem('trades',JSON.stringify(trades));
-       render();
+              render();
      };
   });
   tbl.querySelectorAll('button[data-edit]').forEach(btn=>{
      btn.onclick=()=>{
        const idx=parseInt(btn.getAttribute('data-edit'),10);
-       localStorage.setItem('editIndex',idx);
-       location.href='index.html#edit';
+              location.href='index.html#edit';
      };
   });
 }

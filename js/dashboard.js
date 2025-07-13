@@ -73,18 +73,18 @@ const defaultTrades = [
  {date:'2025-06-29',symbol:'TSLA',side:'SELL',qty:50,price:210,pl:500,closed:true}
 ];
 
-let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
+let positions = JSON.parse(null /* removed getItem */||'null') || defaultPositions.slice();
 if(!Array.isArray(positions)){
   positions = Object.values(positions||{});
 }
-let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
+let trades    = JSON.parse(null /* removed getItem */||'null')    || defaultTrades.slice();
 recalcPositions();
 
 
 /* Save helper */
 function saveData(){
-  localStorage.setItem('positions',JSON.stringify(positions));
-  localStorage.setItem('trades',JSON.stringify(trades));
+  /* removed setItem */);
+  /* removed setItem */);
 }
 
 /* ---------- 2. Utils ---------- */
@@ -662,7 +662,7 @@ window.addEventListener('load',()=>{
   document.getElementById('fab')?.addEventListener('click',addTrade);
   document.getElementById('export')?.addEventListener('click',exportData);
   if(location.hash==='#edit'){
-    const idx=parseInt(localStorage.getItem('editIndex'),10);
+    const idx=parseInt(null /* removed getItem */,10);
     if(!isNaN(idx)){
       openTradeForm(idx);
       localStorage.removeItem('editIndex');

@@ -1,10 +1,10 @@
-(function(){
+(async function(){
   // 工具
   function numberColor(v){ return v>0?'green':(v<0?'red':'white'); }
   function formatDate(d){ return d.toISOString().slice(0,10); }
 
   // 1. 加载本地交易数据
-  const trades = JSON.parse(localStorage.getItem('trades')||'[]');
+  const trades = await fetch('trades.json').then(r=>r.ok?r.json():[]);
   if(!Array.isArray(trades) || trades.length===0) return;
 
   // 2. 按日期排序
