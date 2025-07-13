@@ -38,7 +38,7 @@ class M5Logic extends ModuleBase{
     await this.calc();
     setInterval(()=>this.calc(),60000);
   }
-  async calc(){
+  async calc(){ try{
     const trades = await getTrades();
     // 视角1：当日买卖配对
     const pnl_trade = calcTodayPnL(trades);
@@ -47,7 +47,11 @@ class M5Logic extends ModuleBase{
     const fifo = buildFIFO(trades.filter(t=>!isToday(t.date))); // 昨天及之前建仓
     let pnl_fifo=0;
     trades.filter(t=>isToday(t.date)&&(t.type==='SELL'||t.type==='COVER')).forEach(t=>{
-      const {symbol,qty,price,type}=t;
+      const {symbol,qty,price,type
+  }catch(err){
+    this.publish({error: err.message});
+    this.log(err);
+  } }=t;
       const stacks = fifo[symbol] || {long:[],short:[]};
       let remain=qty;
       const list = (type==='SELL')? stacks.long : stacks.short;

@@ -9,7 +9,7 @@ class M3Logic extends ModuleBase {
     await this.calc();
     setInterval(()=>this.calc(), 60000);
   }
-  async calc(){
+  async calc(){ try{
     const trades = await getTrades();
     const fifoMap = buildFIFO(trades);
     const openPos = getOpenPositions(fifoMap);
@@ -18,7 +18,10 @@ class M3Logic extends ModuleBase {
       const price = await getPrice(p.symbol);
       if(p.dir==='LONG'){
         total += (price - p.cost) * p.qty;
-      }else{
+  }catch(err){
+    this.publish({error: err.message});
+    this.log(err);
+  } }else{
         total += (p.cost - price) * p.qty;
       }
     }

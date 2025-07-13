@@ -10,9 +10,13 @@ function isToday(ts){
 
 class M4Logic extends ModuleBase {
   constructor(){ super('M4'); this.calc(); }
-  async calc(){
+  async calc(){ try{
     const trades = await getTrades();
-    const fifoMap = {};
+    const fifoMap = {
+  }catch(err){
+    this.publish({error: err.message});
+    this.log(err);
+  } };
     let realized = 0;
     const todayTrades = trades.filter(t=>isToday(t.date));
     for(const t of todayTrades){

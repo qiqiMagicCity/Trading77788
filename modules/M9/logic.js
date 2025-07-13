@@ -4,12 +4,16 @@ import { buildFIFO } from '../../utils/fifo.js';
 
 class M9Logic extends ModuleBase{
   constructor(){ super('M9'); this.calc(); }
-  async calc(){
+  async calc(){ try{
     const trades = await getTrades();
     const todayStr=new Date().toISOString().slice(0,10);
     const histTrades = trades.filter(t=> t.date && !t.date.startsWith(todayStr)); // before today
     let realized=0;
-    const fifoMap={};
+    const fifoMap={
+  }catch(err){
+    this.publish({error: err.message});
+    this.log(err);
+  } };
     histTrades.forEach(t=>{
       const {symbol,type,qty,price,date}=t;
       if(!fifoMap[symbol]) fifoMap[symbol]={long:[],short:[]};

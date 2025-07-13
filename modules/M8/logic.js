@@ -3,9 +3,13 @@ import { getTrades } from '../../utils/dataStore.js';
 
 class M8Logic extends ModuleBase{
   constructor(){ super('M8'); this.calc(); }
-  async calc(){
+  async calc(){ try{
     const trades = await getTrades();
-    const counts={B:0,S:0,P:0,C:0};
+    const counts={B:0,S:0,P:0,C:0
+  }catch(err){
+    this.publish({error: err.message});
+    this.log(err);
+  } };
     trades.forEach(t=>{
       if(t.type==='BUY') counts.B++;
       else if(t.type==='SELL') counts.S++;
