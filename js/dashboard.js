@@ -103,18 +103,17 @@ async function loadTradesIfEmpty() {
             positions = Object.values(data.positions || {});
           }
         }
-        recalcPositions();
-        saveData();
         console.log('Loaded trades and positions from data/trades.json');
       }
     } catch (error) {
       console.error('Failed to load data/trades.json:', error);
     }
   }
+  // 强制确保array
+  if (!Array.isArray(positions)) {
+    positions = Object.values(positions || []);
+  }
 }
-loadTradesIfEmpty().then(() => {
-  recalcPositions();
-});
 
 /* Save helper */
 function saveData(){
@@ -199,6 +198,11 @@ function recalcPositions(){
               last: lots.length ? lots[lots.length-1].price : 0,
               priceOk: false};
   }).filter(p=> p.qty !== 0);
+  // 强制转为array如果不是
+  if (!Array.isArray(positions)) {
+    positions = Object.values(positions || []);
+  }
+  console.log('After recalc, positions is array:', Array.isArray(positions));
 }
 
 
@@ -693,24 +697,33 @@ document.getElementById('t-save').onclick=function(){
 
 /* ---------- 7. Wire up ---------- */
 window.addEventListener('load',()=>{
-  // recalc positions in case only trades exist
-  recalcPositions();
-  renderStats();renderPositions();renderPositions();renderTrades();
-  renderSymbolsList();
-  updateClocks();
-  setInterval(updateClocks,1000);
+  loadTradesIfEmpty().then(() => {
+    recalcPositions();
+    renderStats();
+    renderPositions();
+    renderTrades();
+    renderSymbolsList();
+    updateClocks();
+    setInterval(updateClocks,1000);
 
-  document.getElementById('fab')?.addEventListener('click',addTrade);
-  document.getElementById('export')?.addEventListener('click',exportData);
-  if(location.hash==='#edit'){
-    const idx=parseInt(localStorage.getItem('editIndex'),10);
-    if(!isNaN(idx)){
-      openTradeForm(idx);
-      localStorage.removeItem('editIndex');
-      history.replaceState(null,'',location.pathname);
+    document.getElementById('fab')?.addEventListener('click',addTrade);
+    document.getElementById('export')?.addEventListener('click',exportData);
+    if(location.hash==='#edit'){
+      const idx=parseInt(localStorage.getItem('editIndex'),10);
+      if(!isNaN(idx)){
+        openTradeForm(idx);
+        localStorage.removeItem('editIndex');
+        history.replaceState(null,'',location.pathname);
+      }
     }
-  }
-  document.getElementById('import')?.addEventListener('click',importData);
+    document.getElementById('import')?.addEventListener('click',importData);
+    loadClosePrices().then(() => {
+      attachPrevCloses().then(() => {
+        updatePrices();
+        setInterval(updatePrices, 60000);
+      });
+    });
+  });
 });
 
 
