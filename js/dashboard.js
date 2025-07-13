@@ -1,4 +1,3 @@
-
 /* ---------- Prev Close attachment (v7.27) ---------- */
 
 /* ---------- Global Timezone helpers (v7.79) ---------- */
@@ -748,11 +747,36 @@ function renderSymbolsList(){
 }
 /* re-render symbols list whenever trades change */
 /* fetch prices on load */
-attachPrevCloses().then(()=>{
+
+// 新增函数：加载 close_prices.json 到 IndexedDB
+async function loadClosePrices() {
+  try {
+    const response = await fetch('/data/close_prices.json');
+    if (!response.ok) {
+      throw new Error('Failed to load close_prices.json: ' + response.status);
+    }
+    const data = await response.json();
+    const idbModule = await import('./lib/idb.js');
+    // 假设 close_prices.json 格式为 { "symbol": { "date": close_price } }
+    for (const symbol in data) {
+      for (const date in data[symbol]) {
+        await idbModule.setPrice(symbol, date, { close: data[symbol][date] });
+      }
+    }
+    console.log('close_prices.json loaded successfully into IDB');
+  } catch (error) {
+    console.error('Error loading close_prices.json:', error);
+  }
+}
+
+// 修改调用：在 attachPrevCloses 前先加载 close_prices.json
+loadClosePrices().then(() => {
+  attachPrevCloses().then(() => {
     updatePrices();
     // 每分钟刷新一次价格
     setInterval(updatePrices, 60000);
   });
+});
 
 /* ---------- Equity Curve EOD capture ---------- */
 function maybeCloseEquity(){
@@ -760,13 +784,13 @@ function maybeCloseEquity(){
   const tradeDate = nowNY.toFormat('yyyy-LL-dd');
   // only run if after 16:05 ET
   if(nowNY.hour > 16 || (nowNY.hour === 16 && nowNY.minute >= 5)){
-    const curve = loadCurve();
+    const curve = (typeof loadCurve==='function') ? loadCurve() : [];
     if(curve.at(-1)?.date === tradeDate) return; // already recorded
     const s = stats();
     const delta = s.dailyUnrealized + s.todayReal;
     const cumulative = (curve.at(-1)?.cumulative ?? 0) + delta;
     curve.push({date: tradeDate, delta, cumulative});
-    saveCurve(curve);
+    if(typeof saveCurve==='function') saveCurve(curve);
   }
 }
 maybeCloseEquity();
@@ -813,4 +837,3 @@ window.addEventListener('storage', (e)=>{
     renderSymbolsList && renderSymbolsList();
   }
 });
-
