@@ -1,6 +1,7 @@
+
 export async function getTrades(){
   try{
-    const res = await fetch('./trades.json');
+    const res = await fetch('data/trades.json');  // ✅ 修正路径
     if(!res.ok) return [];
     const raw = await res.json();
     return Array.isArray(raw) ? raw : (raw.trades || []);
@@ -12,6 +13,6 @@ export async function getClosePrices(){
     const res = await fetch('data/close_prices.json');
     if(!res.ok) return {};
     const raw = await res.json();
-    return raw;
-  }catch(e){ console.error('getClosePrices', e); return {}; }
+    return raw || {};
+  }catch(e){ console.error('getClosePrices',e); return {}; }
 }
