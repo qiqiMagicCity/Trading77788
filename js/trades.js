@@ -1,3 +1,4 @@
+import { loadTrades } from './utils/dataService.js';
 
 // ---- Helper: getWeekIdx returns 0 (Sun) - 6 (Sat) using UTC to avoid timezone skew ----
 function getWeekIdx(dateStr){
@@ -67,7 +68,7 @@ function render(){
   tbl.querySelectorAll('button[data-del]').forEach(btn=>{
      btn.onclick=()=>{
        const idx=parseInt(btn.getAttribute('data-del'),10);
-// const trades=JSON.parse(localStorage.getItem('trades')||'[]');  // removed localStorage dependency
+// const trades=JSON.parse(null||'[]');  // removed localStorage dependency
        trades.splice(idx,1);
               render();
      };
