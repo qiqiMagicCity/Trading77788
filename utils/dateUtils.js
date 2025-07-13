@@ -1,8 +1,11 @@
-// Rewritten with luxon to unify timezone (NY)
-import {DateTime} from 'https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js';
+window.NY_TZ = -4;
+window.LON_TZ = 1;
+
 window.nyNow = function(){
-  return DateTime.now().setZone('America/New_York');
+  const d = new Date();
+  return new Date(d.getTime() + (window.NY_TZ - d.getTimezoneOffset()/60)*3600000);
 };
 window.lonNow = function(){
-  return DateTime.now().setZone('Europe/Madrid');
+  const d=new Date();
+  return new Date(d.getTime() + (window.LON_TZ - d.getTimezoneOffset()/60)*3600000);
 };

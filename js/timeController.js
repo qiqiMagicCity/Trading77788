@@ -6,10 +6,14 @@
     const ny = DateTime.now().setZone('America/New_York');
     const va = ny.setZone('Europe/Madrid');
     const sh = ny.setZone('Asia/Shanghai');
-    document.getElementById('time-ny')?.textContent = fmt(ny);
-    document.getElementById('time-va')?.textContent = fmt(va);
-    document.getElementById('time-sh')?.textContent = fmt(sh);
-    document.getElementById('date-today')?.textContent = ny.toFormat('yyyy年MM月dd日 cccc');
+    const elNy = document.getElementById('time-ny');
+    if(elNy) elNy.textContent = fmt(ny);
+    const elVa = document.getElementById('time-va');
+    if(elVa) elVa.textContent = fmt(va);
+    const elSh = document.getElementById('time-sh');
+    if(elSh) elSh.textContent = fmt(sh);
+    const elDate = document.getElementById('date-today');
+    if(elDate) elDate.textContent = ny.toFormat('yyyy年MM月dd日 cccc');
   }
   update();
   setInterval(update, 1000);

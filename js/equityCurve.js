@@ -4,14 +4,14 @@
 
   function loadCurve(){
     try{
-      return JSON.parse(null /* removed getItem */ || '[]');
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     }catch(e){
       return [];
     }
   }
 
   function saveCurve(arr){
-    /* removed setItem */);
+// localStorage stripped; persistent disabled
   }
 
   function exportCurve(){
@@ -54,7 +54,7 @@
   if(curve.some(p=> p.date===today && p.auto)) return;
 
   // 读取交易记录
-  const trades = JSON.parse(null /* removed getItem */||'[]');
+  const trades = JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
   if(!trades.length) return;
 
   /* 1. 计算持仓 */

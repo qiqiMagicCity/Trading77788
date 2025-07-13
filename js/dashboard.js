@@ -3,24 +3,6 @@
 
 /* ---------- Global Timezone helpers (v7.79) ---------- */
 const NY_TZ = 'America/New_York';
-
-(async function loadRemoteTrades(){
-  try{
-    const res = await fetch('data/trades.json');
-    if(res.ok){
-      const json = await res.json();
-      trades = json.trades || json || [];
-      positions = json.positions || [];
-      recalcPositions && recalcPositions();
-      renderStats && renderStats();
-      renderPositions && renderPositions();
-      renderTrades && renderTrades();
-      if(typeof renderSymbolsList==='function') renderSymbolsList();
-    }
-  }catch(err){
-    console.error('Failed to load trades.json', err);
-  }
-})();
 // luxon already loaded globally
 const nyNow   = ()=> luxon.DateTime.now().setZone(NY_TZ);
 const todayNY = ()=> nyNow().toISODate();
@@ -95,7 +77,7 @@ let positions = JSON.parse(null /* removed getItem */||'null') || defaultPositio
 if(!Array.isArray(positions)){
   positions = Object.values(positions||{});
 }
-let trades = [];
+let trades    = JSON.parse(null /* removed getItem */||'null')    || defaultTrades.slice();
 recalcPositions();
 
 
