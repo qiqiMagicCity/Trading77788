@@ -1,41 +1,34 @@
 export default class ModuleBase {
-  constructor(name) {
-    this.name = name;
-    this.eventName = `${name}:update`;
-  }
-
-  /* Format raw value into standard payload */
-  format(value) { return { value }; }
-
-  /* Safer publish: accept raw number or pre‑formatted payload */
-  publish(data) {
-    const payload =
-      (typeof data === 'object' && data !== null && ('value' in data || 'error' in data))
-        ? data
-        : this.format(data);
-    window.dispatchEvent(new CustomEvent(this.eventName, { detail: payload }));
-  }
-
-  /* helper for numeric display */
-  static safeNumber(val) {
-  if(Number.isFinite(val)){
-    return val===0 ? '0' : val.toLocaleString();
-  }
-  return '--';
-}
-
-  /* generic render with error handling */
-  static safeRender(container, data) {
-    if (!container) return;
-    if (data && data.error) {
-      container.textContent = 'ERR';
-      return;
+  constructor(id){
+    this.id = id;
+    this.el = document.getElementById(`${id}-value`);
+    if (!this.el) {
+      console.warn(`[${id}] 未找到绑定元素`);
     }
-    const val = data && 'value' in data ? data.value : null;
-    container.textContent = ModuleBase.safeNumber(val);
+    this.subscribe();
   }
 
-  subscribe(handler) { window.addEventListener(this.eventName, handler); }
+  subscribe(){
+    document.addEventListener(this.id, e => this.safeRender(e.detail));
+  }
 
-  log(...msg) { console.log(`[${this.name}]`, ...msg); }
+  publish(data){
+    const event = new CustomEvent(this.id, { detail: data });
+    document.dispatchEvent(event);
+  }
+
+  safeRender(data){
+    if (!this.el) return;
+    if (data && data.error){
+      this.el.innerText = 'ERR';
+      this.el.classList.add('error');
+    } else {
+      this.el.innerText = (data && data.value !== undefined) ? data.value : '--';
+      this.el.classList.remove('error');
+    }
+  }
+
+  log(...args){
+    console.log(`[${this.id}]`, ...args);
+  }
 }
