@@ -1,8 +1,0 @@
-
-[
-    {"symbol": "AAPL", "type": "BUY", "price": 150, "qty": 10, "date": "2025-07-12"},
-    {"symbol": "AAPL", "type": "SELL", "price": 160, "qty": 5, "date": "2025-07-13"},
-    {"symbol": "TSLA", "type": "SHORT", "price": 700, "qty": 8, "date": "2025-07-12"},
-    {"symbol": "TSLA", "type": "COVER", "price": 690, "qty": 8, "date": "2025-07-13"},
-    {"symbol": "MSFT", "type": "BUY", "price": 310, "qty": 15, "date": "2025-07-12"}
-]
