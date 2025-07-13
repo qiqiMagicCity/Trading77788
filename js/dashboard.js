@@ -811,3 +811,24 @@ window.addEventListener('storage', (e)=>{
   }
 });
 
+
+
+// === auto‑patch added by v12 ===
+if (typeof priceService !== 'undefined') {
+    function refreshMarketData(){
+        if(!window.positions) return;
+        window.positions.forEach(p=>{
+            const last = priceService.getLast(p.symbol);
+            if(last){
+                p.lastPrice = last;
+                if(p.prevClose){
+                    p.floatPL = ((last - p.prevClose) * p.qty).toFixed(2);
+                }
+            }
+        });
+        if(typeof renderPositions === 'function'){
+            renderPositions();
+        }
+    }
+    setInterval(refreshMarketData, 65 * 1000);
+}
