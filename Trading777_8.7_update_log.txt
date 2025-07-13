@@ -1,8 +1,0 @@
-版本号：Trading77788阶段7_M11M13迁移.zip
-更新说明：
-1. 迁移模块 M11 (WTD)、M12 (MTD)、M13 (YTD) 盈亏算法：
-   - 读取 utils/dataStore.getDailyClose() 聚合 float + realized
-   - 使用 startOf(week|month|year) 计算滚动窗口
-2. index.html 新增容器 #M11-13 并引入视图脚本
-3. selfcheck.html 增加 M11-13 视图检测；自检通过
-4. dashboard_legacy.js 清理，只保留 UI 兼容壳

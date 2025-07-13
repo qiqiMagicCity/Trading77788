@@ -6,6 +6,7 @@ const NY_TZ = 'America/New_York';
 const nyNow   = ()=> luxon.DateTime.now().setZone(NY_TZ);
 const todayNY = ()=> nyNow().toISODate();
 async function attachPrevCloses(){
+  console.log('positions is array:', Array.isArray(positions));
   const idb = await import('./lib/idb.js');
   const now = new Date();
   let d = new Date(now);
@@ -72,13 +73,39 @@ const defaultTrades = [
  {date:'2025-06-29',symbol:'TSLA',side:'SELL',qty:50,price:210,pl:500,closed:true}
 ];
 
-let positions = JSON.parse(localStorage.getItem('positions')||'null') || defaultPositions.slice();
-if(!Array.isArray(positions)){
-  positions = Object.values(positions||{});
+// Load from localStorage or fallback to default
+let positions = JSON.parse(localStorage.getItem('positions') || 'null') || defaultPositions.slice();
+if (!Array.isArray(positions)) {
+  positions = Object.values(positions || {});
 }
-let trades    = JSON.parse(localStorage.getItem('trades')||'null')    || defaultTrades.slice();
-recalcPositions();
+let trades = JSON.parse(localStorage.getItem('trades') || 'null') || defaultTrades.slice();
+if (!Array.isArray(trades)) {
+  trades = Object.values(trades || {});
+}
 
+// If localStorage trades is empty, load from data/trades.json
+async function loadTradesIfEmpty() {
+  if (!localStorage.getItem('trades') || trades.length === 0) {
+    try {
+      const response = await fetch('data/trades.json');
+      if (response.ok) {
+        const data = await response.json();
+        trades = data.trades || data || defaultTrades.slice();
+        if (!Array.isArray(trades)) {
+          trades = Object.values(trades || {});
+        }
+        recalcPositions();
+        saveData();
+        console.log('Loaded trades from data/trades.json');
+      }
+    } catch (error) {
+      console.error('Failed to load data/trades.json:', error);
+    }
+  }
+}
+loadTradesIfEmpty().then(() => {
+  recalcPositions();
+});
 
 /* Save helper */
 function saveData(){
@@ -501,8 +528,14 @@ function importData(){
     reader.onload=ev=>{
       try{
         const data=JSON.parse(ev.target.result);
-        if(data.trades){ trades=data.trades; }
-        if(data.positions){ positions=data.positions; } else { recalcPositions(); }
+        if(data.trades){ trades = data.trades; }
+        if(data.positions){ positions = data.positions; } else { recalcPositions(); }
+        if (!Array.isArray(positions)) {
+          positions = Object.values(positions || {});
+        }
+        if (!Array.isArray(trades)) {
+          trades = Object.values(trades || {});
+        }
         if(data.equityCurve){ saveCurve(data.equityCurve); }
         saveData();
         renderStats();renderPositions();renderPositions();renderTrades();
@@ -829,6 +862,9 @@ window.addEventListener('storage', (e)=>{
   if(e.key==='trades'){
     try{
       trades = JSON.parse(e.newValue||'[]');
+      if (!Array.isArray(trades)) {
+        trades = Object.values(trades || {});
+      }
     }catch(err){
       trades = [];
     }
