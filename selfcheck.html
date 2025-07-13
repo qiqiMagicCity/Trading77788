@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8'><title>Selfcheck</title></head>
+<body>
+<script type='module'>
+import './index.html';
+document.addEventListener('DOMContentLoaded', ()=>{
+  const errors=[];
+  if(!window['M1View']) errors.push('M1 view missing');
+  const val1 = document.querySelector('#M1-value').textContent;
+  if(val1==='--' || val1.includes('NaN') || val1.includes('undefined')) errors.push('M1 value invalid');
+  if(!window['M2View']) errors.push('M2 view missing');
+  const val2 = document.querySelector('#M2-value').textContent;
+  if(val2==='--' || val2.includes('NaN') || val2.includes('undefined')) errors.push('M2 value invalid');
+  if(!window['M3View']) errors.push('M3 view missing');
+  const val3 = document.querySelector('#M3-value').textContent;
+  if(val3==='--' || val3.includes('NaN') || val3.includes('undefined')) errors.push('M3 value invalid');
+  if(!window['M4View']) errors.push('M4 view missing');
+  const val4 = document.querySelector('#M4-value').textContent;
+  if(val4==='--' || val4.includes('NaN') || val4.includes('undefined')) errors.push('M4 value invalid');
+  if(!window['M5View']) errors.push('M5 view missing');
+  const val5 = document.querySelector('#M5-value').textContent;
+  if(val5==='--' || val5.includes('NaN') || val5.includes('undefined')) errors.push('M5 value invalid');
+  if(!window['M6View']) errors.push('M6 view missing');
+  const val6 = document.querySelector('#M6-value').textContent;
+  if(val6==='--' || val6.includes('NaN') || val6.includes('undefined')) errors.push('M6 value invalid');
+  if(!window['M7View']) errors.push('M7 view missing');
+  const val7 = document.querySelector('#M7-value').textContent;
+  if(val7==='--' || val7.includes('NaN') || val7.includes('undefined')) errors.push('M7 value invalid');
+  if(!window['M8View']) errors.push('M8 view missing');
+  const val8 = document.querySelector('#M8-value').textContent;
+  if(val8==='--' || val8.includes('NaN') || val8.includes('undefined')) errors.push('M8 value invalid');
+  if(!window['M9View']) errors.push('M9 view missing');
+  const val9 = document.querySelector('#M9-value').textContent;
+  if(val9==='--' || val9.includes('NaN') || val9.includes('undefined')) errors.push('M9 value invalid');
+  if(!window['M10View']) errors.push('M10 view missing');
+  const val10 = document.querySelector('#M10-value').textContent;
+  if(val10==='--' || val10.includes('NaN') || val10.includes('undefined')) errors.push('M10 value invalid');
+  if(!window['M11View']) errors.push('M11 view missing');
+  const val11 = document.querySelector('#M11-value').textContent;
+  if(val11==='--' || val11.includes('NaN') || val11.includes('undefined')) errors.push('M11 value invalid');
+  if(!window['M12View']) errors.push('M12 view missing');
+  const val12 = document.querySelector('#M12-value').textContent;
+  if(val12==='--' || val12.includes('NaN') || val12.includes('undefined')) errors.push('M12 value invalid');
+  if(!window['M13View']) errors.push('M13 view missing');
+  const val13 = document.querySelector('#M13-value').textContent;
+  if(val13==='--' || val13.includes('NaN') || val13.includes('undefined')) errors.push('M13 value invalid');
+  const div=document.createElement('div');
+  if(errors.length===0){div.textContent='Selfcheck pass: all modules loaded';}
+  else{div.textContent='Selfcheck fail: '+errors.join(', '); div.style.color='red';}
+  document.body.appendChild(div);
+});
+</script>
+
+<script type='module'>
+import { getDailyResults, sumRange, sumSince } from './utils/dailyResult.js';
+(async ()=>{
+ const list= await getDailyResults();
+ const WTD=sumRange(list,7).toFixed(2);
+ const MTD=sumSince(list,'2025-07-01').toFixed(2);
+ const W_EXPECT='12466.74', M_EXPECT='25398.11';
+ if(WTD===W_EXPECT && MTD===M_EXPECT) console.log('P&L validation pass');
+ else console.error('Validation diff',WTD,MTD);
+})();
+</script>
+
+</body></html>
